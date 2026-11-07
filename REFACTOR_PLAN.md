@@ -119,7 +119,8 @@ The headless harness is enough.
  the designed anchor POIs) is the only tile author. `WorldMapState.InitializeDefaultGrid()` calls it;
  `IsometricTileManager` is projection-only and reads every tile through `MapContextProvider`.
  `FogOfWarManager` is deleted — `ExplorationService` is the only fog mutator. Sector snapshots store
- seed + explored/visible indices + sparse `TilePatch` deltas (save version 2.1.0; 2.0.0 migrates).
+ seed + explored/visible indices + sparse `TilePatch` deltas (save version 2.1.0; a 2.0 payload's
+ per-sector tile arrays are converted to patches on load rather than dropped).
  The three parallel visibility representations are now one (`TileNode.IsExplored/IsVisible`).
 
 **Problem (historical).** Tiles are authored in two incompatible places:

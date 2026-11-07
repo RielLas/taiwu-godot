@@ -333,6 +333,14 @@ namespace TaiwuGu.Core
 
         /// <summary>Tiles whose authored state differs from what the seed regenerates.</summary>
         public List<TilePatch> Patches = new List<TilePatch>();
+
+        /// <summary>
+        /// Legacy (2.0) payloads cached a cloned tile array per sector under the JSON name "Tiles".
+        /// SavePayloadMapper converts it to <see cref="Patches"/> on load; it is never written again
+        /// (null is omitted from the JSON) and must not be used by runtime code.
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("Tiles", NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public TileNode[]? LegacyTiles;
     }
 
     /// <summary>

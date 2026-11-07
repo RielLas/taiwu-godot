@@ -66,6 +66,9 @@ namespace TaiwuGu.Serialization
                 {
                     payload.Context = GameStateContext.CreateDefault();
                 }
+
+                MigrateSectorSnapshots(payload.Context);
+
                 payload.SaveVersion = SaveDiskIO.CURRENT_SAVE_VERSION;
                 Debug.Log($"[SavePayloadMapper] Migrated payload from version '{(string.IsNullOrEmpty(version) ? "unversioned" : version)}' to '{SaveDiskIO.CURRENT_SAVE_VERSION}'.");
                 return true;
@@ -74,6 +77,69 @@ namespace TaiwuGu.Serialization
             Debug.LogError($"[SaveDiskIO] Unsupported save version '{version}' in slot '{slotID}'. Expected '{SaveDiskIO.CURRENT_SAVE_VERSION}'. Save rejected.");
             SaveDiskIO.RaiseSaveLoadError(slotID, $"Unsupported save version: {version}");
             return false;
+        }
+
+        /// <summary>
+        /// 2.0 payloads stored each visited sector as a cloned TileNode[]. Convert that array into the
+        /// sparse patch list the current loader regenerates against. Without this, revisiting a sector
+        /// saved by 2.0 would silently discard every authored change it contained.
+        /// </summary>
+        private static void MigrateSectorSnapshots(GameStateContext? context)
+        {
+            var snapshots = context?.WorldMap?.SectorSnapshots;
+            if (snapshots == null) return;
+
+            foreach (var pair in snapshots)
+            {
+                SectorMapSnapshot? snapshot = pair.Value;
+                if (snapshot?.LegacyTiles == null) continue;
+
+                int width = snapshot.GridWidth > 0 ? snapshot.GridWidth : SectorGenerator.DEFAULT_WIDTH;
+                int height = snapshot.GridHeight > 0 ? snapshot.GridHeight : SectorGenerator.DEFAULT_HEIGHT;
+
+                TileNode[] baseline = SectorGenerator.Generate(
+                    snapshot.Seed,
+                    width,
+                    height,
+                    RegionalWallLaw.GetRegionBiome(snapshot.Region));
+
+                var patches = new List<TilePatch>();
+                var explored = new List<int>();
+                var visible = new List<int>();
+
+                int count = Math.Min(snapshot.LegacyTiles.Length, Math.Min(baseline.Length, width * height));
+                for (int i = 0; i < count; i++)
+                {
+                    TileNode saved = snapshot.LegacyTiles[i];
+
+                    if (saved.IsExplored) explored.Add(i);
+                    if (saved.IsVisible) visible.Add(i);
+
+                    TileNode generated = baseline[i];
+                    bool changed = saved.Biome != generated.Biome
+                        || saved.POI != generated.POI
+                        || saved.IsActive != generated.IsActive
+                        || !string.Equals(saved.CustomLandmarkId, generated.CustomLandmarkId, StringComparison.Ordinal);
+
+                    if (!changed) continue;
+
+                    patches.Add(new TilePatch
+                    {
+                        Index = i,
+                        Biome = saved.Biome,
+                        POI = saved.POI,
+                        CustomLandmarkId = saved.CustomLandmarkId,
+                        IsActive = saved.IsActive
+                    });
+                }
+
+                snapshot.Patches = patches;
+                snapshot.ExploredTileIndices = explored;
+                snapshot.VisibleTileIndices = visible;
+                snapshot.LegacyTiles = null;
+
+                Debug.Log($"[SavePayloadMapper] Migrated sector '{pair.Key}' from a 2.0 tile array to {patches.Count} patch(es).");
+            }
         }
 
         public static GameStateContext? CreateContextFromPayload(SavePayloadDTO? payload)
