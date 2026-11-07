@@ -22,11 +22,18 @@ namespace Taiwu_Godot.Scripts.UI
     /// </summary>
     public partial class TaiwuLedgerView : Control, IModalView
     {
+        private const string LedgerTitle = "CULTIVATOR APERTURE LEDGER (空窍录)";
+
         private bool _isOpen = false;
         private TaiwuModalStack? _modalStack;
         public bool IsOpen => _isOpen;
 
-        public void InitializeModalStack(TaiwuModalStack modalStack) => _modalStack = modalStack;
+        public void InitializeModalStack(TaiwuModalStack modalStack)
+        {
+            _modalStack = modalStack;
+            _scaffold?.BindModalStack(modalStack);
+        }
+
         public void Dismiss() => CloseLedger();
 
         private int _activeTabIndex = 0; // 0: Cultivation, 1: Gu Worms, 2: Dao Marks, 3: Factions
@@ -58,11 +65,8 @@ namespace Taiwu_Godot.Scripts.UI
         private readonly List<GuWormData> _equippedGu = new();
         private readonly List<GuWormData> _reserveGu = new();
 
-        // UI references
-        private ColorRect? _backdrop;
-        private PanelContainer? _mainModalPanel;
-        private TextureRect? _bannerMountainsRect;
-        private Label? _lblHeader;
+        // UI references (the chrome itself lives in Scenes/UI/ModalScaffold.tscn)
+        private ModalScaffold? _scaffold;
         private Label? _lblSubtitle;
 
         // Tab buttons
@@ -144,7 +148,6 @@ namespace Taiwu_Godot.Scripts.UI
 
             // Strict Event Subscription Symmetry
             GameEventManager.OnLedgerToggleRequested        += HandleLedgerToggleRequested;
-            GameEventManager.OnEscapeRequested              += HandleEscapeRequested;
             GameEventManager.OnPOIModalToggled              += HandlePOIModalToggled;
             GameEventManager.OnCauldronOpened               += HandleCauldronOpened;
             GameEventManager.OnCauldronClosed               += HandleCauldronClosed;
@@ -164,7 +167,6 @@ namespace Taiwu_Godot.Scripts.UI
         public override void _ExitTree()
         {
             GameEventManager.OnLedgerToggleRequested        -= HandleLedgerToggleRequested;
-            GameEventManager.OnEscapeRequested              -= HandleEscapeRequested;
             GameEventManager.OnPOIModalToggled              -= HandlePOIModalToggled;
             GameEventManager.OnCauldronOpened               -= HandleCauldronOpened;
             GameEventManager.OnCauldronClosed               -= HandleCauldronClosed;
@@ -183,7 +185,7 @@ namespace Taiwu_Godot.Scripts.UI
             if (_isOpen)
             {
                 _isOpen = false;
-                GameEventManager.TriggerUIModalActive(false);
+                _scaffold?.Close();
                 GameEventManager.TriggerLedgerToggled(false);
             }
         }
@@ -250,45 +252,29 @@ namespace Taiwu_Godot.Scripts.UI
 
         public void OpenLedger()
         {
-            if (!_isOpen)
-            {
-                _isOpen = true;
-                Visible = true;
-                GameEventManager.RaiseModalOpened(this);
-                GameEventManager.TriggerUIModalActive(true);
-                GameEventManager.TriggerLedgerToggled(true);
-                UpdateAllDisplays();
-            }
+            if (_isOpen) return;
+
+            _isOpen = true;
+            Visible = true;
+            _scaffold?.Open(this, LedgerTitle);
+            GameEventManager.TriggerLedgerToggled(true);
+            UpdateAllDisplays();
         }
 
         public void CloseLedger()
         {
-            if (_isOpen)
-            {
-                _isOpen = false;
-                Visible = false;
-                GameEventManager.RaiseModalClosed(this);
-                GameEventManager.TriggerUIModalActive(false);
-                GameEventManager.TriggerLedgerToggled(false);
-            }
+            if (!_isOpen) return;
+
+            _isOpen = false;
+            Visible = false;
+            _scaffold?.Close();
+            GameEventManager.TriggerLedgerToggled(false);
         }
 
         private void HandleLedgerToggleRequested()
         {
             if (_isOpen) CloseLedger();
             else OpenLedger();
-        }
-
-        private void HandleEscapeRequested()
-        {
-            if (GameEventManager.EscapeHandled) return;
-
-            // Strict LIFO: Ledger is #1 in hierarchy!
-            if (_isOpen)
-            {
-                CloseLedger();
-                GameEventManager.EscapeHandled = true;
-            }
         }
 
         private void HandlePOIModalToggled(bool isPOIModalOpen)
@@ -306,7 +292,7 @@ namespace Taiwu_Godot.Scripts.UI
                 _returnToLedgerOnCauldronClose = true;
                 _isOpen = false;
                 Visible = false;
-                GameEventManager.TriggerUIModalActive(false);
+                _scaffold?.Close();
                 GameEventManager.TriggerLedgerToggled(false);
             }
         }
@@ -319,7 +305,7 @@ namespace Taiwu_Godot.Scripts.UI
                 _isOpen = true;
                 Visible = true;
                 _activeTabIndex = 1; // Return to Gu Worms loadout
-                GameEventManager.TriggerUIModalActive(true);
+                _scaffold?.Open(this, LedgerTitle);
                 GameEventManager.TriggerLedgerToggled(true);
                 SwitchTab(1);
                 UpdateAllDisplays();
@@ -331,7 +317,7 @@ namespace Taiwu_Godot.Scripts.UI
             _returnToLedgerOnCauldronClose = true;
             _isOpen = false;
             Visible = false;
-            GameEventManager.TriggerUIModalActive(false);
+            _scaffold?.Close();
             GameEventManager.TriggerLedgerToggled(false);
             GameEventManager.RaiseRequestOpenCauldron();
         }
@@ -442,98 +428,38 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void BuildUIHierarchy()
         {
-            // 1. Semi-transparent backdrop overlay with click-outside-to-dismiss
-            _backdrop = new ColorRect
+            // Chrome (backdrop, panel, header, close button, Escape, modal registration)
+            // is Scenes/UI/ModalScaffold.tscn; this view only fills the body.
+            var scaffoldScene = GD.Load<PackedScene>("res://Scenes/UI/ModalScaffold.tscn");
+            if (scaffoldScene == null)
             {
-                Name = "Backdrop",
-                Color = new Color(0f, 0f, 0f, 0.72f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            _backdrop.SetAnchorsPreset(LayoutPreset.FullRect);
-            _backdrop.GuiInput += (@event) =>
+                GD.PushError("[TaiwuLedgerView] Missing modal scaffold scene at res://Scenes/UI/ModalScaffold.tscn.");
+                return;
+            }
+
+            _scaffold = scaffoldScene.Instantiate<ModalScaffold>();
+            AddChild(_scaffold);
+            _scaffold.BindModalStack(_modalStack);
+            _scaffold.SetTitle(LedgerTitle);
+
+            // 840x590 ledger window, with the original 16px title and its [Esc] hint
+            if (_scaffold.Panel != null)
             {
-                if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
-                {
-                    CloseLedger();
-                    GetViewport().SetInputAsHandled();
-                }
-            };
-            AddChild(_backdrop);
-
-            // Center container for 840x590 window
-            var centerContainer = new CenterContainer
+                _scaffold.Panel.CustomMinimumSize = new Vector2(840f, 590f);
+            }
+            if (_scaffold.TitleLabel != null)
             {
-                Name = "CenterContainer",
-                MouseFilter = MouseFilterEnum.Ignore
-            };
-            centerContainer.SetAnchorsPreset(LayoutPreset.FullRect);
-            AddChild(centerContainer);
-
-            var modalStyle = new StyleBoxFlat
+                _scaffold.TitleLabel.AddThemeFontSizeOverride("font_size", 16);
+            }
+            if (_scaffold.CloseButton != null)
             {
-                BgColor = new Color(0.067f, 0.102f, 0.098f, 0.98f), // Dark lacquer #111A19
-                BorderColor = new Color(0.851f, 0.467f, 0.024f, 0.85f), // Imperial Amber Gold border
-                BorderWidthBottom = 2,
-                BorderWidthTop = 2,
-                BorderWidthLeft = 2,
-                BorderWidthRight = 2,
-                CornerRadiusBottomLeft = 4,
-                CornerRadiusBottomRight = 4,
-                CornerRadiusTopLeft = 4,
-                CornerRadiusTopRight = 4
-            };
+                _scaffold.CloseButton.Text = "✕ [Esc]";
+                _scaffold.CloseButton.CustomMinimumSize = new Vector2(75f, 26f);
+            }
 
-            _mainModalPanel = new PanelContainer
-            {
-                Name = "MainModalPanel",
-                CustomMinimumSize = new Vector2(840f, 590f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            _mainModalPanel.AddThemeStyleboxOverride("panel", modalStyle);
-            centerContainer.AddChild(_mainModalPanel);
-
-            // Inner layout
-            var margin = new MarginContainer();
-            margin.AddThemeConstantOverride("margin_left", 18);
-            margin.AddThemeConstantOverride("margin_right", 18);
-            margin.AddThemeConstantOverride("margin_top", 14);
-            margin.AddThemeConstantOverride("margin_bottom", 14);
-            _mainModalPanel.AddChild(margin);
-
-            var rootVBox = new VBoxContainer();
+            var rootVBox = _scaffold.ContentRoot;
+            if (rootVBox == null) return;
             rootVBox.AddThemeConstantOverride("separation", 8);
-            margin.AddChild(rootVBox);
-
-            // Top Header Box (Layered over Shanshui Ink Mountain Banner)
-            var headerArea = new PanelContainer();
-            var headerStyle = new StyleBoxFlat { BgColor = new Color(0f, 0f, 0f, 0.35f), CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3 };
-            headerArea.AddThemeStyleboxOverride("panel", headerStyle);
-            rootVBox.AddChild(headerArea);
-
-            var headerVBox = new VBoxContainer();
-            headerVBox.AddThemeConstantOverride("separation", 2);
-            headerArea.AddChild(headerVBox);
-
-            var headerTopHBox = new HBoxContainer();
-            headerVBox.AddChild(headerTopHBox);
-
-            _lblHeader = new Label
-            {
-                Text = "CULTIVATOR APERTURE LEDGER (空窍录)",
-                Modulate = new Color(0.961f, 0.620f, 0.043f, 1f), // #F59E0B
-                SizeFlagsHorizontal = SizeFlags.ExpandFill
-            };
-            _lblHeader.AddThemeFontSizeOverride("font_size", 16);
-            headerTopHBox.AddChild(_lblHeader);
-
-            var btnClose = new Button
-            {
-                Text = "✕ [Esc]",
-                CustomMinimumSize = new Vector2(75f, 26f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            btnClose.Pressed += CloseLedger;
-            headerTopHBox.AddChild(btnClose);
 
             _lblSubtitle = new Label
             {
@@ -541,7 +467,7 @@ namespace Taiwu_Godot.Scripts.UI
                 Modulate = new Color(0.984f, 0.749f, 0.141f, 1f) // #FBBF24
             };
             _lblSubtitle.AddThemeFontSizeOverride("font_size", 11);
-            headerVBox.AddChild(_lblSubtitle);
+            rootVBox.AddChild(_lblSubtitle);
 
             // 4-Tab Navigation Bar
             var tabsHBox = new HBoxContainer();
@@ -1160,8 +1086,7 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void UpdateCultivationDisplay()
         {
-            if (_lblHeader != null)
-                _lblHeader.Text = "CULTIVATOR APERTURE LEDGER (空窍录)";
+            _scaffold?.SetTitle(LedgerTitle);
 
             if (_lblSubtitle != null)
                 _lblSubtitle.Text = $"Gu Yue Clan Heir: {_cultivatorName} | Rank {_rank} {_substageName}";

@@ -21,6 +21,7 @@ namespace Taiwu_Godot.Scripts.UI
         private IModalView? _owner;
 
         public Label? TitleLabel { get; private set; }
+        public PanelContainer? Panel { get; private set; }
         public HBoxContainer? HeaderAccessory { get; private set; }
         public Button? CloseButton { get; private set; }
         public VBoxContainer? ContentRoot { get; private set; }
@@ -35,6 +36,7 @@ namespace Taiwu_Godot.Scripts.UI
         {
             Visible = false;
 
+            Panel = GetNodeOrNull<PanelContainer>("CenterContainer/Panel");
             TitleLabel = GetNodeOrNull<Label>($"{HeaderPath}/Title");
             HeaderAccessory = GetNodeOrNull<HBoxContainer>($"{HeaderPath}/HeaderAccessory");
             CloseButton = GetNodeOrNull<Button>($"{HeaderPath}/CloseButton");
