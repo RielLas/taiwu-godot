@@ -1,0 +1,24 @@
+# Godot 4+ specific ignores
+.godot/
+.mono/
+
+# .NET / C# ignores
+bin/
+obj/
+*.user
+*.userprefs
+*.suo
+*.old
+*.bak
+
+# Visual Studio / Rider / VSCode caches
+.vs/
+.idea/
+.vscode/
+
+# Headless verification captures and temp artifacts
+test_*.png
+test_*.png.import
+*.tmp
+*.log
+

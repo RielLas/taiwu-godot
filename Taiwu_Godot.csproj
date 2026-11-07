@@ -1,0 +1,14 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Core.Logic\**" />
+    <Compile Remove="Core.Logic.Tests\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Core.Logic\Core.Logic.csproj" />
+  </ItemGroup>
+</Project>

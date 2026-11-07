@@ -1,0 +1,124 @@
+[gd_scene load_steps=15 format=3 uid="uid://d3y1a2b3c4d5e"]
+
+[ext_resource type="Script" path="res://Scripts/TaiwuGameBootstrapper.cs" id="1_boot"]
+[ext_resource type="Script" path="res://Scripts/Input/TaiwuInputRouter.cs" id="2_input"]
+[ext_resource type="Script" path="res://Scripts/Map/CameraIsometricController.cs" id="3_cam"]
+[ext_resource type="Script" path="res://Scripts/Map/IsometricTileManager.cs" id="4_tiles"]
+[ext_resource type="Script" path="res://Scripts/Map/IsometricTileDecal.cs" id="5_decal"]
+[ext_resource type="Script" path="res://Scripts/Map/TileLandmarkVisualManager.cs" id="6_landmarks"]
+[ext_resource type="Script" path="res://Scripts/Map/PlayerCultivatorController.cs" id="7_player"]
+[ext_resource type="Script" path="res://Scripts/UI/TaiwuHUDView.cs" id="8_hud"]
+[ext_resource type="Script" path="res://Scripts/Verification/DiagnosticCapture.cs" id="9_diag"]
+[ext_resource type="Script" path="res://Scripts/UI/TaiwuLedgerView.cs" id="10_ledger"]
+[ext_resource type="Script" path="res://Scripts/UI/RefinementCauldronView.cs" id="11_cauldron"]
+[ext_resource type="Script" path="res://Scripts/UI/TilePOIModalView.cs" id="12_poi"]
+[ext_resource type="Script" path="res://Scripts/UI/TaiwuSystemMenuView.cs" id="13_sysmenu"]
+[ext_resource type="Script" path="res://Scripts/Input/StandaloneInputProvider.cs" id="14_provider"]
+
+[node name="OverworldScene" type="Node2D"]
+
+[node name="[SYSTEM_BOOTSTRAPPER]" type="Node2D" parent="." node_paths=PackedStringArray("TileManager", "InputRouter", "LandmarkManager", "PlayerController", "CameraController", "HUDView", "LedgerView", "CauldronView", "POIModalView", "SystemMenuView")]
+script = ExtResource("1_boot")
+TileManager = NodePath("../World2D/IsometricTileManager")
+InputRouter = NodePath("../[SYSTEM_INPUT]")
+LandmarkManager = NodePath("../World2D/TileLandmarkVisualManager")
+PlayerController = NodePath("../World2D/PlayerCultivator")
+CameraController = NodePath("../World2D/Camera2D")
+HUDView = NodePath("../[UI_SYSTEM]/TaiwuHUDView")
+LedgerView = NodePath("../[UI_SYSTEM]/TaiwuLedgerView")
+CauldronView = NodePath("../[UI_SYSTEM]/RefinementCauldronView")
+POIModalView = NodePath("../[UI_SYSTEM]/TilePOIModalView")
+SystemMenuView = NodePath("../[UI_SYSTEM]/TaiwuSystemMenuView")
+
+[node name="[SYSTEM_INPUT]" type="Node" parent="." node_paths=PackedStringArray("StandaloneProvider")]
+process_mode = 3
+script = ExtResource("2_input")
+StandaloneProvider = NodePath("StandaloneInputProvider")
+
+[node name="StandaloneInputProvider" type="Node2D" parent="[SYSTEM_INPUT]"]
+process_mode = 3
+script = ExtResource("14_provider")
+
+[node name="[SYSTEM_DIAGNOSTIC]" type="Node" parent="." node_paths=PackedStringArray("Bootstrapper")]
+script = ExtResource("9_diag")
+Bootstrapper = NodePath("../[SYSTEM_BOOTSTRAPPER]")
+
+[node name="World2D" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="Camera2D" type="Camera2D" parent="World2D" node_paths=PackedStringArray("Target")]
+script = ExtResource("3_cam")
+Target = NodePath("../PlayerCultivator")
+
+[node name="IsometricTileManager" type="Node2D" parent="World2D"]
+script = ExtResource("4_tiles")
+
+[node name="IsometricTileDecal" type="Node2D" parent="World2D"]
+script = ExtResource("5_decal")
+
+[node name="TileLandmarkVisualManager" type="Node2D" parent="World2D" node_paths=PackedStringArray("TileManager")]
+y_sort_enabled = true
+script = ExtResource("6_landmarks")
+TileManager = NodePath("../IsometricTileManager")
+
+[node name="PlayerCultivator" type="Node2D" parent="World2D" node_paths=PackedStringArray("TileManager")]
+y_sort_enabled = true
+script = ExtResource("7_player")
+TileManager = NodePath("../IsometricTileManager")
+
+[node name="[UI_SYSTEM]" type="CanvasLayer" parent="."]
+process_mode = 3
+
+[node name="TaiwuHUDView" type="Control" parent="[UI_SYSTEM]"]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("8_hud")
+
+[node name="TaiwuLedgerView" type="Control" parent="[UI_SYSTEM]"]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("10_ledger")
+
+[node name="RefinementCauldronView" type="Control" parent="[UI_SYSTEM]"]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("11_cauldron")
+
+[node name="TilePOIModalView" type="Control" parent="[UI_SYSTEM]"]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("12_poi")
+
+[node name="TaiwuSystemMenuView" type="Control" parent="[UI_SYSTEM]"]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("13_sysmenu")

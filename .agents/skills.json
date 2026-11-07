@@ -1,0 +1,23 @@
+{
+  "inherits": [
+    {
+      "path": "C:\\Users\\rifas\\.gemini\\config\\skills",
+      "include_only": [
+        "anti-slop",
+        "ponytail",
+        "unlazy",
+        "self-review",
+        "unity-pipeline",
+        "project-auditor-fixes"
+      ],
+      "exclude": [
+        "upwork-proposal",
+        "millionaire-operator",
+        "playwright-cli",
+        "humanizer",
+        "ui-ux-pro-max",
+        "graphify"
+      ]
+    }
+  ]
+}

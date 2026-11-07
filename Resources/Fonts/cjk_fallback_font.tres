@@ -1,0 +1,5 @@
+[gd_resource type="SystemFont" format=3 uid="uid://cjkfontfallback"]
+
+[resource]
+font_names = PackedStringArray("Microsoft YaHei", "SimHei", "PingFang SC", "Noto Sans CJK SC", "Arial")
+subpixel_positioning = 1
