@@ -29,7 +29,6 @@ namespace Taiwu_Godot.Scripts
         [Export] public PlayerCultivatorController? PlayerController { get; set; }
         [Export] public CameraIsometricController? CameraController { get; set; }
         [Export] public CloudShadowController? CloudShadows { get; set; }
-        [Export] public FogOfWarManager? FogManager { get; set; }
         [Export] public TaiwuHUDView? HUDView { get; set; }
         [Export] public TaiwuLedgerView? LedgerView { get; set; }
         [Export] public RefinementCauldronView? CauldronView { get; set; }
@@ -151,15 +150,6 @@ namespace Taiwu_Godot.Scripts
                 {
                     CameraController?.Initialize(PlayerController);
                 }
-
-                // Wire or instantiate Fog of War Manager
-                if (FogManager == null)
-                {
-                    FogManager = new FogOfWarManager { Name = "FogOfWarManager" };
-                    AddChild(FogManager);
-                }
-                FogManager.Initialize(TileManager);
-                FogManager.RefreshVision(StartingGridPosition);
 
                 // Wire or instantiate atmospheric drifting cloud shadows
                 if (CloudShadows == null)

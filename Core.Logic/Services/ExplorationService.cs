@@ -123,16 +123,13 @@ namespace TaiwuGu.Core
 
             int width = _context.WorldMap.GridWidth;
             int height = _context.WorldMap.GridHeight;
+            TileNode[] tiles = _context.WorldMap.Tiles;
 
-            for (int i = 0; i < _context.WorldMap.VisibleTileIndices.Count; i++)
+            // Visibility is the only per-move mutable fog state; explored is monotonic.
+            for (int i = 0; i < tiles.Length; i++)
             {
-                int idx = _context.WorldMap.VisibleTileIndices[i];
-                if (idx >= 0 && idx < _context.WorldMap.Tiles.Length)
-                {
-                    _context.WorldMap.Tiles[idx].IsVisible = false;
-                }
+                tiles[i].IsVisible = false;
             }
-            _context.WorldMap.VisibleTileIndices.Clear();
 
             for (int dx = -radius; dx <= radius; dx++)
             {
@@ -141,17 +138,11 @@ namespace TaiwuGu.Core
                     if (Mathf.Abs(dx) + Mathf.Abs(dy) <= radius)
                     {
                         Vector2Int target = center + new Vector2Int(dx, dy);
-                        if (_context.WorldMap.IsWithinBounds(target))
+                        if (target.x >= 0 && target.x < width && target.y >= 0 && target.y < height)
                         {
                             int idx = target.y * width + target.x;
-                            _context.WorldMap.Tiles[idx].IsVisible = true;
-                            _context.WorldMap.Tiles[idx].IsExplored = true;
-
-                            if (!_context.WorldMap.VisibleTileIndices.Contains(idx))
-                                _context.WorldMap.VisibleTileIndices.Add(idx);
-
-                            if (!_context.WorldMap.ExploredTileIndices.Contains(idx))
-                                _context.WorldMap.ExploredTileIndices.Add(idx);
+                            tiles[idx].IsVisible = true;
+                            tiles[idx].IsExplored = true;
                         }
                     }
                 }

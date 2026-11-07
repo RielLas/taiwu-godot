@@ -23,7 +23,7 @@ namespace TaiwuGu.Core
     [Serializable]
     public class SavePayloadDTO
     {
-        public string SaveVersion = "2.0.0";
+        public string SaveVersion = "2.1.0";
         public SaveMetadataDTO Metadata = new SaveMetadataDTO();
         public GameStateContext Context = new GameStateContext();
     }

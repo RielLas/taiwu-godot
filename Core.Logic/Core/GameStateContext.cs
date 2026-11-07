@@ -330,7 +330,23 @@ namespace TaiwuGu.Core
         public Vector2Int PlayerGridPos;
         public List<int> ExploredTileIndices = new List<int>();
         public List<int> VisibleTileIndices = new List<int>();
-        public TileNode[]? Tiles;
+
+        /// <summary>Tiles whose authored state differs from what the seed regenerates.</summary>
+        public List<TilePatch> Patches = new List<TilePatch>();
+    }
+
+    /// <summary>
+    /// One tile that diverged from deterministic generation (landmark unlocked, cave collapsed,
+    /// obstacle cleared). Sectors are stored as seed + patches instead of a full tile array.
+    /// </summary>
+    [Serializable]
+    public class TilePatch
+    {
+        public int Index;
+        public BiomeType Biome;
+        public TilePOIType POI;
+        public string? CustomLandmarkId;
+        public bool IsActive;
     }
 
     [Serializable]
@@ -342,17 +358,47 @@ namespace TaiwuGu.Core
         public int GridWidth = 30;
         public int GridHeight = 30;
         public Vector2Int PlayerGridPos = new Vector2Int(15, 15);
-        public List<int> ExploredTileIndices = new List<int>();
-        public List<int> VisibleTileIndices = new List<int>();
         public TileNode[]? Tiles;
 
         public Dictionary<string, SectorMapSnapshot> SectorSnapshots = new Dictionary<string, SectorMapSnapshot>();
 
         public void SaveCurrentSectorSnapshot(string sectorKey)
         {
-            if (string.IsNullOrEmpty(sectorKey)) return;
+            if (string.IsNullOrEmpty(sectorKey) || Tiles == null) return;
             CurrentSectorKey = sectorKey;
-            var snap = new SectorMapSnapshot
+
+            TileNode[] baseline = SectorGenerator.Generate(Seed, GridWidth, GridHeight, RegionalWallLaw.GetRegionBiome(CurrentRegion));
+            var explored = new List<int>();
+            var visible = new List<int>();
+            var patches = new List<TilePatch>();
+
+            int count = Math.Min(Tiles.Length, baseline.Length);
+            for (int i = 0; i < count; i++)
+            {
+                TileNode current = Tiles[i];
+                if (current.IsExplored) explored.Add(i);
+                if (current.IsVisible) visible.Add(i);
+
+                TileNode generated = baseline[i];
+                bool changed = current.Biome != generated.Biome
+                    || current.POI != generated.POI
+                    || current.IsActive != generated.IsActive
+                    || !string.Equals(current.CustomLandmarkId, generated.CustomLandmarkId, StringComparison.Ordinal);
+
+                if (changed)
+                {
+                    patches.Add(new TilePatch
+                    {
+                        Index = i,
+                        Biome = current.Biome,
+                        POI = current.POI,
+                        CustomLandmarkId = current.CustomLandmarkId,
+                        IsActive = current.IsActive
+                    });
+                }
+            }
+
+            SectorSnapshots[sectorKey] = new SectorMapSnapshot
             {
                 SectorKey = sectorKey,
                 Seed = Seed,
@@ -360,27 +406,50 @@ namespace TaiwuGu.Core
                 GridWidth = GridWidth,
                 GridHeight = GridHeight,
                 PlayerGridPos = PlayerGridPos,
-                ExploredTileIndices = new List<int>(ExploredTileIndices),
-                VisibleTileIndices = new List<int>(VisibleTileIndices),
-                Tiles = (TileNode[])Tiles?.Clone()!
+                ExploredTileIndices = explored,
+                VisibleTileIndices = visible,
+                Patches = patches
             };
-            SectorSnapshots[sectorKey] = snap;
         }
 
         public bool TryLoadSectorSnapshot(string sectorKey)
         {
-            if (string.IsNullOrEmpty(sectorKey) || !SectorSnapshots.TryGetValue(sectorKey, out var snap) || snap?.Tiles == null)
+            if (string.IsNullOrEmpty(sectorKey) || !SectorSnapshots.TryGetValue(sectorKey, out var snap) || snap == null)
                 return false;
 
             Seed = snap.Seed;
             CurrentRegion = snap.Region;
             CurrentSectorKey = sectorKey;
-            GridWidth = snap.GridWidth > 0 ? snap.GridWidth : 30;
-            GridHeight = snap.GridHeight > 0 ? snap.GridHeight : 30;
+            GridWidth = snap.GridWidth > 0 ? snap.GridWidth : SectorGenerator.DEFAULT_WIDTH;
+            GridHeight = snap.GridHeight > 0 ? snap.GridHeight : SectorGenerator.DEFAULT_HEIGHT;
             PlayerGridPos = snap.PlayerGridPos;
-            ExploredTileIndices = new List<int>(snap.ExploredTileIndices);
-            VisibleTileIndices = new List<int>(snap.VisibleTileIndices);
-            Tiles = (TileNode[])snap.Tiles.Clone();
+
+            Tiles = SectorGenerator.Generate(Seed, GridWidth, GridHeight, RegionalWallLaw.GetRegionBiome(CurrentRegion));
+
+            foreach (var patch in snap.Patches ?? new List<TilePatch>())
+            {
+                if (patch.Index < 0 || patch.Index >= Tiles.Length) continue;
+                Tiles[patch.Index].Biome = patch.Biome;
+                Tiles[patch.Index].POI = patch.POI;
+                Tiles[patch.Index].CustomLandmarkId = patch.CustomLandmarkId;
+                Tiles[patch.Index].IsActive = patch.IsActive;
+            }
+
+            for (int i = 0; i < Tiles.Length; i++)
+            {
+                Tiles[i].IsExplored = false;
+                Tiles[i].IsVisible = false;
+            }
+
+            foreach (int index in snap.ExploredTileIndices ?? new List<int>())
+            {
+                if (index >= 0 && index < Tiles.Length) Tiles[index].IsExplored = true;
+            }
+            foreach (int index in snap.VisibleTileIndices ?? new List<int>())
+            {
+                if (index >= 0 && index < Tiles.Length) Tiles[index].IsVisible = true;
+            }
+
             return true;
         }
 
@@ -404,99 +473,32 @@ namespace TaiwuGu.Core
         public void SetExplored(int x, int y, bool explored)
         {
             if (Tiles == null || x < 0 || x >= GridWidth || y < 0 || y >= GridHeight) return;
-            int idx = y * GridWidth + x;
-            Tiles[idx].IsExplored = explored;
-            if (explored && !ExploredTileIndices.Contains(idx))
-            {
-                ExploredTileIndices.Add(idx);
-            }
-            else if (!explored && ExploredTileIndices.Contains(idx))
-            {
-                ExploredTileIndices.Remove(idx);
-            }
+            Tiles[y * GridWidth + x].IsExplored = explored;
         }
 
         public void SetVisible(int x, int y, bool visible)
         {
             if (Tiles == null || x < 0 || x >= GridWidth || y < 0 || y >= GridHeight) return;
-            int idx = y * GridWidth + x;
-            Tiles[idx].IsVisible = visible;
-            if (visible && !VisibleTileIndices.Contains(idx))
-            {
-                VisibleTileIndices.Add(idx);
-            }
-            else if (!visible && VisibleTileIndices.Contains(idx))
-            {
-                VisibleTileIndices.Remove(idx);
-            }
+            Tiles[y * GridWidth + x].IsVisible = visible;
         }
 
+        public bool IsWalkable(Vector2Int pos)
+        {
+            if (!IsWithinBounds(pos) || Tiles == null) return false;
+
+            TileNode tile = GetTile(pos.x, pos.y);
+            if (!tile.IsActive) return false;
+
+            return LandmarkRegistry.IsTraversable(tile.POI, tile.CustomLandmarkId);
+        }
+
+        /// <summary>
+        /// Rebuilds the sector from its seed. This is the single source of truth for terrain:
+        /// nothing else in the project is allowed to hand-author tiles.
+        /// </summary>
         public void InitializeDefaultGrid()
         {
-            Tiles = new TileNode[GridWidth * GridHeight];
-            ExploredTileIndices.Clear();
-            VisibleTileIndices.Clear();
-
-            for (int x = 0; x < GridWidth; x++)
-            {
-                for (int y = 0; y < GridHeight; y++)
-                {
-                    int distance = Mathf.Abs(x - 15) + Mathf.Abs(y - 15);
-                    int danger = Mathf.Clamp(distance / 6 + 1, 1, 5);
-                    bool explored = (distance <= 5);
-                    bool visible = (distance <= 4);
-
-                    var node = new TileNode
-                    {
-                        GridPos = new Vector2Int(x, y),
-                        Biome = BiomeType.BambooMountain,
-                        POI = TilePOIType.None,
-                        DangerRank = danger,
-                        IsExplored = explored,
-                        IsVisible = visible,
-                        IsActive = true
-                    };
-
-                    int idx = y * GridWidth + x;
-                    Tiles[idx] = node;
-                    if (explored) ExploredTileIndices.Add(idx);
-                    if (visible) VisibleTileIndices.Add(idx);
-                }
-            }
-
-            // Gu Yue Clan Stronghold
-            SetPOI(15, 15, TilePOIType.ClanPost);
-
-            // Jia Family Caravan Inn
-            SetPOI(19, 15, TilePOIType.WayStation);
-
-            // Primeval Essence Springs
-            SetPOI(14, 17, TilePOIType.SpiritVein);
-            SetPOI(10, 12, TilePOIType.SpiritVein);
-            SetPOI(21, 20, TilePOIType.SpiritVein);
-
-            // Ancient Gu Caves
-            SetPOI(6, 22, TilePOIType.AncientGuCave);
-            SetPOI(23, 8, TilePOIType.AncientGuCave);
-            SetPOI(5, 7, TilePOIType.AncientGuCave);
-            SetPOI(25, 24, TilePOIType.AncientGuCave);
-            SetPOI(11, 25, TilePOIType.AncientGuCave);
-
-            // Wild Beast Dens
-            SetPOI(18, 11, TilePOIType.WildBeastDen);
-            SetPOI(9, 19, TilePOIType.WildBeastDen);
-            SetPOI(22, 17, TilePOIType.WildBeastDen);
-            SetPOI(13, 7, TilePOIType.WildBeastDen);
-            SetPOI(26, 12, TilePOIType.WildBeastDen);
-            SetPOI(4, 15, TilePOIType.WildBeastDen);
-        }
-
-        private void SetPOI(int x, int y, TilePOIType poi)
-        {
-            if (Tiles != null && x >= 0 && x < GridWidth && y >= 0 && y < GridHeight)
-            {
-                Tiles[y * GridWidth + x].POI = poi;
-            }
+            Tiles = SectorGenerator.Generate(Seed, GridWidth, GridHeight, RegionalWallLaw.GetRegionBiome(CurrentRegion));
         }
     }
 

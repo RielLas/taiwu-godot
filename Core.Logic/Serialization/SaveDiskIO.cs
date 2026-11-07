@@ -15,7 +15,8 @@ namespace TaiwuGu.Serialization
     /// </summary>
     public static class SaveDiskIO
     {
-        public const string CURRENT_SAVE_VERSION = "2.0.0";
+        // 2.1.0: sector snapshots store seed + tile patches instead of a cloned TileNode[].
+        public const string CURRENT_SAVE_VERSION = "2.1.0";
 
         public static event Action<string> OnSaveCompleted;
         public static event Action<string, string> OnSaveLoadError;

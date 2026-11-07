@@ -9,7 +9,7 @@ Item numbering follows the audit report.
 |---|---|---|
 | 1 | Version control of the live project | Owner handling |
 | 2 | Delete `scene-references/` + remove its `GuDatabase` fallback paths | **Done** |
-| 3 | Single map authority | Planned — Phase 2 |
+| 3 | Single map authority | **Done** (Phase 2) |
 | 4 | Honest test coverage | **Done** (57 domain tests + harness; see Phase 1 caveats) |
 | 5 | Instance event bus / composition root | Planned — Phase 5 (per-view) |
 | 6 | Save pipeline correctness | Planned — Phase 3 |
@@ -71,7 +71,8 @@ shows no build output; the game boots from the main scene with no diagnostic nod
 - No Godot binary is on PATH or in the usual user-scoped install locations, so `--verify` has not
   been executed yet. Run
   `godot --headless --path . -- --verify` (expect exit 0) and
-  `godot --headless --path . -- --verify --strict-poi` (expect exit 1 until Phase 2 lands).
+  `godot --headless --path . -- --verify --strict-poi` (expect exit 0 since Phase 2 landed;
+  `--strict-poi` additionally asserts the POIs the game renders are the POIs in state).
 
 **Problem.** `Core.Logic.Tests/Stubs/ViewStubs.cs` declares fake `TaiwuGu.UI.TaiwuLedgerView`,
 `TilePOIModalView`, `RefinementCauldronView`, `TaiwuSystemMenuView`, plus fake
@@ -112,9 +113,16 @@ The headless harness is enough.
 
 ---
 
-## Phase 2 — One map authority (2–3 days)
+## Phase 2 — One map authority — **Done**
 
-**Problem.** Tiles are authored in two incompatible places:
+**Landed.** `Core.Logic/Map/SectorGenerator.cs` (pure, xorshift32-seeded, BFS-connected, preserves
+ the designed anchor POIs) is the only tile author. `WorldMapState.InitializeDefaultGrid()` calls it;
+ `IsometricTileManager` is projection-only and reads every tile through `MapContextProvider`.
+ `FogOfWarManager` is deleted — `ExplorationService` is the only fog mutator. Sector snapshots store
+ seed + explored/visible indices + sparse `TilePatch` deltas (save version 2.1.0; 2.0.0 migrates).
+ The three parallel visibility representations are now one (`TileNode.IsExplored/IsVisible`).
+
+**Problem (historical).** Tiles are authored in two incompatible places:
 
 - `GameStateContext.CreateDefault()` (`GameStateContext.cs:742`) calls `InitializeDefaultGrid()`
   (`:434`): a flat 30×30 grid, all 900 tiles `IsActive`, POIs at hardcoded coordinates.
