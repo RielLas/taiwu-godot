@@ -10,7 +10,7 @@ Item numbering follows the audit report.
 | 1 | Version control of the live project | Owner handling |
 | 2 | Delete `scene-references/` + remove its `GuDatabase` fallback paths | **Done** |
 | 3 | Single map authority | Planned — Phase 2 |
-| 4 | Honest test coverage | Planned — Phase 1 |
+| 4 | Honest test coverage | **Done** (57 domain tests + harness; see Phase 1 caveats) |
 | 5 | Instance event bus / composition root | Planned — Phase 5 (per-view) |
 | 6 | Save pipeline correctness | Planned — Phase 3 |
 | 7 | UI decomposition | Planned — Phase 4 |
@@ -49,7 +49,29 @@ shows no build output; the game boots from the main scene with no diagnostic nod
 
 ---
 
-## Phase 1 — Make the tests tell the truth (1–2 days)
+## Phase 1 — Make the tests tell the truth — **Done**
+
+**Delivered**
+
+- `Core.Logic.Tests/Stubs/` deleted, along with every test that only exercised those fakes:
+  Phase1And2 Test06, Phase3 Test06 (and the stub-reflection tail of Test10), Phase4 Test06,
+  Phase5 Test01–02. Test count went 62 → 57; the 5 removed could not fail for a real reason.
+- Suite retargeted to `net8.0` (the game's target) with `global.json` pinning 8.0 intent and
+  `rollForward: latestMajor`.
+- `Scripts/Verification/VerificationRunner.cs` added: asserts state shape, rendered-grid shape and
+  coordinate orientation, and a full save → load → compare of every tile. `DiagnosticCapture`
+  parses `--verify` / `--strict-poi` and quits with the runner's exit code.
+- `SaveRoundTripTests` added so the harness's core assertion is covered by `dotnet test`.
+
+**Caveats (honest state)**
+
+- Only the .NET 10 runtime is installed on this machine. The suite compiles against the `net8.0`
+  API surface but executes on 10 via `RollForward=Major`. Install the .NET 8 runtime to make
+  "runs on the shipped runtime" literally true.
+- No Godot binary is on PATH or in the usual user-scoped install locations, so `--verify` has not
+  been executed yet. Run
+  `godot --headless --path . -- --verify` (expect exit 0) and
+  `godot --headless --path . -- --verify --strict-poi` (expect exit 1 until Phase 2 lands).
 
 **Problem.** `Core.Logic.Tests/Stubs/ViewStubs.cs` declares fake `TaiwuGu.UI.TaiwuLedgerView`,
 `TilePOIModalView`, `RefinementCauldronView`, `TaiwuSystemMenuView`, plus fake

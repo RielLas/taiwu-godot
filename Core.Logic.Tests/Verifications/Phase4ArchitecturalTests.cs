@@ -1,8 +1,6 @@
 using System;
-using System.Reflection;
 using Xunit;
 using TaiwuGu.Core;
-using TaiwuGu.UI;
 
 namespace TaiwuGu.Tests
 {
@@ -179,38 +177,6 @@ namespace TaiwuGu.Tests
             Assert.True(priGu.Satiety <= 0.01f);
             Assert.True(ctx.Cultivator.CurrentEssenceSea <= 0.01f);
 
-            GameEventManager.ClearAllSubscriptions();
-        }
-
-        [Fact]
-        public void Test06_ConstitutionalDecouplingAndInputModeHandover()
-        {
-            GameEventManager.ClearAllSubscriptions();
-
-            // 1. Verify RefinementCauldronView has zero domain coupling
-            var viewType = typeof(RefinementCauldronView);
-            var fields = viewType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-
-            foreach (var field in fields)
-            {
-                Assert.False(field.FieldType == typeof(GuRefinementService));
-                Assert.False(field.FieldType == typeof(GameStateContext));
-            }
-
-            // 2. Verify TaiwuInputRouter 3-mode state machine handover
-            var router = new TaiwuInputRouter();
-            router.OnEnable();
-
-            Assert.Equal(InputControlMode.Overworld, router.ControlMode);
-
-            var dummyState = new CauldronRefinementState();
-            GameEventManager.TriggerCauldronOpened(dummyState);
-            Assert.Equal(InputControlMode.AlchemicalCauldron, router.ControlMode);
-
-            GameEventManager.TriggerCauldronClosed();
-            Assert.Equal(InputControlMode.Overworld, router.ControlMode);
-
-            router.OnDisable();
             GameEventManager.ClearAllSubscriptions();
         }
     }

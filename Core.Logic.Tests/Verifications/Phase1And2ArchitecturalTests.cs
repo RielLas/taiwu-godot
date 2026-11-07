@@ -1,9 +1,7 @@
 using System;
-using System.Reflection;
 using Xunit;
 using TaiwuGu.Core;
 using TaiwuGu.Map;
-using TaiwuGu.UI;
 
 namespace TaiwuGu.Tests
 {
@@ -187,24 +185,6 @@ namespace TaiwuGu.Tests
             finally
             {
                 GameEventManager.ClearAllSubscriptions();
-            }
-        }
-
-        [Fact]
-        public void Test06_ConstitutionalObserverDecoupling()
-        {
-            var hudType = typeof(TaiwuHUDView);
-            var fields = hudType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-
-            foreach (var f in fields)
-            {
-                Assert.False(
-                    f.FieldType == typeof(CalendarTimeService) ||
-                    f.FieldType == typeof(GuLifecycleService) ||
-                    f.FieldType == typeof(CultivationService) ||
-                    f.FieldType == typeof(GameStateContext),
-                    $"TaiwuHUDView has forbidden direct reference to {f.FieldType.Name}!"
-                );
             }
         }
 

@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Xunit;
 using TaiwuGu.Core;
 using TaiwuGu.Map;
 using TaiwuGu.Psychology;
-using TaiwuGu.UI;
 
 namespace TaiwuGu.Tests
 {
@@ -188,32 +186,6 @@ namespace TaiwuGu.Tests
             finally
             {
                 GameEventManager.ClearAllSubscriptions();
-            }
-        }
-
-        [Fact]
-        public void Test06_ConstitutionalObserverDecoupling()
-        {
-            Type[] viewTypes = new Type[]
-            {
-                typeof(TaiwuLedgerView),
-                typeof(TilePOIModalView)
-            };
-
-            foreach (var viewType in viewTypes)
-            {
-                var fields = viewType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-                foreach (var f in fields)
-                {
-                    Assert.False(
-                        f.FieldType == typeof(ExplorationService) ||
-                        f.FieldType == typeof(CalendarTimeService) ||
-                        f.FieldType == typeof(GuLifecycleService) ||
-                        f.FieldType == typeof(CultivationService) ||
-                        f.FieldType == typeof(GameStateContext),
-                        $"{viewType.Name} has forbidden direct coupling to {f.FieldType.Name}!"
-                    );
-                }
             }
         }
 
@@ -457,7 +429,7 @@ namespace TaiwuGu.Tests
         }
 
         [Fact]
-        public void Test10_ModalActiveHandshakeAndDecoupling()
+        public void Test10_ModalActiveHandshake()
         {
             GameEventManager.ClearAllSubscriptions();
 
@@ -477,32 +449,6 @@ namespace TaiwuGu.Tests
             {
                 GameEventManager.OnUIModalActive -= modalHandler;
                 GameEventManager.ClearAllSubscriptions();
-            }
-
-            // Verify all 4 view stubs have zero forbidden couplings
-            Type[] allViewTypes = new Type[]
-            {
-                typeof(TaiwuLedgerView),
-                typeof(TilePOIModalView),
-                typeof(RefinementCauldronView),
-                typeof(TaiwuSystemMenuView)
-            };
-
-            foreach (var viewType in allViewTypes)
-            {
-                var fields = viewType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-                foreach (var f in fields)
-                {
-                    Assert.False(
-                        f.FieldType == typeof(ExplorationService) ||
-                        f.FieldType == typeof(CalendarTimeService) ||
-                        f.FieldType == typeof(GuLifecycleService) ||
-                        f.FieldType == typeof(CultivationService) ||
-                        f.FieldType == typeof(GuRefinementService) ||
-                        f.FieldType == typeof(GameStateContext),
-                        $"{viewType.Name} has forbidden direct coupling to {f.FieldType.Name}!"
-                    );
-                }
             }
         }
 
@@ -570,9 +516,7 @@ namespace TaiwuGu.Tests
             {
                 // Set EscapeHandled = true (as if Ledger or Cauldron handled it)
                 GameEventManager.EscapeHandled = true;
-                // Directly invoke delegate without Resetting via TriggerEscape to simulate same-frame cascade
-                typeof(GameEventManager).GetField("OnEscapeRequested", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-                
+
                 // TriggerEscape resets EscapeHandled to false. To simulate delegate cascade within one TriggerEscape:
                 int ledgerRuns = 0;
                 Action ledgerHandler = () =>

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Xunit;
 using TaiwuGu.Core;
 using TaiwuGu.Combat;
@@ -9,56 +8,6 @@ namespace TaiwuGu.Tests
 {
     public class Phase5ArchitecturalTests
     {
-        [Fact]
-        public void Test01_CombatArenaIsolationAndCoordinates()
-        {
-            var stage = new DedicatedBattleStage();
-            var cultivator = new CultivatorData("Fang Yuan", AptitudeGrade.C_Grade, 44f);
-
-            Assert.Equal(new Vector3(2000f, 2000f, 0f), FullscreenCombatViewport.ArenaOrigin);
-            Assert.False(stage.IsArenaActive);
-
-            stage.EnterBattleStage(cultivator, new List<GuWormData>(), ArenaEncounterType.WildBoarHunt, new Vector2Int(5, 5));
-            Assert.True(stage.IsArenaActive);
-
-            stage.ExitBattleStage();
-            Assert.False(stage.IsArenaActive);
-        }
-
-        [Fact]
-        public void Test02_InputSubjugationAndCombatHandover()
-        {
-            GameEventManager.ClearAllSubscriptions();
-
-            var router = new TaiwuInputRouter();
-            router.OnEnable();
-            router.SetInputActive(true);
-
-            var stage = new DedicatedBattleStage();
-            stage.OnEnable();
-
-            try
-            {
-                Assert.Equal(InputControlMode.Overworld, router.ControlMode);
-
-                GameEventManager.TriggerBattleStageStateChanged(true);
-                Assert.Equal(InputControlMode.CombatArena, router.ControlMode);
-
-                Vector2 testDir = new Vector2(1f, 0f);
-                GameEventManager.RaiseRequestCombatMove(testDir);
-                Assert.Equal(testDir, stage.CurrentMoveIntent);
-
-                GameEventManager.TriggerBattleStageStateChanged(false);
-                Assert.Equal(InputControlMode.Overworld, router.ControlMode);
-            }
-            finally
-            {
-                stage.OnDisable();
-                router.OnDisable();
-                GameEventManager.ClearAllSubscriptions();
-            }
-        }
-
         [Fact]
         public void Test03_CombatExecutionAndCoordinationRewards()
         {

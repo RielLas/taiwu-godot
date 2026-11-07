@@ -25,6 +25,8 @@ namespace Taiwu_Godot.Scripts.Verification
         private bool _testAudio = false;
         private bool _testAll = false;
         private bool _testLandmark = false;
+        private bool _verify = false;
+        private bool _strictPoi = false;
 
         public override void _Ready()
         {
@@ -35,6 +37,12 @@ namespace Taiwu_Godot.Scripts.Verification
             foreach (var arg in args)
             {
                 if (arg == "--capture") AutoCaptureAndQuit = true;
+                if (arg == "--verify")
+                {
+                    _verify = true;
+                    AutoCaptureAndQuit = true;
+                }
+                if (arg == "--strict-poi") _strictPoi = true;
                 if (arg == "--map" || arg == "--overworld") _captureMapOnly = true;
                 if (arg == "--breakthrough") _captureBreakthrough = true;
                 if (arg == "--onwork") _captureOnWork = true;
@@ -50,6 +58,12 @@ namespace Taiwu_Godot.Scripts.Verification
             foreach (var arg in userArgs)
             {
                 if (arg == "--capture") AutoCaptureAndQuit = true;
+                if (arg == "--verify")
+                {
+                    _verify = true;
+                    AutoCaptureAndQuit = true;
+                }
+                if (arg == "--strict-poi") _strictPoi = true;
                 if (arg == "--map" || arg == "--overworld") _captureMapOnly = true;
                 if (arg == "--breakthrough") _captureBreakthrough = true;
                 if (arg == "--onwork") _captureOnWork = true;
@@ -68,6 +82,18 @@ namespace Taiwu_Godot.Scripts.Verification
             if (!AutoCaptureAndQuit) return;
 
             _frameCount++;
+
+            if (_verify)
+            {
+                // Wait for the bootstrapper, tile manager and initial broadcasts to settle.
+                if (_frameCount == 10)
+                {
+                    int exitCode = VerificationRunner.Run(Bootstrapper, _strictPoi);
+                    GD.Print($"[DiagnosticCapture] Verification finished with exit code {exitCode}.");
+                    GetTree().Quit(exitCode);
+                }
+                return;
+            }
 
             if (_testLandmark)
             {
