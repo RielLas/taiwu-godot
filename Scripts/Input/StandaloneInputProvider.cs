@@ -13,10 +13,6 @@ namespace Taiwu_Godot.Scripts.Input
     /// </summary>
     public partial class StandaloneInputProvider : Node2D
     {
-        private TaiwuModalStack? _modalStack;
-
-        public void InitializeModalStack(TaiwuModalStack modalStack) => _modalStack = modalStack;
-
         private bool _isDragging = false;
         private bool _isPointerDown = false;
         private Vector2 _pointerDownPos;
@@ -117,42 +113,6 @@ namespace Taiwu_Godot.Scripts.Input
                     GameEventManager.TriggerPan(mm.Relative.ToWorldVec2());
                     GetViewport().SetInputAsHandled();
                     return;
-                }
-            }
-            else if (@event is InputEventKey k && k.Pressed && !k.Echo)
-            {
-                if (k.Keycode == Key.Escape)
-                {
-                    GameEventManager.TriggerEscape();
-                    GetViewport().SetInputAsHandled();
-                }
-                else if (k.Keycode == Key.C || k.Keycode == Key.Tab)
-                {
-                    if (_isModalActive && _modalStack?.IsModalOpen<TaiwuLedgerView>() != true)
-                    {
-                        return;
-                    }
-                    GameEventManager.TriggerLedgerToggle();
-                    GetViewport().SetInputAsHandled();
-                }
-                else if (k.Keycode == Key.R)
-                {
-                    if (_isModalActive)
-                    {
-                        if (_modalStack?.IsModalOpen<RefinementCauldronView>() == true)
-                        {
-                            GameEventManager.RaiseRequestCloseCauldron();
-                            GetViewport().SetInputAsHandled();
-                        }
-                        return;
-                    }
-                    GameEventManager.RaiseRequestOpenCauldron();
-                    GetViewport().SetInputAsHandled();
-                }
-                else if (!_isModalActive && (k.Keycode == Key.F || k.Keycode == Key.Home))
-                {
-                    GameEventManager.TriggerRecenterCamera();
-                    GetViewport().SetInputAsHandled();
                 }
             }
         }

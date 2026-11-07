@@ -6,6 +6,13 @@ namespace TaiwuGu.Tests
 {
     public class Phase4ArchitecturalTests
     {
+        /// <summary>Drive the cauldron at realistic frame steps; each tick is clamped to 0.1 s.</summary>
+        private static void TickFor(GuRefinementService service, float seconds)
+        {
+            int steps = (int)MathF.Round(seconds / GuRefinementService.MAX_TICK_SECONDS);
+            for (int i = 0; i < steps; i++) service.Tick(GuRefinementService.MAX_TICK_SECONDS);
+        }
+
         [Fact]
         public void Test01_CauldronStateCentralizationAndFuelCheck()
         {
@@ -54,10 +61,10 @@ namespace TaiwuGu.Tests
             Assert.True(Mathf.Abs(ctx.Cultivator.CurrentEssenceSea - (startSea - 2.5f)) <= 0.01f);
 
             ctx.Cauldron.CauldronTemperature = 10f;
-            service.Tick(1.0f);
+            TickFor(service, 1.0f);
             Assert.Equal(RefinementPhase.Phase1_Extraction, ctx.Cauldron.CurrentPhase);
 
-            service.Tick(0.6f);
+            TickFor(service, 0.6f);
             Assert.Equal(RefinementPhase.Failure, ctx.Cauldron.CurrentPhase);
             Assert.Equal(RefinementFailureTier.Tier1_CleanFail, ctx.Cauldron.LastFailureTier);
 
@@ -75,10 +82,10 @@ namespace TaiwuGu.Tests
             GameEventManager.RaiseRequestOpenCauldron();
             GameEventManager.RaiseRequestInitiateRefinement();
 
-            for (float t = 0; t < 4.1f; t += 0.5f)
+            for (float t = 0; t < 4.1f; t += 0.1f)
             {
                 ctx.Cauldron.CauldronTemperature = 50f;
-                service.Tick(0.5f);
+                service.Tick(0.1f);
             }
             Assert.Equal(RefinementPhase.Phase2_WillFusion, ctx.Cauldron.CurrentPhase);
 
@@ -87,6 +94,7 @@ namespace TaiwuGu.Tests
 
             ctx.Cauldron.WildWillFrequency = 0.65f;
             ctx.Cauldron.WildWillResistance = 50f;
+            ctx.Cauldron.WillAlignmentProgress = 0f; // isolate the suppression strike from the transition frame
             float seaBefore = ctx.Cultivator.CurrentEssenceSea;
             GameEventManager.RaiseRequestCauldronSuppressWill();
 
@@ -96,10 +104,10 @@ namespace TaiwuGu.Tests
 
             ctx.Cauldron.WillAlignmentProgress = 60f;
             ctx.Cauldron.WildWillResistance = 10f;
-            for (float t = 0; t < 4.6f; t += 0.5f)
+            for (float t = 0; t < 5.0f; t += 0.1f)
             {
                 ctx.Cauldron.MasterWillFocus = ctx.Cauldron.WildWillFrequency;
-                service.Tick(0.5f);
+                service.Tick(0.1f);
             }
 
             Assert.Equal(RefinementPhase.Phase3_Condensation, ctx.Cauldron.CurrentPhase);
@@ -121,7 +129,7 @@ namespace TaiwuGu.Tests
             ctx.Cauldron.Phase3Timer = 0f;
             ctx.Cultivator.PrimevalStones = 250;
 
-            service.Tick(0.5f);
+            TickFor(service, 0.5f);
             Assert.True(Mathf.Abs(ctx.Cauldron.NascentStability - 82f) <= 0.01f);
 
             GameEventManager.RaiseRequestCauldronCrushStone();
@@ -129,14 +137,14 @@ namespace TaiwuGu.Tests
             Assert.Equal(1, ctx.Cauldron.StonesCrushed);
             Assert.True(Mathf.Abs(ctx.Cauldron.NascentStability - 96f) <= 0.01f);
 
-            service.Tick(1.0f);
+            TickFor(service, 1.0f);
             GameEventManager.RaiseRequestCauldronCrushStone();
 
-            service.Tick(1.0f);
+            TickFor(service, 1.0f);
             GameEventManager.RaiseRequestCauldronCrushStone();
             GameEventManager.RaiseRequestCauldronCrushStone();
 
-            service.Tick(1.1f);
+            TickFor(service, 1.1f);
             Assert.Equal(RefinementPhase.Success, ctx.Cauldron.CurrentPhase);
 
             var secGu = ctx.GuInventory.EquippedGu.Find(g => g.GuID == "gu_white_boar_01");

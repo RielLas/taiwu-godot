@@ -47,6 +47,7 @@ namespace TaiwuGu.Tests
             ctx.Calendar.CurrentYear = 4;
             ctx.Calendar.CurrentSolarTermIndex = 11;
             ctx.Calendar.ActionPointsRemaining = 17;
+            ctx.RunSeed = 424242;
             ctx.WorldMap.SetExplored(3, 4, true);
             ctx.WorldMap.SetVisible(3, 4, true);
 
@@ -68,6 +69,7 @@ namespace TaiwuGu.Tests
             Assert.Equal(4, loaded.Calendar.CurrentYear);
             Assert.Equal(11, loaded.Calendar.CurrentSolarTermIndex);
             Assert.Equal(17, loaded.Calendar.ActionPointsRemaining);
+            Assert.Equal(424242, loaded.RunSeed);
             Assert.Equal(ctx.GuInventory.EquippedGu.Count, loaded.GuInventory.EquippedGu.Count);
 
             Assert.NotNull(loaded.WorldMap.Tiles);

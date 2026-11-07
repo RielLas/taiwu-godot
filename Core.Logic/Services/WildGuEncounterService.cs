@@ -13,6 +13,7 @@ namespace TaiwuGu.Core
     {
         private IGameStateProvider? _provider;
         private GameStateContext _context => _provider!.Current;
+        private IRandomSource _random = new SeededRandom(1);
         private SubjugationState _currentState = SubjugationState.Inactive;
         private bool _isEncounterOpen = false;
 
@@ -34,9 +35,10 @@ namespace TaiwuGu.Core
         public float FeralFrequency => _feralWillFrequency;
         public string ResolutionMessage => _lastResolutionMessage;
 
-        public void Initialize(GameStateContext context, IGameStateProvider? provider = null)
+        public void Initialize(GameStateContext context, IGameStateProvider? provider = null, IRandomSource? random = null)
         {
             _provider = provider ?? new StaticGameStateProvider(context);
+            _random = random ?? new SeededRandom(context.RunSeed);
 
             GameEventManager.OnOpenWildGuEncounterRequested += HandleOpenEncounter;
             GameEventManager.OnSetEncounterNeedleRequested += HandleSetNeedle;
@@ -128,9 +130,9 @@ namespace TaiwuGu.Core
             _feralWillResistance = target.FeralWillPower;
             _playerWillAlignment = 0f;
             _playerWillNeedle = 0.5f;
-            _feralWillFrequency = (float)(0.35 + Random.Shared.NextDouble() * 0.30);
+            _feralWillFrequency = (float)(0.35 + _random.NextDouble() * 0.30);
             _clashTimer = 0f;
-            _feralNeedleRight = Random.Shared.Next(0, 2) == 1;
+            _feralNeedleRight = _random.Next(0, 2) == 1;
 
             Debug.Log($"[WildGuEncounterService] Discovered {_currentTarget.Name} (Rank {_currentTarget.Rank}, {_currentTarget.Temperament})! Player Rank: {_context.Cultivator.Rank} (ΔR: {CalculateRankDifferential()})");
 

@@ -61,8 +61,16 @@ namespace Taiwu_Godot.Scripts
         public TaiwuAudioService? AudioService { get; private set; }
         public TaiwuModalStack? ModalStack { get; private set; }
 
+        /// <summary>
+        /// A frame hitch must never skip a refinement phase, so every ticked service receives the
+        /// same clamped delta. The simulation is pausable; UI nodes stay Always and render only from
+        /// ticked state (see RefinementCauldronView, which reads its timers from the cauldron state).
+        /// </summary>
+        private const float MAX_SIMULATION_DELTA = 0.1f;
+
         public override void _Ready()
         {
+            ProcessMode = ProcessModeEnum.Pausable;
             ExecuteBootSequence();
         }
 
@@ -212,8 +220,15 @@ namespace Taiwu_Godot.Scripts
             HUDView?.InitializeModalStack(ModalStack);
             PlayerController?.InitializeModalStack(ModalStack);
             InputRouter?.InitializeModalStack(ModalStack);
-            InputRouter?.StandaloneProvider?.InitializeModalStack(ModalStack);
             TransitModalView?.InitializeTransit(TransitService, StateContext);
+
+            // The router is the single input entry point; hand it the handlers it routes to.
+            if (InputRouter != null)
+            {
+                InputRouter.PlayerController = PlayerController;
+                InputRouter.SystemMenuView = SystemMenuView;
+                InputRouter.BreakthroughView = BreakthroughModalView;
+            }
 
             // Step 5: Broadcast Initial System State to Observers (HUD, Map, Fog)
             CalendarService.BroadcastCurrentState();
@@ -281,76 +296,12 @@ namespace Taiwu_Godot.Scripts
 
         public override void _Process(double delta)
         {
-            float dt = (float)delta;
+            float dt = MathF.Min((float)delta, MAX_SIMULATION_DELTA);
             RefinementService?.Tick(dt);
             SaveService?.Tick(dt);
             BreakthroughService?.Tick(dt);
             WildEncounterService?.Tick(dt);
             AudioService?.Tick(dt);
-        }
-
-        public override void _UnhandledInput(InputEvent @event)
-        {
-            if (@event is InputEventKey k && k.Pressed && !k.Echo)
-            {
-                if (k.Keycode == Key.Escape)
-                {
-                    // 1. Pop top modal from LIFO stack
-                    if (ModalStack != null && ModalStack.TryPop())
-                    {
-                        GetViewport().SetInputAsHandled();
-                        return;
-                    }
-
-                    // 2. Clear route preview if active
-                    if (PlayerController?.HasTargetSelection == true)
-                    {
-                        PlayerController.ClearTargetSelection();
-                        GetViewport().SetInputAsHandled();
-                        return;
-                    }
-
-                    // 3. Otherwise toggle System Menu
-                    SystemMenuView?.ToggleMenu();
-                    GetViewport().SetInputAsHandled();
-                    return;
-                }
-
-                if (k.Keycode == Key.Tab || k.Keycode == Key.L)
-                {
-                    GameEventManager.TriggerLedgerToggle();
-                    GetViewport().SetInputAsHandled();
-                    return;
-                }
-
-                if (k.Keycode == Key.C)
-                {
-                    if (CauldronView?.IsOpen == true)
-                    {
-                        GameEventManager.RaiseRequestCloseCauldron();
-                    }
-                    else
-                    {
-                        GameEventManager.RaiseRequestOpenCauldron();
-                    }
-                    GetViewport().SetInputAsHandled();
-                    return;
-                }
-
-                if (k.Keycode == Key.B)
-                {
-                    if (BreakthroughModalView?.IsOpen == true)
-                    {
-                        GameEventManager.RaiseRequestCloseBreakthrough();
-                    }
-                    else
-                    {
-                        GameEventManager.RaiseRequestOpenBreakthroughMinigame();
-                    }
-                    GetViewport().SetInputAsHandled();
-                    return;
-                }
-            }
         }
 
         public override void _ExitTree()

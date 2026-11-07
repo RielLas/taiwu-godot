@@ -14,10 +14,12 @@ namespace TaiwuGu.Core
     {
         private IGameStateProvider? _provider;
         private GameStateContext _context => _provider!.Current;
+        private IRandomSource _random = new SeededRandom(1);
 
-        public void Initialize(GameStateContext context, IGameStateProvider? provider = null)
+        public void Initialize(GameStateContext context, IGameStateProvider? provider = null, IRandomSource? random = null)
         {
             _provider = provider ?? new StaticGameStateProvider(context);
+            _random = random ?? new SeededRandom(context.RunSeed);
 
             GameEventManager.OnPOIActionRequested += HandlePOIActionRequested;
             GameEventManager.OnCombatConcluded    += HandleCombatConcluded;
@@ -66,8 +68,8 @@ namespace TaiwuGu.Core
                     _context.GuInventory.AddFood(GuDietType.FreshBoarFlesh, 2);
 
                     // 40% chance of wild Strength Gu capture (White Boar Gu or Black Boar Gu)
-                    string droppedGuId = Random.Shared.NextDouble() < 0.5 ? "gu_white_boar_r1" : "gu_black_boar_r1";
-                    if (Random.Shared.NextDouble() < 0.40)
+                    string droppedGuId = _random.NextDouble() < 0.5 ? "gu_white_boar_r1" : "gu_black_boar_r1";
+                    if (_random.NextDouble() < 0.40)
                     {
                         var wildGu = GuDatabase.CreateGuWormData(droppedGuId, isWild: true);
                         if (wildGu != null)
@@ -87,7 +89,7 @@ namespace TaiwuGu.Core
                     _context.Cultivator.PrimevalStones += 40;
 
                     string[] caveLootPool = new[] { "gu_liquor_worm_r1", "gu_white_jade_r1", "gu_little_light_r1", "gu_bronze_skin_r1" };
-                    string lootId = caveLootPool[Random.Shared.Next(0, caveLootPool.Length)];
+                    string lootId = caveLootPool[_random.Next(0, caveLootPool.Length)];
                     var wildGu = GuDatabase.CreateGuWormData(lootId, isWild: true);
                     if (wildGu != null)
                     {

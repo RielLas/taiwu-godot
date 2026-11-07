@@ -691,6 +691,12 @@ namespace TaiwuGu.Core
     [Serializable]
     public class GameStateContext
     {
+        /// <summary>
+        /// Seed for the run's simulation randomness. Persisted with the save so a reloaded game
+        /// continues the same deterministic stream instead of reseeding from the clock.
+        /// </summary>
+        public int RunSeed = 1;
+
         public CultivatorState Cultivator { get; set; } = new CultivatorState();
         public GuInventoryState GuInventory { get; set; } = new GuInventoryState();
         public WorldCalendarState Calendar { get; set; } = new WorldCalendarState();

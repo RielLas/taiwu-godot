@@ -216,10 +216,11 @@ namespace TaiwuGu.Tests
                 Assert.Equal(seaBefore - 2.5f, ctx.Cultivator.CurrentEssenceSea);
 
                 // Advance Phase 1 into Phase 2
-                for (float t = 0; t < 4.1f; t += 0.5f)
+                // Realistic frame steps: the cauldron clamps each tick to 0.1 s.
+                for (float t = 0; t < 4.1f; t += 0.1f)
                 {
                     ctx.Cauldron.CauldronTemperature = 50f;
-                    service.Tick(0.5f);
+                    service.Tick(0.1f);
                 }
                 Assert.Equal(RefinementPhase.Phase2_WillFusion, ctx.Cauldron.CurrentPhase);
 
@@ -235,10 +236,10 @@ namespace TaiwuGu.Tests
                 // Advance Phase 2 into Phase 3
                 ctx.Cauldron.WillAlignmentProgress = 60f;
                 ctx.Cauldron.WildWillResistance = 10f;
-                for (float t = 0; t < 4.6f; t += 0.5f)
+                for (float t = 0; t < 5.0f; t += 0.1f)
                 {
                     ctx.Cauldron.MasterWillFocus = ctx.Cauldron.WildWillFrequency;
-                    service.Tick(0.5f);
+                    service.Tick(0.1f);
                 }
                 Assert.Equal(RefinementPhase.Phase3_Condensation, ctx.Cauldron.CurrentPhase);
 

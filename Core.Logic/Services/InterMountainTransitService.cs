@@ -25,6 +25,7 @@ namespace TaiwuGu.Core
 
         private IGameStateProvider? _provider;
         private GameStateContext _context => _provider!.Current;
+        private IRandomSource _random = new SeededRandom(1);
         private WorldRegionID _currentRegion = WorldRegionID.SouthernBorder;
         private SouthernMountainID _currentMountain = SouthernMountainID.GuYueVillage;
         private SouthernMountainID? _pendingMountainDestination = null;
@@ -43,9 +44,10 @@ namespace TaiwuGu.Core
         public IReadOnlyDictionary<SouthernMountainID, MountainSectorData> MountainDatabase => _mountainDatabase;
         public IReadOnlyDictionary<WorldRegionID, RegionalSectorData> RegionalDatabase => _regionalDatabase;
 
-        public void Initialize(GameStateContext context, IGameStateProvider? provider = null)
+        public void Initialize(GameStateContext context, IGameStateProvider? provider = null, IRandomSource? random = null)
         {
             _provider = provider ?? new StaticGameStateProvider(context);
+            _random = random ?? new SeededRandom(context.RunSeed);
             InitializeDatabases();
 
             if (_context.WorldMap != null)
@@ -251,7 +253,7 @@ namespace TaiwuGu.Core
             HandleCloseTransitModalRequested();
 
             // 25% Road Ambush check
-            bool isAmbushed = Random.Shared.NextDouble() < ROAD_AMBUSH_CHANCE;
+            bool isAmbushed = _random.NextDouble() < ROAD_AMBUSH_CHANCE;
             if (isAmbushed)
             {
                 _pendingMountainDestination = destination;

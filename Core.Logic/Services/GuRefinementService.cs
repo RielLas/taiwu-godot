@@ -15,14 +15,22 @@ namespace TaiwuGu.Core
     {
         private IGameStateProvider? _provider;
         private GameStateContext _context => _provider!.Current;
+        private IRandomSource _random = new SeededRandom(1);
         private bool _isInitialized = false;
 
         public bool IsInitialized => _isInitialized;
+
+        /// <summary>
+        /// Largest simulated step the cauldron will accept. A frame hitch is clamped rather than
+        /// fast-forwarded, so one long frame can neither skip a phase nor detonate the will fusion.
+        /// </summary>
+        public const float MAX_TICK_SECONDS = 0.1f;
         public CauldronRefinementState? State => _context?.Cauldron;
 
-        public void Initialize(GameStateContext context, IGameStateProvider? provider = null)
+        public void Initialize(GameStateContext context, IGameStateProvider? provider = null, IRandomSource? random = null)
         {
             _provider = provider ?? new StaticGameStateProvider(context);
+            _random = random ?? new SeededRandom(context.RunSeed);
             _isInitialized = true;
 
             GameEventManager.OnOpenCauldronRequested           += HandleOpenCauldronRequested;
@@ -305,6 +313,10 @@ namespace TaiwuGu.Core
         public void Tick(float deltaTime)
         {
             if (!_isInitialized || _context == null) return;
+
+            float dt = MathF.Min(deltaTime, MAX_TICK_SECONDS);
+            if (dt <= 0f) return;
+
             var cState = _context.Cauldron;
             if (!cState.IsActive || cState.CurrentPhase == RefinementPhase.Idle ||
                 cState.CurrentPhase == RefinementPhase.Success || cState.CurrentPhase == RefinementPhase.Failure)
@@ -315,13 +327,13 @@ namespace TaiwuGu.Core
             switch (cState.CurrentPhase)
             {
                 case RefinementPhase.Phase1_Extraction:
-                    TickPhase1(deltaTime);
+                    TickPhase1(dt);
                     break;
                 case RefinementPhase.Phase2_WillFusion:
-                    TickPhase2(deltaTime);
+                    TickPhase2(dt);
                     break;
                 case RefinementPhase.Phase3_Condensation:
-                    TickPhase3(deltaTime);
+                    TickPhase3(dt);
                     break;
             }
         }
@@ -356,7 +368,7 @@ namespace TaiwuGu.Core
                 cState.WildWillResistance = 50f;
                 cState.WillAlignmentProgress = 0f;
                 cState.MasterWillFocus = 0.5f;
-                cState.WildWillFrequency = 0.35f + (float)Random.Shared.NextDouble() * 0.30f;
+                cState.WildWillFrequency = 0.35f + (float)_random.NextDouble() * 0.30f;
                 cState.WildNeedleMovingRight = true;
 
                 GameEventManager.TriggerCauldronStateUpdated(cState);

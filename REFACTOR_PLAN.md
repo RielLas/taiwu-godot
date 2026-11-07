@@ -177,7 +177,7 @@ tiles, one will drift again. Remove one author.
 
 ## Phase 3 — State provider, saves, input, determinism (2–3 days)
 
-**Status.** 3a and 3b landed. 3c (input action map, pause contract, seeded RNG) remains.
+**Status.** 3a, 3b and 3c landed.
 
 **Landed (3a).** `IGameStateProvider` + `GameStateProvider` (swappable) + `StaticGameStateProvider`
  (tests). All eleven domain services resolve `provider.Current` per call; the bootstrapper owns the
@@ -190,6 +190,18 @@ tiles, one will drift again. Remove one author.
  then the legacy layout, so a crash yields the old save or the new one, never neither. Slot ids are
  validated (`[A-Za-z0-9_-]{1,32}`) before touching the filesystem. `SaveCoordinationService` now
  awaits the asynchronous write behind an `IsSaving` reentrancy guard; `HydrateContext` is deleted.
+
+**Landed (3c).** `project.godot` declares `toggle_ledger`, `open_cauldron`, `open_breakthrough`,
+ `toggle_system_menu` and `recenter_camera`; `TaiwuInputRouter` is the only code that reads them
+ (`InputEventKey.IsActionPressed`), and the bootstrapper's keycode chain and the provider's duplicate
+ keyboard branch are deleted. The bootstrapper is explicitly `Pausable` and clamps every tick to
+ 0.1 s. Simulation randomness goes through `IRandomSource`/`SeededRandom` (xorshift32, seeded from
+ the new persisted `GameStateContext.RunSeed`), wired into refinement, exploration, wild encounters,
+ combat, transit and breakthrough.
+
+**Remaining from 3c, deliberately deferred.** `GuDatabase` (static catalog) and the NPC generator
+ still use `Random.Shared`/`new Random()`; the on-work shift scheduler was not converted. The RNG
+ stream restarts from the saved seed on load rather than resuming mid-stream.
 
 ### 3a. One live-state seam
 

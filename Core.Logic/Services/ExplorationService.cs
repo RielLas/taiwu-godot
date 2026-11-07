@@ -14,14 +14,16 @@ namespace TaiwuGu.Core
 
         private IGameStateProvider? _provider;
         private GameStateContext _context => _provider!.Current;
+        private IRandomSource _random = new SeededRandom(1);
         private int _sensoryRadius = 3;
 
         public GameStateContext? Context => _context;
         public int SensoryRadius => _sensoryRadius;
 
-        public void Initialize(GameStateContext context, int baseSensoryRadius = 3, IGameStateProvider? provider = null)
+        public void Initialize(GameStateContext context, int baseSensoryRadius = 3, IGameStateProvider? provider = null, IRandomSource? random = null)
         {
             _provider = provider ?? new StaticGameStateProvider(context);
+            _random = random ?? new SeededRandom(context.RunSeed);
             _sensoryRadius = baseSensoryRadius;
 
             if (_context.WorldMap.Tiles == null || _context.WorldMap.Tiles.Length == 0)
@@ -203,16 +205,16 @@ namespace TaiwuGu.Core
             if (_context?.Cultivator == null) return;
 
             // 1. Terrain Hazard Check (~3% base chance, scaled slightly by DangerRank)
-            float hazardRoll = (float)Random.Shared.NextDouble();
+            float hazardRoll = (float)_random.NextDouble();
             float hazardThreshold = 0.02f + (0.01f * Math.Max(0, tile.DangerRank));
             if (hazardRoll < hazardThreshold)
             {
-                string hazardName = Random.Shared.NextDouble() < 0.5
+                string hazardName = _random.NextDouble() < 0.5
                     ? "Poison Bamboo Spores (竹海瘴毒)"
                     : "Craggy Mountain Rockfall (崩岩暗石)";
 
-                int hpDmg = Random.Shared.Next(4, 9);
-                float seaDmg = (float)(Random.Shared.NextDouble() * 3.0 + 2.0); // 2-5% sea leakage
+                int hpDmg = _random.Next(4, 9);
+                float seaDmg = (float)(_random.NextDouble() * 3.0 + 2.0); // 2-5% sea leakage
 
                 _context.Cultivator.CurrentHealth = Math.Max(1, _context.Cultivator.CurrentHealth - hpDmg);
                 _context.Cultivator.CurrentEssenceSea = Math.Max(0f, _context.Cultivator.CurrentEssenceSea - seaDmg);
@@ -225,7 +227,7 @@ namespace TaiwuGu.Core
             // 2. Wild Beast Ambush Check (~3% chance in hazardous areas, tile danger >= 1)
             if (tile.DangerRank >= 1)
             {
-                float ambushRoll = (float)Random.Shared.NextDouble();
+                float ambushRoll = (float)_random.NextDouble();
                 if (ambushRoll < 0.03f)
                 {
                     string beastName = "Frenzied Razor Boar (狂躁獠牙野猪)";
@@ -237,7 +239,7 @@ namespace TaiwuGu.Core
             }
 
             // 3. Low Random Wild Gu Discovery (~4% chance per directive)
-            float wildGuRoll = (float)Random.Shared.NextDouble();
+            float wildGuRoll = (float)_random.NextDouble();
             if (wildGuRoll < 0.04f)
             {
                 string[] wildPool = new[]
@@ -248,8 +250,8 @@ namespace TaiwuGu.Core
                     "gu_bronze_skin_r1",
                     "gu_liquor_worm_r1"
                 };
-                string pickedGu = wildPool[Random.Shared.Next(0, wildPool.Length)];
-                WildOrganismTemperament temp = (WildOrganismTemperament)Random.Shared.Next(0, 3);
+                string pickedGu = wildPool[_random.Next(0, wildPool.Length)];
+                WildOrganismTemperament temp = (WildOrganismTemperament)_random.Next(0, 3);
                 var organism = WildOrganismData.CreateWildOrganism(pickedGu, temp);
 
                 Debug.Log($"[ExplorationService] Spotted wild Gu organism in the wilderness: {organism.Name} ({temp}) at {pos}!");
