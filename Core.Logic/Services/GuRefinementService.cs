@@ -13,15 +13,16 @@ namespace TaiwuGu.Core
     /// </summary>
     public class GuRefinementService : IDisposable
     {
-        private GameStateContext? _context;
+        private IGameStateProvider? _provider;
+        private GameStateContext _context => _provider!.Current;
         private bool _isInitialized = false;
 
         public bool IsInitialized => _isInitialized;
         public CauldronRefinementState? State => _context?.Cauldron;
 
-        public void Initialize(GameStateContext context)
+        public void Initialize(GameStateContext context, IGameStateProvider? provider = null)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _provider = provider ?? new StaticGameStateProvider(context);
             _isInitialized = true;
 
             GameEventManager.OnOpenCauldronRequested           += HandleOpenCauldronRequested;

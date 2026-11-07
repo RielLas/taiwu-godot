@@ -12,14 +12,15 @@ namespace TaiwuGu.Core
     /// </summary>
     public class CrimeAndForensicsService : IDisposable
     {
-        private GameStateContext? _context;
+        private IGameStateProvider? _provider;
+        private GameStateContext _context => _provider!.Current;
 
         public static Action<string, Vector2Int, CultivatorData, CrimeSceneData>? OnProcessVictimDeathHook;
         public static Action<Vector2Int>? OnProcessMonthlyPursuitHook;
 
-        public void Initialize(GameStateContext context)
+        public void Initialize(GameStateContext context, IGameStateProvider? provider = null)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _provider = provider ?? new StaticGameStateProvider(context);
 
             GameEventManager.OnTamperCrimeEvidenceRequested += HandleTamperCrimeEvidence;
             GameEventManager.OnSolarTermAdvanced           += HandleSolarTermAdvanced;

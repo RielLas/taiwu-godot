@@ -23,7 +23,8 @@ namespace TaiwuGu.Core
         public const int REGIONAL_TRANSIT_STONE_COST = 60;
         public const int REGIONAL_TRANSIT_AP_COST = 15;
 
-        private GameStateContext? _context;
+        private IGameStateProvider? _provider;
+        private GameStateContext _context => _provider!.Current;
         private WorldRegionID _currentRegion = WorldRegionID.SouthernBorder;
         private SouthernMountainID _currentMountain = SouthernMountainID.GuYueVillage;
         private SouthernMountainID? _pendingMountainDestination = null;
@@ -42,9 +43,9 @@ namespace TaiwuGu.Core
         public IReadOnlyDictionary<SouthernMountainID, MountainSectorData> MountainDatabase => _mountainDatabase;
         public IReadOnlyDictionary<WorldRegionID, RegionalSectorData> RegionalDatabase => _regionalDatabase;
 
-        public void Initialize(GameStateContext context)
+        public void Initialize(GameStateContext context, IGameStateProvider? provider = null)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _provider = provider ?? new StaticGameStateProvider(context);
             InitializeDatabases();
 
             if (_context.WorldMap != null)
@@ -68,7 +69,7 @@ namespace TaiwuGu.Core
             GameEventManager.OnOpenTransitModalRequested -= HandleOpenTransitModalRequested;
             GameEventManager.OnCloseTransitModalRequested -= HandleCloseTransitModalRequested;
             GameEventManager.OnCombatConcluded -= HandleCombatConcluded;
-            _context = null;
+            _provider = null;
         }
 
         private void InitializeDatabases()

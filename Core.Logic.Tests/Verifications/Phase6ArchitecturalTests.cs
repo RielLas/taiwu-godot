@@ -85,13 +85,11 @@ namespace TaiwuGu.Tests
                 Assert.True(saved);
 
                 string slotDir = SaveLoadEngine.GetSlotPath(TEST_SLOT_2);
-                string payloadPath = Path.Combine(slotDir, "payload.json");
-                string metaPath = Path.Combine(slotDir, "metadata.json");
-                string tempPath = payloadPath + ".tmp";
-                string bakPath = payloadPath + ".bak";
+                string savePath = Path.Combine(slotDir, SavePaths.SAVE_FILE_NAME);
+                string tempPath = savePath + ".tmp";
+                string bakPath = savePath + ".bak";
 
-                Assert.True(File.Exists(payloadPath));
-                Assert.True(File.Exists(metaPath));
+                Assert.True(File.Exists(savePath));
                 Assert.False(File.Exists(tempPath));
 
                 // Second Save (Triggers Backup Creation)
@@ -101,7 +99,7 @@ namespace TaiwuGu.Tests
 
                 Assert.True(File.Exists(bakPath));
 
-                string curJson = File.ReadAllText(payloadPath);
+                string curJson = File.ReadAllText(savePath);
                 string bakJson = File.ReadAllText(bakPath);
 
                 Assert.Contains("\"PrimevalStones\": 600", curJson);
@@ -129,9 +127,9 @@ namespace TaiwuGu.Tests
                 SaveLoadEngine.SaveContext(TEST_SLOT_2, ctx2);
 
                 string slotDir = SaveLoadEngine.GetSlotPath(TEST_SLOT_2);
-                string payloadPath = Path.Combine(slotDir, "payload.json");
+                string savePath = Path.Combine(slotDir, SavePaths.SAVE_FILE_NAME);
 
-                File.WriteAllText(payloadPath, "CORRUPTED_GARBAGE_JSON{{{---NOT_VALID");
+                File.WriteAllText(savePath, "CORRUPTED_GARBAGE_JSON{{{---NOT_VALID");
 
                 GameStateContext recovered = SaveLoadEngine.LoadContext(TEST_SLOT_2);
                 Assert.NotNull(recovered);
@@ -155,11 +153,9 @@ namespace TaiwuGu.Tests
                 SaveLoadEngine.SaveContext(TEST_SLOT_2, ctx);
 
                 string slotDir = SaveLoadEngine.GetSlotPath(TEST_SLOT_2);
-                string tempPayloadPath = Path.Combine(slotDir, "payload.json.tmp");
-                string tempMetaPath = Path.Combine(slotDir, "metadata.json.tmp");
+                string tempPayloadPath = Path.Combine(slotDir, SavePaths.SAVE_FILE_NAME + ".tmp");
 
                 File.WriteAllText(tempPayloadPath, "HALF_WRITTEN_CHUNK...");
-                File.WriteAllText(tempMetaPath, "HALF_WRITTEN_META...");
 
                 GameStateContext loaded = SaveLoadEngine.LoadContext(TEST_SLOT_2);
                 Assert.NotNull(loaded);
@@ -169,7 +165,6 @@ namespace TaiwuGu.Tests
                 SaveLoadEngine.SaveContext(TEST_SLOT_2, ctx);
 
                 Assert.False(File.Exists(tempPayloadPath));
-                Assert.False(File.Exists(tempMetaPath));
             }
             finally
             {
@@ -194,13 +189,19 @@ namespace TaiwuGu.Tests
                 service.Initialize(ctx);
 
                 bool saveEventFired = false;
+                using var saveCompleted = new System.Threading.ManualResetEventSlim(false);
                 Action<string, bool> saveHandler = (slot, success) =>
                 {
-                    if (slot == TEST_SLOT_3 && success) saveEventFired = true;
+                    if (slot == TEST_SLOT_3 && success)
+                    {
+                        saveEventFired = true;
+                        saveCompleted.Set();
+                    }
                 };
                 GameEventManager.OnGameSaved += saveHandler;
 
                 GameEventManager.RaiseRequestSaveGame(TEST_SLOT_3);
+                Assert.True(saveCompleted.Wait(TimeSpan.FromSeconds(15)), "Asynchronous save did not complete.");
                 GameEventManager.OnGameSaved -= saveHandler;
 
                 Assert.True(saveEventFired);
@@ -225,8 +226,9 @@ namespace TaiwuGu.Tests
                 GameEventManager.OnGameLoaded -= loadHandler;
 
                 Assert.True(loadEventFired);
-                Assert.Equal(450, ctx.Cultivator.PrimevalStones);
-                Assert.Equal(1, ctx.Cultivator.Rank);
+                // The load replaced the live context wholesale; the pre-load object is now detached.
+                Assert.Equal(450, service.Context.Cultivator.PrimevalStones);
+                Assert.Equal(1, service.Context.Cultivator.Rank);
                 Assert.Equal(450, broadcastStones);
             }
             finally

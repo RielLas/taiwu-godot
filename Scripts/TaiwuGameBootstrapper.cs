@@ -41,7 +41,9 @@ namespace Taiwu_Godot.Scripts
         [Export] public InterMountainTransitModalView? TransitModalView { get; set; }
 
         // --- Master State Truth Container (Law 4) ---
-        public GameStateContext? StateContext { get; private set; }
+        // The provider is the single live seam: services read Current, and a load replaces it whole.
+        public GameStateProvider StateProvider { get; private set; } = null!;
+        public GameStateContext StateContext => StateProvider.Current;
 
         // --- Domain Services Layer ---
         public CalendarTimeService? CalendarService { get; private set; }
@@ -92,7 +94,7 @@ namespace Taiwu_Godot.Scripts
             }
 
             // Step 2: Allocate & seed pure GameStateContext (Law 4: State Centralization & Truth)
-            StateContext = GameStateContext.CreateDefault();
+            StateProvider = new GameStateProvider(GameStateContext.CreateDefault());
             StateContext.WorldMap.PlayerGridPos = new GridCoord(StartingGridPosition.X, StartingGridPosition.Y);
             GD.Print($"[Bootstrapper] Default GameStateContext allocated & seeded for {StateContext.Cultivator.Name} ({StateContext.Cultivator.GetRankDescription()}).");
 
@@ -105,40 +107,40 @@ namespace Taiwu_Godot.Scripts
 
             // Step 3: Initialize Domain Services Layer (Pure Logic & State Mutation)
             CalendarService = new CalendarTimeService();
-            CalendarService.Initialize(StateContext);
+            CalendarService.Initialize(StateContext, StateProvider);
 
             GuLifecycleService = new GuLifecycleService();
-            GuLifecycleService.Initialize(StateContext);
+            GuLifecycleService.Initialize(StateContext, StateProvider);
 
             CultivationService = new CultivationService();
-            CultivationService.Initialize(StateContext);
+            CultivationService.Initialize(StateContext, StateProvider);
 
             ExplorationService = new ExplorationService();
-            ExplorationService.Initialize(StateContext);
+            ExplorationService.Initialize(StateContext, provider: StateProvider);
 
             RefinementService = new GuRefinementService();
-            RefinementService.Initialize(StateContext);
+            RefinementService.Initialize(StateContext, StateProvider);
 
             CombatService = new CombatCoordinationService();
-            CombatService.Initialize(StateContext);
+            CombatService.Initialize(StateContext, StateProvider);
 
             ForensicsService = new CrimeAndForensicsService();
-            ForensicsService.Initialize(StateContext);
+            ForensicsService.Initialize(StateContext, StateProvider);
 
             BreakthroughService = new ApertureBreakthroughManager();
-            BreakthroughService.Initialize(StateContext);
+            BreakthroughService.Initialize(StateContext, StateProvider);
 
             NPCWorldManager = new ProceduralNPCWorldManager();
             NPCWorldManager.Initialize(StateContext);
 
             WildEncounterService = new WildGuEncounterService();
-            WildEncounterService.Initialize(StateContext);
+            WildEncounterService.Initialize(StateContext, StateProvider);
 
             TransitService = new InterMountainTransitService();
-            TransitService.Initialize(StateContext);
+            TransitService.Initialize(StateContext, StateProvider);
 
             SaveService = new SaveCoordinationService();
-            SaveService.Initialize(StateContext, ExplorationService);
+            SaveService.Initialize(StateContext, ExplorationService, StateProvider);
 
             // Step 4: Wire Presentation and View Layer without Scene Searching
             if (TileManager != null)
@@ -241,9 +243,9 @@ namespace Taiwu_Godot.Scripts
         {
             bool isValid = true;
 
-            if (StateContext == null)
+            if (StateProvider == null)
             {
-                GD.PrintErr("[Bootstrapper] Validation Failed: StateContext is null!");
+                GD.PrintErr("[Bootstrapper] Validation Failed: StateProvider is null!");
                 isValid = false;
             }
 

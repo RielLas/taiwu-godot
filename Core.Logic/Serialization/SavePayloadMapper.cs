@@ -45,44 +45,6 @@ namespace TaiwuGu.Serialization
             };
         }
 
-        public static void HydrateContext(SavePayloadDTO? payload, GameStateContext? ctx)
-        {
-            if (payload?.Context == null || ctx == null) return;
-
-            if (payload.Context.Cultivator != null)
-                ctx.Cultivator = payload.Context.Cultivator;
-
-            if (payload.Context.GuInventory != null)
-                ctx.GuInventory = payload.Context.GuInventory;
-
-            if (payload.Context.Calendar != null)
-                ctx.Calendar = payload.Context.Calendar;
-
-            if (payload.Context.WorldMap != null)
-            {
-                ctx.WorldMap = payload.Context.WorldMap;
-                if (ctx.WorldMap.Tiles == null || ctx.WorldMap.Tiles.Length == 0)
-                {
-                    ctx.WorldMap.InitializeDefaultGrid();
-                }
-            }
-
-            if (payload.Context.Forensics != null)
-                ctx.Forensics = payload.Context.Forensics;
-
-            if (payload.Context.SocialVendetta != null)
-                ctx.SocialVendetta = payload.Context.SocialVendetta;
-
-            if (payload.Context.Cauldron != null)
-                ctx.Cauldron = payload.Context.Cauldron;
-
-            if (payload.Context.Faction != null)
-                ctx.Faction = payload.Context.Faction;
-
-            if (payload.Context.LivingNPCs != null)
-                ctx.LivingNPCs = payload.Context.LivingNPCs;
-        }
-
         public static bool MigratePayload(SavePayloadDTO? payload, string slotID = "")
         {
             if (payload == null) return false;
@@ -129,9 +91,7 @@ namespace TaiwuGu.Serialization
                 }
                 return payload.Context;
             }
-            var ctx = GameStateContext.CreateDefault();
-            HydrateContext(payload, ctx);
-            return ctx;
+            return GameStateContext.CreateDefault();
         }
     }
 
@@ -142,9 +102,6 @@ namespace TaiwuGu.Serialization
 
         public static SavePayloadDTO? ExtractPayload(string slotID, GameStateContext? ctx, double playtimeSeconds = 0)
             => SavePayloadMapper.ExtractPayload(slotID, ctx, playtimeSeconds);
-
-        public static void HydrateContext(SavePayloadDTO? payload, GameStateContext? ctx)
-            => SavePayloadMapper.HydrateContext(payload, ctx);
 
         public static GameStateContext? CreateContextFromPayload(SavePayloadDTO? payload)
             => SavePayloadMapper.CreateContextFromPayload(payload);

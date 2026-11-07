@@ -176,6 +176,20 @@ tiles, one will drift again. Remove one author.
 
 ## Phase 3 — State provider, saves, input, determinism (2–3 days)
 
+**Status.** 3a and 3b landed. 3c (input action map, pause contract, seeded RNG) remains.
+
+**Landed (3a).** `IGameStateProvider` + `GameStateProvider` (swappable) + `StaticGameStateProvider`
+ (tests). All eleven domain services resolve `provider.Current` per call; the bootstrapper owns the
+ single provider and passes it to every service. `SaveCoordinationService` installs a loaded save
+ with `provider.Replace`, so a load is a pointer swap instead of field-by-field mutation.
+
+**Landed (3b).** One `save.json` per slot (metadata embedded in the payload, so the two cannot
+ disagree — the old `metadata.json`/`payload.json` layout is still read). Writes go to a temp file
+ then `File.Replace`, with the superseded bytes kept as `.bak`; the loader tries primary, `.bak`,
+ then the legacy layout, so a crash yields the old save or the new one, never neither. Slot ids are
+ validated (`[A-Za-z0-9_-]{1,32}`) before touching the filesystem. `SaveCoordinationService` now
+ awaits the asynchronous write behind an `IsSaving` reentrancy guard; `HydrateContext` is deleted.
+
 ### 3a. One live-state seam
 
 **Problem.** All 14 services capture `GameStateContext? _context` in `Initialize`. That makes an

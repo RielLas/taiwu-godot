@@ -12,11 +12,12 @@ namespace TaiwuGu.Core
     /// </summary>
     public class CombatCoordinationService : IDisposable
     {
-        private GameStateContext? _context;
+        private IGameStateProvider? _provider;
+        private GameStateContext _context => _provider!.Current;
 
-        public void Initialize(GameStateContext context)
+        public void Initialize(GameStateContext context, IGameStateProvider? provider = null)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _provider = provider ?? new StaticGameStateProvider(context);
 
             GameEventManager.OnPOIActionRequested += HandlePOIActionRequested;
             GameEventManager.OnCombatConcluded    += HandleCombatConcluded;

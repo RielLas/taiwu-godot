@@ -16,7 +16,8 @@ namespace TaiwuGu.Core
     {
         public const float TURBULENCE_LIMIT = 100f;
 
-        private GameStateContext? _context;
+        private IGameStateProvider? _provider;
+        private GameStateContext _context => _provider!.Current;
         private bool _isInitialized = false;
 
         private BreakthroughState _currentState = BreakthroughState.Ready;
@@ -41,9 +42,9 @@ namespace TaiwuGu.Core
         public bool IsMinigameOpen => _isMinigameOpen;
         public bool IsRegenerating => _isMinigameOpen && _currentState == BreakthroughState.PoundingInSession && (_sessionTime - _lastWaveTime > 1.2f) && _membraneCurrentHP < _membraneMaxHP;
 
-        public void Initialize(GameStateContext context)
+        public void Initialize(GameStateContext context, IGameStateProvider? provider = null)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _provider = provider ?? new StaticGameStateProvider(context);
             _isInitialized = true;
 
             GameEventManager.OnOpenBreakthroughMinigameRequested += HandleOpenMinigameRequested;

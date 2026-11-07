@@ -12,15 +12,16 @@ namespace TaiwuGu.Core
         public const float TILE_HALF_WIDTH = 2.4f;
         public const float TILE_HALF_HEIGHT = 1.2f;
 
-        private GameStateContext? _context;
+        private IGameStateProvider? _provider;
+        private GameStateContext _context => _provider!.Current;
         private int _sensoryRadius = 3;
 
         public GameStateContext? Context => _context;
         public int SensoryRadius => _sensoryRadius;
 
-        public void Initialize(GameStateContext context, int baseSensoryRadius = 3)
+        public void Initialize(GameStateContext context, int baseSensoryRadius = 3, IGameStateProvider? provider = null)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _provider = provider ?? new StaticGameStateProvider(context);
             _sensoryRadius = baseSensoryRadius;
 
             if (_context.WorldMap.Tiles == null || _context.WorldMap.Tiles.Length == 0)
@@ -42,7 +43,7 @@ namespace TaiwuGu.Core
             GameEventManager.OnPlayerMoved         -= HandlePlayerMoved;
             GameEventManager.OnPOIActionRequested -= HandlePOIActionRequested;
             GameEventManager.OnInspectTileRequested -= HandleInspectTileRequested;
-            _context = null;
+            _provider = null;
         }
 
         public void BroadcastCurrentState()

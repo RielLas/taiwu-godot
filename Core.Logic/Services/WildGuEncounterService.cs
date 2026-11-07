@@ -11,7 +11,8 @@ namespace TaiwuGu.Core
     /// </summary>
     public class WildGuEncounterService : IDisposable
     {
-        private GameStateContext? _context;
+        private IGameStateProvider? _provider;
+        private GameStateContext _context => _provider!.Current;
         private SubjugationState _currentState = SubjugationState.Inactive;
         private bool _isEncounterOpen = false;
 
@@ -33,9 +34,9 @@ namespace TaiwuGu.Core
         public float FeralFrequency => _feralWillFrequency;
         public string ResolutionMessage => _lastResolutionMessage;
 
-        public void Initialize(GameStateContext context)
+        public void Initialize(GameStateContext context, IGameStateProvider? provider = null)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _provider = provider ?? new StaticGameStateProvider(context);
 
             GameEventManager.OnOpenWildGuEncounterRequested += HandleOpenEncounter;
             GameEventManager.OnSetEncounterNeedleRequested += HandleSetNeedle;
@@ -55,7 +56,7 @@ namespace TaiwuGu.Core
             GameEventManager.OnEncounterPulseEssenceRequested -= HandlePulseEssence;
             GameEventManager.OnEncounterInstantSubjugateRequested -= HandleInstantSubjugate;
             GameEventManager.OnCloseWildGuEncounterRequested -= HandleCloseEncounter;
-            _context = null;
+            _provider = null;
         }
 
         public int CalculateRankDifferential()

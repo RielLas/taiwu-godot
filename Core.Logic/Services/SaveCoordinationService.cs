@@ -5,28 +5,43 @@ using TaiwuGu.Psychology;
 namespace TaiwuGu.Core
 {
     /// <summary>
-    /// Module 7 & Phase 6: Save & Persistence Coordination Domain Service.
-    /// Implements:
-    /// - Constitutional Law 1: Observer Mandate via CQRS-Lite (listens to OnSaveGameRequested, OnLoadGameRequested).
-    /// - Constitutional Law 4: State Centralization & Truth (hydrates GameStateContext directly from SavePayloadDTO).
-    /// - Non-blocking atomic 3-step persistence execution via SaveLoadEngine.
-    /// - Deterministic broadcast after load to synchronize HUD, Map, Player entity, and Gu inventory.
+    /// Save & persistence coordination (Phase 3a/3b).
+    ///
+    /// Reads live state through <see cref="IGameStateProvider"/> and installs a loaded save with
+    /// <see cref="GameStateProvider.Replace"/>: a load is a pointer swap, so the running context is
+    /// never half-populated and every service sees the new truth on its next read.
+    ///
+    /// Saving serializes on the calling thread (a coherent snapshot requires it) and only the disk
+    /// write is asynchronous, so opening the menu never blocks a frame on I/O.
     /// </summary>
     public class SaveCoordinationService : IDisposable
     {
-        private GameStateContext? _context;
+        private IGameStateProvider? _provider;
+        private GameStateContext _context => _provider!.Current;
+
         private ExplorationService? _explorationService;
         private double _playtimeSeconds = 0;
         private bool _isDisposed = false;
+        private bool _isSaving = false;
 
         public static Action<WorldSocialVendettaState>? ExportVendettaStateHook;
         public static Action<WorldSocialVendettaState>? ImportVendettaStateHook;
 
         public double TotalPlaytimeSeconds => _playtimeSeconds;
 
-        public void Initialize(GameStateContext context, ExplorationService? explorationService = null)
+        /// <summary>True while an asynchronous save is in flight; a second request is rejected.</summary>
+        public bool IsSaving => _isSaving;
+
+        /// <summary>The live context, i.e. whatever the shared provider currently points at.</summary>
+        public GameStateContext Context => _context;
+
+        public void Initialize(GameStateContext context, ExplorationService? explorationService = null, IGameStateProvider? provider = null)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            // A supplied provider is the shared live seam; otherwise own a swappable one so tests
+            // and tooling can still exercise load.
+            _provider = provider ?? new GameStateProvider(context);
             _explorationService = explorationService;
             _playtimeSeconds = 0;
 
@@ -67,66 +82,89 @@ namespace TaiwuGu.Core
             GameEventManager.OnDeleteSaveRequested -= HandleDeleteSaveRequested;
 
             _explorationService = null;
-            _context = null;
+            _provider = null;
         }
 
-        private void HandleSaveGameRequested(string slotID)
+        private async void HandleSaveGameRequested(string slotID)
         {
-            if (string.IsNullOrEmpty(slotID) || _context == null)
+            if (!SavePaths.IsValidSlotID(slotID))
             {
-                Debug.LogError("[SaveCoordinationService] Cannot save: invalid slotID or null GameStateContext.");
-                GameEventManager.TriggerGameSaved(slotID, false);
+                Debug.LogError($"[SaveCoordinationService] Rejected invalid slot id '{slotID}'.");
+                GameEventManager.TriggerGameSaved(slotID ?? "", false);
                 return;
             }
 
-            if (_context.SocialVendetta != null)
+            if (_isSaving)
             {
-                ExportVendettaStateHook?.Invoke(_context.SocialVendetta);
+                // The UI disables its save buttons while IsSaving, but a double invocation must not
+                // produce two interleaved writers on the same slot.
+                Debug.LogWarning($"[SaveCoordinationService] Save to '{slotID}' ignored: another save is in flight.");
+                return;
             }
 
-            bool success = SaveLoadEngine.SaveContext(slotID, _context, _playtimeSeconds);
-            GameEventManager.TriggerGameSaved(slotID, success);
+            _isSaving = true;
+            try
+            {
+                if (_context.SocialVendetta != null)
+                {
+                    ExportVendettaStateHook?.Invoke(_context.SocialVendetta);
+                }
+
+                bool success = await SaveLoadEngine.SaveContextAsync(slotID, _context, _playtimeSeconds);
+                GameEventManager.TriggerGameSaved(slotID, success);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[SaveCoordinationService] Save to '{slotID}' threw: {ex.Message}");
+                GameEventManager.TriggerGameSaved(slotID, false);
+            }
+            finally
+            {
+                _isSaving = false;
+            }
         }
 
         private void HandleLoadGameRequested(string slotID)
         {
-            if (string.IsNullOrEmpty(slotID) || _context == null)
+            if (!SavePaths.IsValidSlotID(slotID))
             {
-                Debug.LogError("[SaveCoordinationService] Cannot load: invalid slotID or null GameStateContext.");
-                GameEventManager.TriggerGameLoaded(slotID, false);
+                Debug.LogError($"[SaveCoordinationService] Rejected invalid slot id '{slotID}'.");
+                GameEventManager.TriggerGameLoaded(slotID ?? "", false);
                 return;
             }
 
-            GameStateContext? loadedCtx = SaveLoadEngine.LoadContext(slotID);
-            if (loadedCtx == null)
+            GameStateContext? loadedContext = SaveLoadEngine.LoadContext(slotID);
+            if (loadedContext == null)
             {
                 Debug.LogError($"[SaveCoordinationService] Failed to load or restore save slot '{slotID}'.");
                 GameEventManager.TriggerGameLoaded(slotID, false);
                 return;
             }
 
-            SaveMetadataDTO? meta = SaveLoadEngine.LoadMetadata(slotID);
-            if (meta != null)
+            GameStateProvider? liveProvider = _provider as GameStateProvider;
+            if (liveProvider == null)
             {
-                _playtimeSeconds = meta.TotalPlaytimeSeconds;
+                Debug.LogError("[SaveCoordinationService] Loaded state cannot be installed: the injected provider is fixed.");
+                GameEventManager.TriggerGameLoaded(slotID, false);
+                return;
             }
 
-            SavePayloadDTO payload = SaveLoadEngine.ExtractPayload(slotID, loadedCtx, _playtimeSeconds);
-            SaveLoadEngine.HydrateContext(payload, _context);
+            // Atomic swap. The previous context is discarded whole; nothing was mutated while the
+            // file was parsed, so a failure above leaves the running game untouched.
+            liveProvider.Replace(loadedContext);
+            _playtimeSeconds = loadedContext.Calendar != null ? _playtimeSeconds : 0;
 
-            if (payload.Metadata != null)
+            SaveMetadataDTO? metadata = SaveLoadEngine.LoadMetadata(slotID);
+            if (metadata != null)
             {
-                _playtimeSeconds = payload.Metadata.TotalPlaytimeSeconds;
+                _playtimeSeconds = metadata.TotalPlaytimeSeconds;
             }
 
-            if (_context.SocialVendetta != null)
-            {
-                ImportVendettaStateHook?.Invoke(_context.SocialVendetta);
-            }
+            ImportVendettaStateHook?.Invoke(_context.SocialVendetta);
 
             BroadcastLoadedState();
 
-            Debug.Log($"[SaveCoordinationService] Successfully loaded & hydrated save slot '{slotID}'.");
+            Debug.Log($"[SaveCoordinationService] Loaded save slot '{slotID}'.");
             GameEventManager.TriggerGameLoaded(slotID, true);
         }
 
@@ -138,35 +176,37 @@ namespace TaiwuGu.Core
 
         public void BroadcastLoadedState()
         {
-            if (_context == null) return;
+            if (_provider == null) return;
+
+            GameStateContext context = _provider.Current;
 
             // 1. Calendar & AP
-            if (_context.Calendar != null)
+            if (context.Calendar != null)
             {
-                GameEventManager.TriggerActionPointsChanged(_context.Calendar.ActionPointsRemaining, _context.Calendar.MonthlyAPBudget);
-                GameEventManager.TriggerSolarTermAdvanced(_context.Calendar.CurrentYear, _context.Calendar.ActiveSolarTerm, _context.Calendar.GetSolarTermName());
+                GameEventManager.TriggerActionPointsChanged(context.Calendar.ActionPointsRemaining, context.Calendar.MonthlyAPBudget);
+                GameEventManager.TriggerSolarTermAdvanced(context.Calendar.CurrentYear, context.Calendar.ActiveSolarTerm, context.Calendar.GetSolarTermName());
             }
 
             // 2. Cultivation & Essence Sea
-            if (_context.Cultivator != null)
+            if (context.Cultivator != null)
             {
-                GameEventManager.TriggerPrimevalSeaChanged(_context.Cultivator.CurrentEssenceSea, _context.Cultivator.AptitudePercent);
-                GameEventManager.TriggerPrimevalStonesChanged(_context.Cultivator.PrimevalStones);
-                GameEventManager.TriggerCultivatorCultivationChanged(_context.Cultivator.Rank, _context.Cultivator.Substage, _context.Cultivator.GetSubstageName());
+                GameEventManager.TriggerPrimevalSeaChanged(context.Cultivator.CurrentEssenceSea, context.Cultivator.AptitudePercent);
+                GameEventManager.TriggerPrimevalStonesChanged(context.Cultivator.PrimevalStones);
+                GameEventManager.TriggerCultivatorCultivationChanged(context.Cultivator.Rank, context.Cultivator.Substage, context.Cultivator.GetSubstageName());
             }
 
             // 3. World Map & Player Position
-            if (_context.WorldMap != null)
+            if (context.WorldMap != null)
             {
                 int sensoryRadius = _explorationService?.SensoryRadius ?? 4;
-                GameEventManager.TriggerPlayerMoved(_context.WorldMap.PlayerGridPos);
-                GameEventManager.TriggerFogOfWarUpdated(_context.WorldMap.PlayerGridPos, sensoryRadius);
+                GameEventManager.TriggerPlayerMoved(context.WorldMap.PlayerGridPos);
+                GameEventManager.TriggerFogOfWarUpdated(context.WorldMap.PlayerGridPos, sensoryRadius);
             }
 
             // 4. Gu Inventory
-            if (_context.GuInventory != null)
+            if (context.GuInventory != null)
             {
-                GameEventManager.TriggerGuInventoryUpdated(_context.GuInventory.EquippedGu, _context.GuInventory.ReserveGu);
+                GameEventManager.TriggerGuInventoryUpdated(context.GuInventory.EquippedGu, context.GuInventory.ReserveGu);
             }
         }
     }
