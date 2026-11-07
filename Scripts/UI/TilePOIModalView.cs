@@ -17,16 +17,27 @@ namespace Taiwu_Godot.Scripts.UI
     /// - Contextual interactions (Spirit Spring meditation, Jia Family Caravan barter trade, Clan Post rest, Beast Den tracking, Cave exploration)
     /// - Forensics Tampering on Crime Scenes (Cleanse, Frame Beasts, Frame Rival Clan)
     /// - Resident & Wandering NPC Cultivator Cards on current tile
-    /// Strict LIFO Esc Hierarchy: priority #3.
+    /// Chrome (backdrop, panel, header, close button, Escape, modal registration) comes
+    /// from Scenes/UI/ModalScaffold.tscn; this view only supplies its own body rows.
+    /// Strict LIFO Esc Hierarchy: priority #3, enforced by the scaffold's stack-top check.
     /// Halal compliant dark-lacquer Xianxia aesthetic.
     /// </summary>
     public partial class TilePOIModalView : Control, IModalView
     {
-        private bool _isOpen = false;
-        private TaiwuModalStack? _modalStack;
-        public bool IsOpen => _isOpen;
+        private const string ScaffoldScenePath = "res://Scenes/UI/ModalScaffold.tscn";
+        private const string CultivatorCardScenePath = "res://Scenes/UI/CultivatorCard.tscn";
 
-        public void InitializeModalStack(TaiwuModalStack modalStack) => _modalStack = modalStack;
+        private TaiwuModalStack? _modalStack;
+        private ModalScaffold? _scaffold;
+        private PackedScene? _cultivatorCardScene;
+
+        public bool IsOpen => _scaffold?.IsOpen ?? false;
+
+        public void InitializeModalStack(TaiwuModalStack modalStack)
+        {
+            _modalStack = modalStack;
+            _scaffold?.BindModalStack(modalStack);
+        }
 
         public void Dismiss() => CloseModal();
 
@@ -45,12 +56,9 @@ namespace Taiwu_Godot.Scripts.UI
         private readonly List<CultivatorEntityData> _residentCultivators = new();
         private Vector2Int _cultivatorsPos = new Vector2Int(-999, -999);
 
-        // UI references
-        private ColorRect? _backdrop;
-        private PanelContainer? _mainModalPanel;
-        private Label? _lblTitle;
-        private Label? _lblCoords;
+        // UI references supplied by the scaffold and this view's own body rows
         private Label? _lblDanger;
+        private Label? _lblCoords;
         private Label? _lblDesc;
 
         private VBoxContainer? _actionsContainer;
@@ -64,10 +72,9 @@ namespace Taiwu_Godot.Scripts.UI
             MouseFilter = MouseFilterEnum.Ignore;
             Visible = false;
 
-            BuildUIHierarchy();
+            BuildScaffold();
 
             GameEventManager.OnPOIArrived += HandlePOIArrived;
-            GameEventManager.OnEscapeRequested += HandleEscapeRequested;
             GameEventManager.OnCrimeScenePresent += HandleCrimeScenePresent;
             GameEventManager.OnCrimeSceneUpdated += HandleCrimeSceneUpdated;
             GameEventManager.OnTileCultivatorsUpdated += HandleTileCultivatorsUpdated;
@@ -80,7 +87,6 @@ namespace Taiwu_Godot.Scripts.UI
         public override void _ExitTree()
         {
             GameEventManager.OnPOIArrived -= HandlePOIArrived;
-            GameEventManager.OnEscapeRequested -= HandleEscapeRequested;
             GameEventManager.OnCrimeScenePresent -= HandleCrimeScenePresent;
             GameEventManager.OnCrimeSceneUpdated -= HandleCrimeSceneUpdated;
             GameEventManager.OnTileCultivatorsUpdated -= HandleTileCultivatorsUpdated;
@@ -89,34 +95,17 @@ namespace Taiwu_Godot.Scripts.UI
             GameEventManager.OnCauldronOpened -= HandleCauldronOpened;
             GameEventManager.OnBattleStageStateChanged -= HandleBattleStageChanged;
 
-            if (_isOpen)
+            if (IsOpen)
             {
-                _isOpen = false;
-                GameEventManager.TriggerUIModalActive(false);
+                ResetTileTransientState();
+                Visible = false;
+                _scaffold?.Close();
                 GameEventManager.TriggerPOIModalToggled(false);
             }
         }
 
         public void OpenWithPOI(TilePOIType poi, Vector2Int pos, string title, string desc, int dangerRank)
             => HandlePOIArrived(poi, pos, title, desc, dangerRank);
-
-        private void HandleEscapeRequested()
-        {
-            if (GameEventManager.EscapeHandled) return;
-
-            // Strict LIFO: Ledger and Cauldron have priority over POI modal!
-            if (_modalStack?.IsModalOpen<TaiwuLedgerView>() == true ||
-                _modalStack?.IsModalOpen<RefinementCauldronView>() == true)
-            {
-                return;
-            }
-
-            if (_isOpen)
-            {
-                CloseModal();
-                GameEventManager.EscapeHandled = true;
-            }
-        }
 
         private void HandlePOIArrived(TilePOIType poi, Vector2Int pos, string title, string desc, int dangerRank)
         {
@@ -125,7 +114,6 @@ namespace Taiwu_Godot.Scripts.UI
             _title = title;
             _description = desc;
             _dangerRank = dangerRank;
-            _isOpen = true;
             Visible = true;
 
             // Only clear crime scene or cultivators if not already primed for this exact tile
@@ -139,33 +127,34 @@ namespace Taiwu_Godot.Scripts.UI
                 _residentCultivators.Clear();
             }
 
-            GameEventManager.TriggerUIModalActive(true);
+            _scaffold?.Open(this, _title);
             GameEventManager.TriggerPOIModalToggled(true);
-            GameEventManager.RaiseModalOpened(this);
 
             UpdateAllDisplays();
         }
 
         public void CloseModal()
         {
-            if (_isOpen)
-            {
-                _isOpen = false;
-                Visible = false;
-                _hasCrimeScene = false;
-                _soulQiTerms = 0;
-                _crimeScenePos = new Vector2Int(-999, -999);
-                _cultivatorsPos = new Vector2Int(-999, -999);
-                _residentCultivators.Clear();
-                GameEventManager.RaiseModalClosed(this);
-                GameEventManager.TriggerUIModalActive(false);
-                GameEventManager.TriggerPOIModalToggled(false);
-            }
+            if (!IsOpen) return;
+
+            ResetTileTransientState();
+            Visible = false;
+            _scaffold?.Close();
+            GameEventManager.TriggerPOIModalToggled(false);
+        }
+
+        private void ResetTileTransientState()
+        {
+            _hasCrimeScene = false;
+            _soulQiTerms = 0;
+            _crimeScenePos = new Vector2Int(-999, -999);
+            _cultivatorsPos = new Vector2Int(-999, -999);
+            _residentCultivators.Clear();
         }
 
         private void HandlePlayerMoved(Vector2Int newPos)
         {
-            if (_isOpen && newPos != _gridPos)
+            if (IsOpen && newPos != _gridPos)
             {
                 CloseModal();
             }
@@ -183,7 +172,7 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void HandleBattleStageChanged(bool inBattle)
         {
-            if (inBattle && _isOpen)
+            if (inBattle && IsOpen)
             {
                 CloseModal();
             }
@@ -195,7 +184,7 @@ namespace Taiwu_Godot.Scripts.UI
             _hasCrimeScene = true;
             _soulQiTerms = termsRemaining;
 
-            if (_isOpen && pos == _gridPos)
+            if (IsOpen && pos == _gridPos)
             {
                 UpdateCrimeSceneDisplay();
             }
@@ -207,7 +196,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 _hasCrimeScene = false;
                 _soulQiTerms = 0;
-                if (_isOpen)
+                if (IsOpen)
                 {
                     UpdateCrimeSceneDisplay();
                 }
@@ -223,77 +212,28 @@ namespace Taiwu_Godot.Scripts.UI
                 _residentCultivators.AddRange(cultivators);
             }
 
-            if (_isOpen && pos == _gridPos)
+            if (IsOpen && pos == _gridPos)
             {
                 UpdateCultivatorsDisplay();
             }
         }
 
-        private void BuildUIHierarchy()
+        // =========================================================================
+        // SCAFFOLD + BODY CONSTRUCTION
+        // =========================================================================
+
+        private void BuildScaffold()
         {
-            _backdrop = new ColorRect
+            var scaffoldScene = GD.Load<PackedScene>(ScaffoldScenePath);
+            if (scaffoldScene == null)
             {
-                Name = "POIBackdrop",
-                Color = new Color(0f, 0f, 0f, 0.75f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            _backdrop.SetAnchorsPreset(LayoutPreset.FullRect);
-            AddChild(_backdrop);
+                GD.PushError($"[TilePOIModalView] Missing modal scaffold scene at {ScaffoldScenePath}.");
+                return;
+            }
 
-            var centerContainer = new CenterContainer
-            {
-                Name = "CenterContainer",
-                MouseFilter = MouseFilterEnum.Ignore
-            };
-            centerContainer.SetAnchorsPreset(LayoutPreset.FullRect);
-            AddChild(centerContainer);
-
-            var modalStyle = new StyleBoxFlat
-            {
-                BgColor = new Color(0.035f, 0.055f, 0.055f, 0.98f),
-                BorderColor = new Color(0.851f, 0.467f, 0.024f, 0.85f),
-                BorderWidthBottom = 2,
-                BorderWidthTop = 2,
-                BorderWidthLeft = 2,
-                BorderWidthRight = 2,
-                CornerRadiusBottomLeft = 4,
-                CornerRadiusBottomRight = 4,
-                CornerRadiusTopLeft = 4,
-                CornerRadiusTopRight = 4
-            };
-
-            _mainModalPanel = new PanelContainer
-            {
-                Name = "MainModalPanel",
-                CustomMinimumSize = new Vector2(680f, 540f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            _mainModalPanel.AddThemeStyleboxOverride("panel", modalStyle);
-            centerContainer.AddChild(_mainModalPanel);
-
-            var margin = new MarginContainer();
-            margin.AddThemeConstantOverride("margin_left", 20);
-            margin.AddThemeConstantOverride("margin_right", 20);
-            margin.AddThemeConstantOverride("margin_top", 16);
-            margin.AddThemeConstantOverride("margin_bottom", 16);
-            _mainModalPanel.AddChild(margin);
-
-            var rootVBox = new VBoxContainer();
-            rootVBox.AddThemeConstantOverride("separation", 10);
-            margin.AddChild(rootVBox);
-
-            // Header Row
-            var headerHBox = new HBoxContainer();
-            rootVBox.AddChild(headerHBox);
-
-            _lblTitle = new Label
-            {
-                Text = "Landmark Interaction",
-                Modulate = new Color(0.984f, 0.749f, 0.141f, 1f),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill
-            };
-            _lblTitle.AddThemeFontSizeOverride("font_size", 15);
-            headerHBox.AddChild(_lblTitle);
+            _scaffold = scaffoldScene.Instantiate<ModalScaffold>();
+            _scaffold.BindModalStack(_modalStack);
+            AddChild(_scaffold);
 
             _lblDanger = new Label
             {
@@ -301,16 +241,20 @@ namespace Taiwu_Godot.Scripts.UI
                 Modulate = new Color(0.937f, 0.267f, 0.267f, 1f)
             };
             _lblDanger.AddThemeFontSizeOverride("font_size", 11);
-            headerHBox.AddChild(_lblDanger);
+            _scaffold.HeaderAccessory?.AddChild(_lblDanger);
 
-            var btnClose = new Button
+            _cultivatorCardScene = GD.Load<PackedScene>(CultivatorCardScenePath);
+            if (_cultivatorCardScene == null)
             {
-                Text = "✕",
-                CustomMinimumSize = new Vector2(36f, 28f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            btnClose.Pressed += CloseModal;
-            headerHBox.AddChild(btnClose);
+                GD.PushError($"[TilePOIModalView] Missing cultivator card scene at {CultivatorCardScenePath}.");
+            }
+
+            BuildBody(_scaffold.ContentRoot);
+        }
+
+        private void BuildBody(VBoxContainer? content)
+        {
+            if (content == null) return;
 
             _lblCoords = new Label
             {
@@ -318,7 +262,7 @@ namespace Taiwu_Godot.Scripts.UI
                 Modulate = new Color(0.58f, 0.64f, 0.72f, 1f)
             };
             _lblCoords.AddThemeFontSizeOverride("font_size", 11);
-            rootVBox.AddChild(_lblCoords);
+            content.AddChild(_lblCoords);
 
             _lblDesc = new Label
             {
@@ -327,36 +271,32 @@ namespace Taiwu_Godot.Scripts.UI
                 AutowrapMode = TextServer.AutowrapMode.WordSmart
             };
             _lblDesc.AddThemeFontSizeOverride("font_size", 11);
-            rootVBox.AddChild(_lblDesc);
+            content.AddChild(_lblDesc);
 
-            // Divider: Section 1
-            var lblSec1 = new Label { Text = "AVAILABLE INTERACTIONS (地块交互)", Modulate = new Color(0.204f, 0.827f, 0.6f, 1f) };
-            lblSec1.AddThemeFontSizeOverride("font_size", 11);
-            rootVBox.AddChild(lblSec1);
+            content.AddChild(CreateSectionHeader("AVAILABLE INTERACTIONS (地块交互)", new Color(0.204f, 0.827f, 0.6f, 1f)));
 
             _actionsContainer = new VBoxContainer();
             _actionsContainer.AddThemeConstantOverride("separation", 6);
-            rootVBox.AddChild(_actionsContainer);
+            content.AddChild(_actionsContainer);
 
-            // Divider: Section 2
-            var lblSec2 = new Label { Text = "RESIDENT CHARACTERS / CULTIVATORS (同格人物)", Modulate = new Color(0.22f, 0.74f, 0.97f, 1f) };
-            lblSec2.AddThemeFontSizeOverride("font_size", 11);
-            rootVBox.AddChild(lblSec2);
+            content.AddChild(CreateSectionHeader("RESIDENT CHARACTERS / CULTIVATORS (同格人物)", new Color(0.22f, 0.74f, 0.97f, 1f)));
 
-            var scrollCultivators = new ScrollContainer { CustomMinimumSize = new Vector2(0f, 100f), SizeFlagsVertical = SizeFlags.ExpandFill };
-            rootVBox.AddChild(scrollCultivators);
+            var scrollCultivators = new ScrollContainer
+            {
+                CustomMinimumSize = new Vector2(0f, 100f),
+                SizeFlagsVertical = SizeFlags.ExpandFill
+            };
+            content.AddChild(scrollCultivators);
 
             _cultivatorsContainer = new VBoxContainer();
             _cultivatorsContainer.AddThemeConstantOverride("separation", 4);
             _cultivatorsContainer.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             scrollCultivators.AddChild(_cultivatorsContainer);
 
-            // Crime Scene Box
             _crimeSceneContainer = new VBoxContainer();
             _crimeSceneContainer.AddThemeConstantOverride("separation", 6);
-            rootVBox.AddChild(_crimeSceneContainer);
+            content.AddChild(_crimeSceneContainer);
 
-            // Footer Depart Button
             var btnDepart = new Button
             {
                 Text = "【离】 Depart / Leave (离开) [Esc]",
@@ -364,12 +304,23 @@ namespace Taiwu_Godot.Scripts.UI
                 MouseFilter = MouseFilterEnum.Stop
             };
             btnDepart.Pressed += CloseModal;
-            rootVBox.AddChild(btnDepart);
+            content.AddChild(btnDepart);
         }
+
+        private static Label CreateSectionHeader(string text, Color modulate)
+        {
+            var label = new Label { Text = text, Modulate = modulate };
+            label.AddThemeFontSizeOverride("font_size", 11);
+            return label;
+        }
+
+        // =========================================================================
+        // DISPLAY UPDATES
+        // =========================================================================
 
         private void UpdateAllDisplays()
         {
-            if (_lblTitle != null) _lblTitle.Text = _title;
+            _scaffold?.SetTitle(_title);
             if (_lblCoords != null) _lblCoords.Text = $"Grid Coordinates: [{_gridPos.X}, {_gridPos.Y}] | Regional Landmark";
             if (_lblDanger != null) _lblDanger.Text = $"Danger {GetDangerRoman(_dangerRank)}";
             if (_lblDesc != null) _lblDesc.Text = _description;
@@ -449,62 +400,35 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 for (int i = 0; i < _residentCultivators.Count; i++)
                 {
-                    var npc = _residentCultivators[i];
-                    var card = CreateCultivatorCard(npc);
+                    var card = CreateCultivatorCard(_residentCultivators[i]);
                     _cultivatorsContainer.AddChild(card);
                 }
             }
         }
 
-        private PanelContainer CreateCultivatorCard(CultivatorEntityData npc)
+        private Control CreateCultivatorCard(CultivatorEntityData npc)
         {
-            var cardPanel = new PanelContainer();
-            var cardStyle = new StyleBoxFlat
+            var card = _cultivatorCardScene?.Instantiate<CultivatorCardView>();
+            if (card == null)
             {
-                BgColor = new Color(0.06f, 0.08f, 0.10f, 0.95f),
-                BorderColor = new Color(0.2f, 0.28f, 0.35f, 0.9f),
-                BorderWidthBottom = 1,
-                BorderWidthTop = 1,
-                BorderWidthLeft = 1,
-                BorderWidthRight = 1
-            };
-            cardPanel.AddThemeStyleboxOverride("panel", cardStyle);
+                var fallback = new Label
+                {
+                    Text = $"[R{npc.Rank} S{npc.Substage}] 【 {npc.Name} 】 — {npc.Clan}",
+                    Modulate = new Color(0.886f, 0.910f, 0.941f, 1f)
+                };
+                fallback.AddThemeFontSizeOverride("font_size", 11);
+                return fallback;
+            }
 
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 10);
-            cardPanel.AddChild(row);
+            card.Bind(npc.EntityId, npc.Rank, npc.Substage, npc.Name, npc.Clan, npc.Favorability, npc.PrimevalStones);
+            card.InteractRequested += HandleCultivatorInteractRequested;
+            return card;
+        }
 
-            var lblBadge = new Label
-            {
-                Text = $"[R{npc.Rank} S{npc.Substage}]",
-                Modulate = new Color(0.984f, 0.749f, 0.141f, 1f)
-            };
-            lblBadge.AddThemeFontSizeOverride("font_size", 11);
-            row.AddChild(lblBadge);
-
-            var lblInfo = new Label
-            {
-                Text = $"【 {npc.Name} 】 — {npc.Clan} | Favor: {npc.Favorability:+0;-0;0} | Stones: {npc.PrimevalStones}",
-                Modulate = new Color(0.886f, 0.910f, 0.941f, 1f),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill
-            };
-            lblInfo.AddThemeFontSizeOverride("font_size", 11);
-            row.AddChild(lblInfo);
-
-            var btnInteract = new Button
-            {
-                Text = "Interact / 论道",
-                CustomMinimumSize = new Vector2(110f, 26f)
-            };
-            string id = npc.EntityId;
-            btnInteract.Pressed += () =>
-            {
-                CloseModal();
-                GameEventManager.RaiseRequestInteractWithNPC(id);
-            };
-            row.AddChild(btnInteract);
-
-            return cardPanel;
+        private void HandleCultivatorInteractRequested(string entityId)
+        {
+            CloseModal();
+            GameEventManager.RaiseRequestInteractWithNPC(entityId);
         }
 
         private void UpdateCrimeSceneDisplay()

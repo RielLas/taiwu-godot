@@ -13,7 +13,7 @@ Item numbering follows the audit report.
 | 4 | Honest test coverage | **Done** (57 domain tests + harness; see Phase 1 caveats) |
 | 5 | Instance event bus / composition root | Planned — Phase 5 (per-view) |
 | 6 | Save pipeline correctness | Planned — Phase 3 |
-| 7 | UI decomposition | Planned — Phase 4 |
+| 7 | UI decomposition | In progress — Phase 4 (scaffold landed) |
 | 8 | Remove fake engine types | Planned — Phase 2 (with 3) |
 | 9 | Input actions, pause, determinism | Planned — Phase 3 |
 | 10 | Project hygiene | Planned — Phase 0 |
@@ -306,9 +306,13 @@ iteration. Views also hardcode domain values (`_minStonesRequired = 11`, `_phase
 
 **Work**
 
-1. `UI/ModalScaffold.cs` — a `Control` that builds the backdrop, panel, title, close button,
-   registers with `TaiwuModalStack`, implements `IModalView.Dismiss`. Delete the same ~100 lines from
-   all 11 views. Do this first: it is the biggest line reduction for the least risk.
+1. `Scenes/UI/ModalScaffold.tscn` (layout: backdrop, centered panel, header with title, an
+   accessory slot and a close button, and a content root) plus `Scripts/UI/ModalScaffold.cs`
+   (behaviour only: open/close, LIFO registration of the owning `IModalView`, Escape for the stack
+   top, backdrop dismissal, event cleanup). Layout stays declarative; no view builds chrome in
+   code. Repeated dynamic content also becomes a packed scene
+   (`Scenes/UI/CultivatorCard.tscn`) instead of a hand-built widget. Delete the same ~100 lines
+   from all 11 views. Do this first: it is the biggest line reduction for the least risk.
 2. `UI/TabbedModal.cs` on top of it for Ledger / Cauldron / Breakthrough / Transit.
 3. Split `TaiwuLedgerView` into four `Control` subclasses (`CultivationTab`, `GuWormsTab`,
    `DaoMarksTab`, `FactionsTab`), each with `Bind(<readonly record> viewModel)`. The view model is
@@ -318,6 +322,9 @@ iteration. Views also hardcode domain values (`_minStonesRequired = 11`, `_phase
 5. Convert each modal to a `.tscn`: in the Godot editor, run the game, select the built node, "Save
    Branch as Scene", then delete the construction code. Do it one view at a time, starting with
    Ledger (biggest), then Cauldron, then HUD. Do not attempt all 11 in one pass.
+   Landed: `TilePOIModalView` composes `ModalScaffold.tscn` and instantiates `CultivatorCard.tscn`
+   per resident cultivator; its remaining body rows stay in code until it gets its own `.tscn`.
+   The scaffold replaces the per-view Escape priority checks with one stack-top rule.
 6. While rewriting each view, migrate that view's subscriptions to the instance bus (Phase 6) — do
    not migrate the same file twice.
 
