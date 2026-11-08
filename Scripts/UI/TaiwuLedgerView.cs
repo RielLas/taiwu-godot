@@ -220,7 +220,10 @@ namespace Taiwu_Godot.Scripts.UI
         private void HandlePrimevalSeaChanged(float currentSea, float maxCapacity)
         {
             _currentEssenceSea = currentSea;
+            // The service broadcasts the aperture's ceiling, which is the innate aptitude: it is
+            // the only event that carries that number, and no view may seed it.
             _maxEssenceCapacity = maxCapacity;
+            _aptitudePercent = maxCapacity;
             RefreshCultivation();
         }
 
