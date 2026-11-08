@@ -333,7 +333,9 @@ iteration. Views also hardcode domain values (`_minStonesRequired = 11`, `_phase
    what `CauldronRefinementState`, the resource events and the calendar events supply, with the
    cultivator's identity broadcast instead of hardcoded. Views keep their remaining widget rows in
    code until each gets its own `.tscn`. The scaffold replaces the per-view Escape priority checks
-   with one stack-top rule.
+   with one stack-top rule. Item 3 landed: `TaiwuLedgerView` only caches event state and binds four
+   page Controls (`CultivationTab`, `GuWormsTab`, `DaoMarksTab`, `FactionsTab`) to immutable
+   snapshots, with the shared artwork in `LedgerArt` and the gauges in `LedgerGauges`.
 6. While rewriting each view, migrate that view's subscriptions to the instance bus (Phase 6) — do
    not migrate the same file twice.
 
