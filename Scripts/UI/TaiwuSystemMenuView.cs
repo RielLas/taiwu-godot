@@ -22,6 +22,8 @@ namespace Taiwu_Godot.Scripts.UI
     /// </summary>
     public partial class TaiwuSystemMenuView : Control, IModalView
     {
+        private const string MenuTitle = "◆ TAIWU SYSTEM MENU (系统封卷) ◆";
+
         private bool _isOpen = false;
         private TaiwuModalStack? _modalStack;
         private PlayerCultivatorController? _playerController;
@@ -31,9 +33,26 @@ namespace Taiwu_Godot.Scripts.UI
         {
             _modalStack = modalStack;
             _playerController = playerController;
+            _scaffold?.BindModalStack(modalStack);
         }
 
-        public void Dismiss() => CloseMenu();
+        /// <summary>
+        /// Dismissal request from the shared scaffold (Escape or backdrop): back out of a
+        /// sub-view first, otherwise resume the game. The header Resume button goes straight
+        /// to <see cref="CloseMenu"/> because resuming is not the same as dismissing.
+        /// </summary>
+        public void Dismiss()
+        {
+            if (!_isOpen) return;
+
+            if (_currentViewIndex != 0)
+            {
+                SwitchToView(0);
+                return;
+            }
+
+            CloseMenu();
+        }
         public void ToggleMenu() { if (_isOpen) CloseMenu(); else OpenMenu(); }
 
         private int _currentViewIndex = 0; // 0: Main Menu, 1: Save Archives, 2: Load Archives, 3: Controls Guide, 4: Exit Confirm
@@ -41,10 +60,8 @@ namespace Taiwu_Godot.Scripts.UI
         private readonly string[] _slots = new string[] { "slot_01", "slot_02", "slot_03" };
         private readonly Dictionary<string, SaveMetadataDTO> _cachedSlotMetadata = new();
 
-        // UI references
-        private ColorRect? _backdrop;
-        private PanelContainer? _mainModalPanel;
-        private Label? _lblHeaderTitle;
+        // UI references (the chrome itself lives in Scenes/UI/ModalScaffold.tscn)
+        private ModalScaffold? _scaffold;
         private Label? _lblStatus;
 
         // View panels
@@ -89,19 +106,10 @@ namespace Taiwu_Godot.Scripts.UI
         {
             if (GameEventManager.EscapeHandled) return;
 
-            if (_isOpen)
-            {
-                // If in a sub-view (1, 2, 3, or 4), return to main menu tab 0
-                if (_currentViewIndex != 0)
-                {
-                    SwitchToView(0);
-                    GameEventManager.EscapeHandled = true;
-                    return;
-                }
-                CloseMenu();
-                GameEventManager.EscapeHandled = true;
-                return;
-            }
+            // While the menu is open Escape belongs to its scaffold: only the top modal answers,
+            // and it calls Dismiss() (back out of a sub-view, else resume). Here we cover only
+            // the closed state, where Esc opens the menu if nothing else claims the key.
+            if (_isOpen) return;
 
             // Strict LIFO: Only when all modals are closed does Esc toggle SystemMenu
             if (_modalStack?.IsModalOpen<TaiwuLedgerView>() == true) return;
@@ -122,8 +130,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             GetTree().Paused = true; // Temporal Stasis
             GameEventManager.TriggerPauseToggled(true);
-            GameEventManager.TriggerUIModalActive(true);
-            GameEventManager.RaiseModalOpened(this);
+            _scaffold?.Open(this, MenuTitle);
 
             RefreshSlotMetadata();
             SwitchToView(0);
@@ -136,9 +143,8 @@ namespace Taiwu_Godot.Scripts.UI
             _currentViewIndex = 0;
 
             GetTree().Paused = false; // Restore Temporal Flow
-            GameEventManager.RaiseModalClosed(this);
+            _scaffold?.Close();
             GameEventManager.TriggerPauseToggled(false);
-            GameEventManager.TriggerUIModalActive(false);
         }
 
         private void SwitchToView(int viewIndex)
@@ -212,78 +218,52 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void BuildUIHierarchy()
         {
-            _backdrop = new ColorRect
+            // Chrome (backdrop, panel, header, close button, Escape, modal registration)
+            // is Scenes/UI/ModalScaffold.tscn; this view only fills the body.
+            var scaffoldScene = GD.Load<PackedScene>("res://Scenes/UI/ModalScaffold.tscn");
+            if (scaffoldScene == null)
             {
-                Name = "SystemBackdrop",
-                Color = new Color(0f, 0f, 0f, 0.75f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            _backdrop.SetAnchorsPreset(LayoutPreset.FullRect);
-            AddChild(_backdrop);
+                GD.PushError("[TaiwuSystemMenuView] Missing modal scaffold scene at res://Scenes/UI/ModalScaffold.tscn.");
+                return;
+            }
 
-            var centerContainer = new CenterContainer
+            _scaffold = scaffoldScene.Instantiate<ModalScaffold>();
+            AddChild(_scaffold);
+            _scaffold.BindModalStack(_modalStack);
+            _scaffold.SetTitle(MenuTitle);
+
+            // 560x480 menu window and the original 0.75 dim. The scaffold title already uses
+            // this menu's imperial amber, so only the size and backdrop tint need matching.
+            if (_scaffold.Panel != null)
             {
-                Name = "CenterContainer",
-                MouseFilter = MouseFilterEnum.Ignore
-            };
-            centerContainer.SetAnchorsPreset(LayoutPreset.FullRect);
-            AddChild(centerContainer);
-
-            var modalStyle = new StyleBoxFlat
+                _scaffold.Panel.CustomMinimumSize = new Vector2(560f, 480f);
+            }
+            if (_scaffold.Backdrop != null)
             {
-                BgColor = new Color(0.035f, 0.055f, 0.055f, 0.98f),
-                BorderColor = new Color(0.851f, 0.467f, 0.024f, 0.85f),
-                BorderWidthBottom = 2,
-                BorderWidthTop = 2,
-                BorderWidthLeft = 2,
-                BorderWidthRight = 2,
-                CornerRadiusBottomLeft = 4,
-                CornerRadiusBottomRight = 4,
-                CornerRadiusTopLeft = 4,
-                CornerRadiusTopRight = 4
-            };
+                _scaffold.Backdrop.Color = new Color(0f, 0f, 0f, 0.75f);
+            }
 
-            _mainModalPanel = new PanelContainer
+            // Resume is not the scaffold's generic dismiss (in a sub-view it would only step
+            // back), so it takes the header accessory slot and the close button is hidden.
+            if (_scaffold.CloseButton != null)
             {
-                Name = "MainModalPanel",
-                CustomMinimumSize = new Vector2(560f, 480f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            _mainModalPanel.AddThemeStyleboxOverride("panel", modalStyle);
-            centerContainer.AddChild(_mainModalPanel);
+                _scaffold.CloseButton.Visible = false;
+            }
+            if (_scaffold.HeaderAccessory != null)
+            {
+                var btnResume = new Button
+                {
+                    Text = "Resume [Esc]",
+                    CustomMinimumSize = new Vector2(100f, 28f),
+                    MouseFilter = MouseFilterEnum.Stop
+                };
+                btnResume.Pressed += CloseMenu;
+                _scaffold.HeaderAccessory.AddChild(btnResume);
+            }
 
-            var margin = new MarginContainer();
-            margin.AddThemeConstantOverride("margin_left", 24);
-            margin.AddThemeConstantOverride("margin_right", 24);
-            margin.AddThemeConstantOverride("margin_top", 20);
-            margin.AddThemeConstantOverride("margin_bottom", 20);
-            _mainModalPanel.AddChild(margin);
-
-            var rootVBox = new VBoxContainer();
+            var rootVBox = _scaffold.ContentRoot;
+            if (rootVBox == null) return;
             rootVBox.AddThemeConstantOverride("separation", 14);
-            margin.AddChild(rootVBox);
-
-            // Header
-            var headerHBox = new HBoxContainer();
-            rootVBox.AddChild(headerHBox);
-
-            _lblHeaderTitle = new Label
-            {
-                Text = "◆ TAIWU SYSTEM MENU (系统封卷) ◆",
-                Modulate = new Color(0.984f, 0.749f, 0.141f, 1f),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill
-            };
-            _lblHeaderTitle.AddThemeFontSizeOverride("font_size", 15);
-            headerHBox.AddChild(_lblHeaderTitle);
-
-            var btnResume = new Button
-            {
-                Text = "Resume [Esc]",
-                CustomMinimumSize = new Vector2(100f, 28f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            btnResume.Pressed += CloseMenu;
-            headerHBox.AddChild(btnResume);
 
             _lblStatus = new Label
             {
