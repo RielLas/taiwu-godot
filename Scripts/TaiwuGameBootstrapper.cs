@@ -230,15 +230,10 @@ namespace Taiwu_Godot.Scripts
                 InputRouter.BreakthroughView = BreakthroughModalView;
             }
 
-            // Step 5: Broadcast Initial System State to Observers (HUD, Map, Fog)
-            CalendarService.BroadcastCurrentState();
-            CultivationService.BroadcastCurrentState();
-            ExplorationService.BroadcastCurrentState();
-            if (StateContext?.GuInventory != null)
-            {
-                GameEventManager.TriggerGuInventoryUpdated(StateContext.GuInventory.EquippedGu, StateContext.GuInventory.ReserveGu);
-            }
-            GameEventManager.TriggerRegionChanged(WorldRegionID.SouthernBorder, "Qing Mao Mountain - Gu Yue Village (古月山寨)");
+            // Step 5: Broadcast Initial System State to Observers (HUD, Map, Fog).
+            // The bootstrapper is the scene's first child, so its _Ready runs before the UI views
+            // have subscribed; the broadcast is queued and flushed after the whole tree is ready.
+            CallDeferred(nameof(BroadcastInitialState));
 
             // Master Living Cultivator tokens broadcast across sector
             NPCWorldManager?.BroadcastCultivatorMapTokens();
@@ -252,6 +247,25 @@ namespace Taiwu_Godot.Scripts
             {
                 GD.PrintErr("[Bootstrapper] System Boot encountered validation warnings.");
             }
+        }
+
+        /// <summary>
+        /// Step 5, deferred: views subscribe in _Ready, which Godot runs in sibling order, so a
+        /// broadcast issued from this node's _Ready would reach nobody. The scene tree readies
+        /// before the first frame flushes its message queue, so by the time this runs every view
+        /// is listening and renders the seeded state instead of its empty defaults.
+        /// </summary>
+        private void BroadcastInitialState()
+        {
+            GD.Print("[Bootstrapper] Broadcasting the initial state to observers.");
+            CalendarService?.BroadcastCurrentState();
+            CultivationService?.BroadcastCurrentState();
+            ExplorationService?.BroadcastCurrentState();
+            if (StateContext?.GuInventory != null)
+            {
+                GameEventManager.TriggerGuInventoryUpdated(StateContext.GuInventory.EquippedGu, StateContext.GuInventory.ReserveGu);
+            }
+            GameEventManager.TriggerRegionChanged(WorldRegionID.SouthernBorder, "Qing Mao Mountain - Gu Yue Village (古月山寨)");
         }
 
         public bool Bootstrap_Validation()
