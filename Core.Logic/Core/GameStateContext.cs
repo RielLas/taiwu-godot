@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TaiwuGu.Entities;
 using TaiwuGu.Map;
 using TaiwuGu.Psychology;
 
@@ -705,6 +706,8 @@ namespace TaiwuGu.Core
         public WorldSocialVendettaState SocialVendetta { get; set; } = new WorldSocialVendettaState();
         public CauldronRefinementState Cauldron { get; set; } = new CauldronRefinementState();
         public WorldFactionState Faction { get; set; } = new WorldFactionState();
+        // --- Living Population & Entity Store (Phase 4 / Milestone 6) ---
+        public EntityStore Entities { get; set; } = new EntityStore();
         public List<CultivatorEntityData> LivingNPCs { get; set; } = new List<CultivatorEntityData>();
 
         public static GameStateContext CreateDefault()

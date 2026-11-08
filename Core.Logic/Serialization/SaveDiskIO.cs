@@ -25,8 +25,8 @@ namespace TaiwuGu.Serialization
         // 2.1.0: sector snapshots store seed + tile patches instead of a cloned TileNode[].
         public const string CURRENT_SAVE_VERSION = "2.1.0";
 
-        public static event Action<string> OnSaveCompleted;
-        public static event Action<string, string> OnSaveLoadError;
+        public static event Action<string>? OnSaveCompleted;
+        public static event Action<string, string>? OnSaveLoadError;
 
         #region Synchronous Operations (tests, headless verification, tooling)
 
@@ -58,7 +58,7 @@ namespace TaiwuGu.Serialization
             }
         }
 
-        public static GameStateContext LoadContext(string slotID)
+        public static GameStateContext? LoadContext(string slotID)
         {
             if (!TryGetSlotDirectory(slotID, out string slotDir)) return null;
 
@@ -73,13 +73,13 @@ namespace TaiwuGu.Serialization
             return null;
         }
 
-        public static SaveMetadataDTO LoadMetadata(string slotID)
+        public static SaveMetadataDTO? LoadMetadata(string slotID)
         {
             if (!TryGetSlotDirectory(slotID, out string slotDir)) return null;
 
             foreach (string path in CandidatePaths(slotDir))
             {
-                SavePayloadDTO payload = ReadPayload(path);
+                SavePayloadDTO? payload = ReadPayload(path);
                 if (payload?.Metadata != null) return payload.Metadata;
             }
 
@@ -152,7 +152,7 @@ namespace TaiwuGu.Serialization
             }
         }
 
-        public static async Task<GameStateContext> LoadContextAsync(string slotID)
+        public static async Task<GameStateContext?> LoadContextAsync(string slotID)
         {
             if (!TryGetSlotDirectory(slotID, out string slotDir)) return null;
 
@@ -169,7 +169,7 @@ namespace TaiwuGu.Serialization
             return null;
         }
 
-        public static async Task<SaveMetadataDTO> LoadMetadataAsync(string slotID)
+        public static async Task<SaveMetadataDTO?> LoadMetadataAsync(string slotID)
         {
             if (!TryGetSlotDirectory(slotID, out string slotDir)) return null;
 
@@ -177,7 +177,7 @@ namespace TaiwuGu.Serialization
             {
                 if (!File.Exists(path)) continue;
 
-                SavePayloadDTO payload = await ReadPayloadAsync(path);
+                SavePayloadDTO? payload = await ReadPayloadAsync(path);
                 if (payload?.Metadata != null) return payload.Metadata;
             }
 
@@ -194,7 +194,7 @@ namespace TaiwuGu.Serialization
                 string slotID = Path.GetFileName(dir);
                 if (!SavePaths.IsValidSlotID(slotID)) continue;
 
-                SaveMetadataDTO metadata = await LoadMetadataAsync(slotID);
+                SaveMetadataDTO? metadata = await LoadMetadataAsync(slotID);
                 if (metadata != null) list.Add(metadata);
             }
 
@@ -271,7 +271,7 @@ namespace TaiwuGu.Serialization
             }
         }
 
-        private static async Task<GameStateContext> ReadContextAsync(string path, string slotID)
+        private static async Task<GameStateContext?> ReadContextAsync(string path, string slotID)
         {
             try
             {
@@ -425,7 +425,7 @@ namespace TaiwuGu.Serialization
         public static bool SaveContext(string slotID, GameStateContext ctx, double playtimeSeconds = 0)
             => SaveDiskIO.SaveContext(slotID, ctx, playtimeSeconds);
 
-        public static GameStateContext LoadContext(string slotID)
+        public static GameStateContext? LoadContext(string slotID)
             => SaveDiskIO.LoadContext(slotID);
 
         public static bool DeleteSlot(string slotID)
@@ -437,13 +437,13 @@ namespace TaiwuGu.Serialization
         public static Task<bool> SaveContextAsync(string slotID, GameStateContext ctx, double playtimeSeconds = 0)
             => SaveDiskIO.SaveContextAsync(slotID, ctx, playtimeSeconds);
 
-        public static Task<GameStateContext> LoadContextAsync(string slotID)
+        public static Task<GameStateContext?> LoadContextAsync(string slotID)
             => SaveDiskIO.LoadContextAsync(slotID);
 
-        public static SaveMetadataDTO LoadMetadata(string slotID)
+        public static SaveMetadataDTO? LoadMetadata(string slotID)
             => SaveDiskIO.LoadMetadata(slotID);
 
-        public static Task<SaveMetadataDTO> LoadMetadataAsync(string slotID)
+        public static Task<SaveMetadataDTO?> LoadMetadataAsync(string slotID)
             => SaveDiskIO.LoadMetadataAsync(slotID);
 
         public static Task<List<SaveMetadataDTO>> LoadAllMetadataAsync()

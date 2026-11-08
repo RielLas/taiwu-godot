@@ -160,6 +160,18 @@ namespace TaiwuGu.Core
             var crimeScene = _context.Forensics?.ActiveCrimeScenes?.Find(c => c.GridPos == pos && !c.IsTamperedClean && c.LingeringSoulQiTerms > 0);
             bool hasCultivators = _context.LivingNPCs != null && _context.LivingNPCs.Exists(n => n.IsAlive && n.CurrentTilePos == pos);
 
+            if (crimeScene != null)
+            {
+                GameEventManager.TriggerCrimeScenePresent(pos, crimeScene.LingeringSoulQiTerms);
+            }
+
+            // Always broadcast cultivators present on the inspected tile so modal displays them on re-clicks
+            if (hasCultivators)
+            {
+                var residentCultivators = _context.LivingNPCs!.FindAll(n => n.IsAlive && n.CurrentTilePos == pos);
+                GameEventManager.TriggerTileCultivatorsUpdated(pos, residentCultivators);
+            }
+
             if (def != null)
             {
                 if (def.Category == LandmarkCategory.Scenic)

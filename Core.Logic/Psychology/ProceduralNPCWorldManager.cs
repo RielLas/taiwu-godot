@@ -16,6 +16,8 @@ namespace TaiwuGu.Psychology
     /// </summary>
     public class ProceduralNPCWorldManager : IDisposable
     {
+        private IGameStateProvider? _stateProvider;
+        private GameStateContext _context => _stateProvider?.Current ?? _stateContext!;
         private GameStateContext? _stateContext;
         private bool _isInitialized = false;
 
@@ -36,9 +38,10 @@ namespace TaiwuGu.Psychology
             _vendettaNetwork = new SocialVendettaNetwork();
         }
 
-        public void Initialize(GameStateContext context)
+        public void Initialize(GameStateContext context, IGameStateProvider? provider = null)
         {
             _stateContext = context ?? throw new ArgumentNullException(nameof(context));
+            _stateProvider = provider;
             _isInitialized = true;
 
             // Subscribe to master event bus
@@ -52,24 +55,29 @@ namespace TaiwuGu.Psychology
             GameEventManager.OnNPCAmbushRequested         += HandleNPCAmbushRequested;
             GameEventManager.OnCloseNPCDialogueRequested  += HandleCloseNPCDialogueRequested;
 
-            if (_stateContext.LivingNPCs != null && _stateContext.LivingNPCs.Count > 0)
+            if (_context.LivingNPCs != null && _context.LivingNPCs.Count > 0)
             {
                 _livingCultivators.Clear();
-                _livingCultivators.AddRange(_stateContext.LivingNPCs);
+                _livingCultivators.AddRange(_context.LivingNPCs);
             }
             else
             {
                 SeedInitialPopulation();
-                _stateContext.LivingNPCs.Clear();
-                _stateContext.LivingNPCs.AddRange(_livingCultivators);
+                if (_context.LivingNPCs == null) _context.LivingNPCs = new List<CultivatorEntityData>();
+                _context.LivingNPCs.Clear();
+                _context.LivingNPCs.AddRange(_livingCultivators);
             }
+
+            // Sync into EntityStore
+            SyncPopulationToEntityStore();
+
             _vendettaNetwork.RegisterProceduralWorldNPCs(_livingCultivators);
 
             // Broadcast initial map tokens and check tile
             BroadcastCultivatorMapTokens();
-            if (_stateContext.WorldMap != null)
+            if (_context.WorldMap != null)
             {
-                ResolveTileCultivators(new Vector2Int(_stateContext.WorldMap.PlayerGridPos.X, _stateContext.WorldMap.PlayerGridPos.Y));
+                ResolveTileCultivators(new Vector2Int(_context.WorldMap.PlayerGridPos.X, _context.WorldMap.PlayerGridPos.Y));
             }
 
             Debug.Log($"[ProceduralNPCWorldManager] Initialized with {_livingCultivators.Count} living cultivators across Qing Mao Mountain.");
@@ -412,6 +420,41 @@ namespace TaiwuGu.Psychology
             _activeNPC = null;
             GameEventManager.TriggerUIModalActive(false);
             GameEventManager.TriggerNPCDialogueClosed();
+
+            // Re-resolve tile cultivators so re-clicking or returning to tile immediately shows them
+            if (_context.WorldMap != null)
+            {
+                ResolveTileCultivators(new Vector2Int(_context.WorldMap.PlayerGridPos.X, _context.WorldMap.PlayerGridPos.Y));
+            }
+        }
+
+        public void SyncPopulationToEntityStore()
+        {
+            if (_context.Entities == null) _context.Entities = new TaiwuGu.Entities.EntityStore();
+            var store = _context.Entities;
+
+            foreach (var npc in _livingCultivators)
+            {
+                ulong numericId = ulong.TryParse(npc.EntityId, out ulong parsedId)
+                    ? parsedId
+                    : HashStringToUlong(npc.EntityId);
+
+                var eid = store.CreateEntityWithId(numericId);
+                store.Set(eid, npc);
+                store.SetPosition(eid, new GridCoord(npc.CurrentTilePos.x, npc.CurrentTilePos.y));
+            }
+        }
+
+        public static ulong HashStringToUlong(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return 1;
+            ulong hash = 14695981039346656037UL;
+            foreach (char c in text)
+            {
+                hash ^= (byte)c;
+                hash *= 1099511628211UL;
+            }
+            return hash == 0 ? 1 : hash;
         }
 
         private FactionID? ResolveFactionFromClan(string clan)

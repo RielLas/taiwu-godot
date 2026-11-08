@@ -59,14 +59,20 @@ def audit_event_manager(cs_files):
         for path, code in file_contents.items():
             rel_path = os.path.relpath(path, PROJECT_DIR)
             
-            # Check subscriptions (+= evt)
-            if f"{evt} +=" in code or f"{evt}+=" in code:
+            # Check subscriptions (+= evt or .evt +=)
+            if re.search(rf"\b{evt}\s*\+\=", code):
                 subscribers.append(rel_path)
             
             # Check if event invoked directly outside GameEventManager
             if path != EVENT_MANAGER_FILE:
                 if f"GameEventManager.{evt}" in code and (f"{evt}?.Invoke" in code or f"{evt}(" in code):
                     publishers.append(f"{rel_path} (direct invoke)")
+
+                # Check if Trigger method for this event is called
+                # e.g.: TriggerEscape() invokes OnEscapeRequested
+                trigger_name = "Trigger" + evt.replace("On", "").replace("Requested", "")
+                if f"GameEventManager.{trigger_name}" in code or f"{trigger_name}(" in code:
+                    publishers.append(f"{rel_path} ({trigger_name})")
 
                 # Check if any Raise method for this event is called
                 for r_m in raise_methods:

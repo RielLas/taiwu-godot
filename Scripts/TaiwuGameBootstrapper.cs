@@ -139,7 +139,7 @@ namespace Taiwu_Godot.Scripts
             BreakthroughService.Initialize(StateContext, StateProvider);
 
             NPCWorldManager = new ProceduralNPCWorldManager();
-            NPCWorldManager.Initialize(StateContext);
+            NPCWorldManager.Initialize(StateContext, StateProvider);
 
             WildEncounterService = new WildGuEncounterService();
             WildEncounterService.Initialize(StateContext, StateProvider);

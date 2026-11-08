@@ -118,9 +118,10 @@ namespace Taiwu_Godot.Scripts.Verification
                 {
                     GD.Print("[DiagnosticCapture] (--landmark) Step 2: Testing scenic non-interactive landmark inspect (Ancient Pine)...");
                     // Place AncientPine at (16, 16)
-                    if (bootstrapper?.StateContext?.WorldMap != null)
+                    var worldMap = bootstrapper?.StateContext?.WorldMap;
+                    if (worldMap?.Tiles != null)
                     {
-                        bootstrapper.StateContext.WorldMap.Tiles[16 * 30 + 16].POI = TaiwuGu.Map.TilePOIType.AncientPine;
+                        worldMap.Tiles[16 * 30 + 16].POI = TaiwuGu.Map.TilePOIType.AncientPine;
                     }
                     TaiwuGu.Core.GameEventManager.RaiseRequestInspectTile(new TaiwuGu.Core.GridCoord(16, 16));
                 }
@@ -143,9 +144,10 @@ namespace Taiwu_Godot.Scripts.Verification
                         GD.Print($"[DiagnosticCapture] (--landmark) Normal tile (14, 14) walkable: {isWalkable}");
 
                         // Set obstacle
-                        if (bootstrapper.StateContext?.WorldMap != null)
+                        var wm = bootstrapper?.StateContext?.WorldMap;
+                        if (wm?.Tiles != null)
                         {
-                            bootstrapper.StateContext.WorldMap.Tiles[14 * 30 + 14].POI = TaiwuGu.Map.TilePOIType.BoulderPrecipice;
+                            wm.Tiles[14 * 30 + 14].POI = TaiwuGu.Map.TilePOIType.BoulderPrecipice;
                         }
                     }
                     CaptureFrame("test_landmark_overhaul.png");
