@@ -108,6 +108,9 @@ namespace TaiwuGu.Core
         public static event Action<bool>? OnLedgerToggled;
         public static event Action<bool>? OnPOIModalToggled;
         public static event Action<bool>? OnCauldronModalToggled;
+
+        /// <summary>The cultivator's display name, so views never seed a placeholder identity.</summary>
+        public static event Action<string>? OnCultivatorIdentityChanged;
         public static event Action? OnBeginJourneyRequested;
         public static event Action? OnReturnToTitleRequested;
 
@@ -265,6 +268,7 @@ namespace TaiwuGu.Core
         public static void TriggerLedgerToggled(bool isOpen)                              => OnLedgerToggled?.Invoke(isOpen);
         public static void TriggerPOIModalToggled(bool isOpen)                           => OnPOIModalToggled?.Invoke(isOpen);
         public static void TriggerCauldronModalToggled(bool isOpen)                       => OnCauldronModalToggled?.Invoke(isOpen);
+        public static void TriggerCultivatorIdentityChanged(string cultivatorName)        => OnCultivatorIdentityChanged?.Invoke(cultivatorName);
         public static void TriggerBeginJourney()                                          => OnBeginJourneyRequested?.Invoke();
         public static void TriggerReturnToTitle()                                         => OnReturnToTitleRequested?.Invoke();
 
@@ -409,6 +413,7 @@ namespace TaiwuGu.Core
             OnLedgerToggled = null;
             OnPOIModalToggled = null;
             OnCauldronModalToggled = null;
+            OnCultivatorIdentityChanged = null;
             OnBeginJourneyRequested = null;
             OnReturnToTitleRequested = null;
 

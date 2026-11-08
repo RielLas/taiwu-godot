@@ -40,27 +40,28 @@ namespace Taiwu_Godot.Scripts.UI
         private bool _returnToLedgerOnCauldronClose = false;
 
         // --- Cached Rendering State (Populated exclusively via GameEventManager) ---
-        private string _cultivatorName = "Gu Yue Fang Yuan";
-        private int _rank = 1;
-        private int _substage = 1;
-        private string _substageName = "Initial Stage (初阶)";
-        private float _currentEssenceSea = 44.0f;
-        private float _maxEssenceCapacity = 44.0f;
-        private int _primevalStones = 250;
-        private float _aptitudePercent = 44.0f;
+        // Identity and cultivation figures arrive as events; the view seeds no cultivator of its own.
+        private string _cultivatorName = string.Empty;
+        private int _rank;
+        private int _substage;
+        private string _substageName = string.Empty;
+        private float _currentEssenceSea;
+        private float _maxEssenceCapacity;
+        private int _primevalStones;
+        private float _aptitudePercent;
 
         // Aperture Chamber & Wall fields
-        private float _wallWashingProgress = 0f;
-        private float _apertureWallDurability = 100f;
-        private float _maxWallDurability = 100f;
-        private string _membraneName = "Light Membrane (光膜)";
-        private int _humanPathDaoMarks = 4;
+        private float _wallWashingProgress;
+        private float _apertureWallDurability;
+        private float _maxWallDurability;
+        private string _membraneName = string.Empty;
+        private int _humanPathDaoMarks;
 
         // Inviolate Lifespan Law & 24 Solar Terms Resonance
-        private int _age = 15;
-        private int _lifespanYears = 100;
-        private int _remainingLifespanYears = 85;
-        private string _seasonalAffinityText = "Spring: Enslavement Path +15%";
+        private int _age;
+        private int _lifespanYears;
+        private int _remainingLifespanYears;
+        private string _seasonalAffinityText = string.Empty;
 
         private readonly List<GuWormData> _equippedGu = new();
         private readonly List<GuWormData> _reserveGu = new();
@@ -146,6 +147,7 @@ namespace Taiwu_Godot.Scripts.UI
             GameEventManager.OnPOIModalToggled              += HandlePOIModalToggled;
             GameEventManager.OnCauldronOpened               += HandleCauldronOpened;
             GameEventManager.OnCauldronClosed               += HandleCauldronClosed;
+            GameEventManager.OnCultivatorIdentityChanged     += HandleCultivatorIdentityChanged;
             GameEventManager.OnCultivatorCultivationChanged += HandleCultivatorCultivationChanged;
             GameEventManager.OnPrimevalSeaChanged           += HandlePrimevalSeaChanged;
             GameEventManager.OnPrimevalStonesChanged         += HandlePrimevalStonesChanged;
@@ -165,6 +167,7 @@ namespace Taiwu_Godot.Scripts.UI
             GameEventManager.OnPOIModalToggled              -= HandlePOIModalToggled;
             GameEventManager.OnCauldronOpened               -= HandleCauldronOpened;
             GameEventManager.OnCauldronClosed               -= HandleCauldronClosed;
+            GameEventManager.OnCultivatorIdentityChanged     -= HandleCultivatorIdentityChanged;
             GameEventManager.OnCultivatorCultivationChanged -= HandleCultivatorCultivationChanged;
             GameEventManager.OnPrimevalSeaChanged           -= HandlePrimevalSeaChanged;
             GameEventManager.OnPrimevalStonesChanged         -= HandlePrimevalStonesChanged;
@@ -315,6 +318,12 @@ namespace Taiwu_Godot.Scripts.UI
             _scaffold?.Close();
             GameEventManager.TriggerLedgerToggled(false);
             GameEventManager.RaiseRequestOpenCauldron();
+        }
+
+        private void HandleCultivatorIdentityChanged(string cultivatorName)
+        {
+            _cultivatorName = cultivatorName;
+            UpdateCultivationDisplay();
         }
 
         private void HandleCultivatorCultivationChanged(int rank, int substage, string name)
@@ -581,28 +590,28 @@ namespace Taiwu_Godot.Scripts.UI
             vBox.AddChild(grid);
 
             // Column 1 (Left)
-            _lblCultivatorRealm = CreateStatLabel("Cultivation Realm: Rank 1 Initial Stage (初阶)", new Color(0.133f, 0.773f, 0.369f, 1f));
+            _lblCultivatorRealm = CreateStatLabel("Cultivation Realm", new Color(0.133f, 0.773f, 0.369f, 1f));
             grid.AddChild(_lblCultivatorRealm);
 
-            _lblMembrane = CreateStatLabel("Aperture Membrane: Light Membrane (光膜)", new Color(0.961f, 0.620f, 0.043f, 1f));
+            _lblMembrane = CreateStatLabel("Aperture Membrane", new Color(0.961f, 0.620f, 0.043f, 1f));
             grid.AddChild(_lblMembrane);
 
-            _lblAptitude = CreateStatLabel("Innate Aptitude: 44% (Gu Yue Fang Yuan)", new Color(0.984f, 0.749f, 0.141f, 1f));
+            _lblAptitude = CreateStatLabel("Innate Aptitude", new Color(0.984f, 0.749f, 0.141f, 1f));
             grid.AddChild(_lblAptitude);
 
-            _lblStones = CreateStatLabel("Primeval Stones: 250 Stones", new Color(0.984f, 0.749f, 0.141f, 1f));
+            _lblStones = CreateStatLabel("Primeval Stones", new Color(0.984f, 0.749f, 0.141f, 1f));
             grid.AddChild(_lblStones);
 
-            _lblHumanDaoMarks = CreateStatLabel("Human Path Dao Marks: 4 Marks (+8% Wash, +4% Batter)", new Color(0.22f, 0.74f, 0.97f, 1f));
+            _lblHumanDaoMarks = CreateStatLabel("Human Path Dao Marks", new Color(0.22f, 0.74f, 0.97f, 1f));
             grid.AddChild(_lblHumanDaoMarks);
 
-            _lblDensity = CreateStatLabel("Density Multiplier: 1x (Qualitative Purity)", new Color(0.961f, 0.620f, 0.043f, 1f));
+            _lblDensity = CreateStatLabel("Density Multiplier", new Color(0.961f, 0.620f, 0.043f, 1f));
             grid.AddChild(_lblDensity);
 
-            _lblLifespan = CreateStatLabel("Heavenly Lifespan (寿元): Age 15 / 100 Years (85 yrs left)", new Color(0.204f, 0.827f, 0.6f, 1f));
+            _lblLifespan = CreateStatLabel("Heavenly Lifespan (寿元)", new Color(0.204f, 0.827f, 0.6f, 1f));
             grid.AddChild(_lblLifespan);
 
-            _lblSeasonal = CreateStatLabel("Seasonal Resonance: Spring: Enslavement Path +15%", new Color(0.204f, 0.827f, 0.6f, 1f));
+            _lblSeasonal = CreateStatLabel("Seasonal Resonance", new Color(0.204f, 0.827f, 0.6f, 1f));
             grid.AddChild(_lblSeasonal);
 
             // 2. Primeval Sea Gauge Bar
@@ -610,7 +619,7 @@ namespace Taiwu_Godot.Scripts.UI
             seaBox.AddThemeConstantOverride("separation", 2);
             vBox.AddChild(seaBox);
 
-            _lblSeaTitle = new Label { Text = "Green Copper Primeval Sea (青铜元海): 44.0% / 44.0%", Modulate = new Color(0.88f, 0.91f, 0.94f, 1f) };
+            _lblSeaTitle = new Label { Text = "Green Copper Primeval Sea (青铜元海)", Modulate = new Color(0.88f, 0.91f, 0.94f, 1f) };
             _lblSeaTitle.AddThemeFontSizeOverride("font_size", 11);
             seaBox.AddChild(_lblSeaTitle);
 
@@ -619,8 +628,8 @@ namespace Taiwu_Godot.Scripts.UI
                 CustomMinimumSize = new Vector2(0f, 38f),
                 FrameTexture = _texFrameBarBronze,
                 FillTexture = _texFillEmerald,
-                Value = 1.0f,
-                CenterText = "Primeval Sea Fill: 100.0% (44.0% of 44.0% Max Capacity)"
+                Value = 0f,
+                CenterText = string.Empty
             };
             seaBox.AddChild(_gaugeSea);
 
@@ -629,7 +638,7 @@ namespace Taiwu_Godot.Scripts.UI
             wallBox.AddThemeConstantOverride("separation", 2);
             vBox.AddChild(wallBox);
 
-            _lblWallTitle = new Label { Text = "Aperture Wall-Washing Progress: 0.0% / 100%  (Tempering towards Middle Stage (中阶))", Modulate = new Color(0.88f, 0.91f, 0.94f, 1f) };
+            _lblWallTitle = new Label { Text = "Aperture Wall-Washing Progress", Modulate = new Color(0.88f, 0.91f, 0.94f, 1f) };
             _lblWallTitle.AddThemeFontSizeOverride("font_size", 11);
             wallBox.AddChild(_lblWallTitle);
 
@@ -638,8 +647,8 @@ namespace Taiwu_Godot.Scripts.UI
                 CustomMinimumSize = new Vector2(0f, 38f),
                 FrameTexture = _texFrameBarBronze,
                 FillTexture = _texFillCyan,
-                Value = 0.0f,
-                CenterText = "Membrane Tempering: 0.0%"
+                Value = 0f,
+                CenterText = string.Empty
             };
             wallBox.AddChild(_gaugeWall);
 

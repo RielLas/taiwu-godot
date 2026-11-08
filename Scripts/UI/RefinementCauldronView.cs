@@ -36,35 +36,37 @@ namespace Taiwu_Godot.Scripts.UI
         private RefinementPhase _currentPhase = RefinementPhase.Idle;
         private RefinementFailureTier _lastFailureTier = RefinementFailureTier.None;
 
-        private string _recipeName = "Moonglow Beast Gu Refinement (月芒彘力合炼)";
-        private string _primaryGuName = "Moonlight Gu (月光蛊)";
-        private string _secondaryGuName = "White Boar Gu (白豕蛊)";
-        private string _resultGuName = "Moonglow Beast Gu (月芒彘力蛊)";
-        private int _targetRank = 2;
-        private int _minStonesRequired = 11;
+        // Every recipe, resource and timer below is filled from CauldronRefinementState or the
+        // resource events; the view owns no recipe, balance value or duration of its own.
+        private string _recipeName = string.Empty;
+        private string _primaryGuName = string.Empty;
+        private string _secondaryGuName = string.Empty;
+        private string _resultGuName = string.Empty;
+        private int _targetRank;
+        private int _minStonesRequired;
 
-        private bool _hasPrimaryGu = true;
-        private bool _hasSecondaryGu = true;
-        private bool _primaryIsVital = true;
+        private bool _hasPrimaryGu;
+        private bool _hasSecondaryGu;
+        private bool _primaryIsVital;
 
-        private float _cauldronTemperature = 50f;
-        private float _phase1Timer = 0f;
-        private float _phase1Duration = 4.0f;
+        private float _cauldronTemperature;
+        private float _phase1Timer;
+        private float _phase1Duration;
 
-        private float _wildWillResistance = 50f;
-        private float _masterWillFocus = 0.5f;
-        private float _wildWillFrequency = 0.5f;
-        private float _willAlignmentProgress = 0f;
-        private float _phase2Timer = 0f;
-        private float _phase2Duration = 4.5f;
+        private float _wildWillResistance;
+        private float _masterWillFocus;
+        private float _wildWillFrequency;
+        private float _willAlignmentProgress;
+        private float _phase2Timer;
+        private float _phase2Duration;
 
-        private float _nascentStability = 100f;
-        private float _phase3Timer = 0f;
-        private float _phase3Duration = 3.5f;
-        private int _stonesCrushed = 0;
+        private float _nascentStability;
+        private float _phase3Timer;
+        private float _phase3Duration;
+        private int _stonesCrushed;
 
-        private int _playerStones = 250;
-        private float _playerEssenceSea = 44f;
+        private int _playerStones;
+        private float _playerEssenceSea;
         private string _statusMessage = string.Empty;
 
         // UI Element References (the chrome itself lives in Scenes/UI/ModalScaffold.tscn)
@@ -421,7 +423,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             _lblIngredientsSummary = new Label
             {
-                Text = "Primary: Moonlight Gu (★ Vital Gu) | Secondary: White Boar Gu",
+                Text = string.Empty,
                 Modulate = new Color(0.204f, 0.827f, 0.6f, 1f) // Emerald #34D399
             };
             _lblIngredientsSummary.AddThemeFontSizeOverride("font_size", 11);
@@ -429,7 +431,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             _lblResourcesSummary = new Label
             {
-                Text = $"Primeval Stones: {_playerStones} / {_minStonesRequired} Min Needed | Aperture Sea: {_playerEssenceSea:F1}% (Min 25%)",
+                Text = string.Empty,
                 Modulate = new Color(0.886f, 0.910f, 0.941f, 1f)
             };
             _lblResourcesSummary.AddThemeFontSizeOverride("font_size", 11);
@@ -499,7 +501,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             _lblTempTimer = new Label
             {
-                Text = "Phase 1: Material Extraction (提炼) - Sustained: 0.0s / 4.0s",
+                Text = "Phase 1: Material Extraction (提炼)",
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Modulate = new Color(0.984f, 0.749f, 0.141f, 1f)
             };
@@ -508,7 +510,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             _lblTempStatus = new Label
             {
-                Text = "Cauldron Temperature: 50°C (Ideal Green Zone: 20°C - 80°C)",
+                Text = "Cauldron Temperature (Ideal Green Zone: 20°C - 80°C)",
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Modulate = new Color(0.886f, 0.910f, 0.941f, 1f)
             };
@@ -530,7 +532,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 MinValue = 0,
                 MaxValue = 100,
-                Value = 50,
+                Value = 0,
                 ShowPercentage = false,
                 CustomMinimumSize = new Vector2(400f, 32f)
             };
@@ -565,7 +567,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             _lblWillTimer = new Label
             {
-                Text = "Phase 2: Will Fusion (融意) - Alignment: 0% / 50% | Resistance: 50% / 100%",
+                Text = "Phase 2: Will Fusion (融意)",
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Modulate = new Color(0.22f, 0.74f, 0.97f, 1f)
             };
@@ -583,7 +585,7 @@ namespace Taiwu_Godot.Scripts.UI
             willBarBox.AddChild(_barWillAlignment);
 
             var resistFill = new StyleBoxFlat { BgColor = new Color(0.937f, 0.267f, 0.267f, 1f) };
-            _barWildResistance = new ProgressBar { MinValue = 0, MaxValue = 100, Value = 50, ShowPercentage = true, CustomMinimumSize = new Vector2(200f, 20f) };
+            _barWildResistance = new ProgressBar { MinValue = 0, MaxValue = 100, Value = 0, ShowPercentage = true, CustomMinimumSize = new Vector2(200f, 20f) };
             _barWildResistance.AddThemeStyleboxOverride("background", (StyleBox)slotBg.Duplicate());
             _barWildResistance.AddThemeStyleboxOverride("fill", resistFill);
             willBarBox.AddChild(_barWildResistance);
@@ -647,7 +649,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 MinValue = 0,
                 MaxValue = 100,
-                Value = 100,
+                Value = 0,
                 ShowPercentage = true,
                 CustomMinimumSize = new Vector2(400f, 32f),
                 SizeFlagsHorizontal = SizeFlags.ShrinkCenter
@@ -658,7 +660,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             _lblCrushedCounter = new Label
             {
-                Text = "Stones Crushed: 0 | Nascent Stability: 100%",
+                Text = "Nascent Dao Mark Stability",
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Modulate = new Color(0.886f, 0.910f, 0.941f, 1f)
             };

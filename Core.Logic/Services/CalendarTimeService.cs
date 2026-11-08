@@ -43,6 +43,9 @@ namespace TaiwuGu.Core
             if (!_isInitialized || _context == null) return;
 
             GameEventManager.TriggerActionPointsChanged(_context.Calendar.ActionPointsRemaining, _context.Calendar.MonthlyAPBudget);
+            // Views render the date and the seasonal resonance from events only, so the boot
+            // broadcast has to carry them instead of leaving the UI to guess the opening term.
+            GameEventManager.TriggerSolarTermAdvanced(_context.Calendar.CurrentYear, _context.Calendar.ActiveSolarTerm, _context.Calendar.GetSolarTermName());
         }
 
         private void HandlePlayerMoved(Vector2Int newGridPos)

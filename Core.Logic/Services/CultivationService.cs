@@ -61,6 +61,7 @@ namespace TaiwuGu.Core
         {
             if (!_isInitialized || _context == null) return;
 
+            GameEventManager.TriggerCultivatorIdentityChanged(_context.Cultivator.Name);
             GameEventManager.TriggerPrimevalSeaChanged(_context.Cultivator.CurrentEssenceSea, _context.Cultivator.AptitudePercent);
             GameEventManager.TriggerPrimevalStonesChanged(_context.Cultivator.PrimevalStones);
             GameEventManager.TriggerCultivatorCultivationChanged(_context.Cultivator.Rank, _context.Cultivator.Substage, _context.Cultivator.GetSubstageName());

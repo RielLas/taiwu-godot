@@ -20,19 +20,21 @@ namespace Taiwu_Godot.Scripts.UI
         private TaiwuModalStack? _modalStack;
 
         public void InitializeModalStack(TaiwuModalStack modalStack) => _modalStack = modalStack;
-        private string _regionTitle = "Southern Border: Qing Mao Mountain (Gu Yue Village)";
-        private int _currentYear = 1;
-        private string _solarTermDisplay = "Spring Equinox (春分)";
-        private int _currentAP = 30;
-        private int _maxAP = 30;
+        // Region, calendar, action points, sea, stones and rank all arrive as events; the HUD
+        // seeds no world state of its own.
+        private string _regionTitle = string.Empty;
+        private int _currentYear;
+        private string _solarTermDisplay = string.Empty;
+        private int _currentAP;
+        private int _maxAP;
 
-        private float _currentEssenceSea = 44.0f;
-        private float _maxEssenceCapacity = 44.0f;
-        private int _primevalStones = 250;
+        private float _currentEssenceSea;
+        private float _maxEssenceCapacity;
+        private int _primevalStones;
 
-        private int _cultivatorRank = 1;
-        private int _cultivatorSubstage = 1;
-        private string _cultivatorSubstageName = "Initial Stage (初阶)";
+        private int _cultivatorRank;
+        private int _cultivatorSubstage;
+        private string _cultivatorSubstageName = string.Empty;
 
         // UI Node references
         private Label? _lblRegionTitle;
@@ -199,8 +201,8 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BarAP",
                 MinValue = 0,
-                MaxValue = 30,
-                Value = 30,
+                MaxValue = 1,
+                Value = 0,
                 ShowPercentage = false,
                 Size = new Vector2(195f, 20f),
                 MouseFilter = MouseFilterEnum.Stop
@@ -212,7 +214,7 @@ namespace Taiwu_Godot.Scripts.UI
             _lblAPText = new Label
             {
                 Name = "LblAPText",
-                Text = "AP: 30/30",
+                Text = string.Empty,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Size = new Vector2(195f, 20f),
@@ -246,7 +248,7 @@ namespace Taiwu_Godot.Scripts.UI
                 Name = "BarSea",
                 MinValue = 0,
                 MaxValue = 100,
-                Value = 44,
+                Value = 0,
                 ShowPercentage = false,
                 Size = new Vector2(195f, 20f),
                 MouseFilter = MouseFilterEnum.Stop
@@ -258,7 +260,7 @@ namespace Taiwu_Godot.Scripts.UI
             _lblSeaText = new Label
             {
                 Name = "LblSeaText",
-                Text = "Sea: 44.0% / 44.0%",
+                Text = string.Empty,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Size = new Vector2(195f, 20f),
@@ -422,7 +424,7 @@ namespace Taiwu_Godot.Scripts.UI
             _btnPassMonth = new Button
             {
                 Name = "BtnPassMonth",
-                Text = "Pass Month (30 AP)",
+                Text = "Pass Month",
                 CustomMinimumSize = new Vector2(140f, 28f),
                 MouseFilter = MouseFilterEnum.Stop
             };
