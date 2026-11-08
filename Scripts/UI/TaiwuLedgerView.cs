@@ -65,15 +65,10 @@ namespace Taiwu_Godot.Scripts.UI
         private readonly List<GuWormData> _equippedGu = new();
         private readonly List<GuWormData> _reserveGu = new();
 
-        // UI references (the chrome itself lives in Scenes/UI/ModalScaffold.tscn)
+        // UI references (chrome, tab strip and tab body live in Scenes/UI/TabbedModal.tscn)
+        private TabbedModal? _tabs;
         private ModalScaffold? _scaffold;
         private Label? _lblSubtitle;
-
-        // Tab buttons
-        private Button? _btnTabCultivation;
-        private Button? _btnTabGuWorms;
-        private Button? _btnTabDaoMarks;
-        private Button? _btnTabFactions;
 
         // Tab panels
         private Control? _panelCultivation;
@@ -428,17 +423,26 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void BuildUIHierarchy()
         {
-            // Chrome (backdrop, panel, header, close button, Escape, modal registration)
-            // is Scenes/UI/ModalScaffold.tscn; this view only fills the body.
-            var scaffoldScene = GD.Load<PackedScene>("res://Scenes/UI/ModalScaffold.tscn");
-            if (scaffoldScene == null)
+            // Chrome comes from ModalScaffold.tscn inside TabbedModal.tscn, which also declares
+            // the tab strip and tab body; this view only fills the subtitle area and pages.
+            var tabbedScene = GD.Load<PackedScene>("res://Scenes/UI/TabbedModal.tscn");
+            if (tabbedScene == null)
             {
-                GD.PushError("[TaiwuLedgerView] Missing modal scaffold scene at res://Scenes/UI/ModalScaffold.tscn.");
+                GD.PushError("[TaiwuLedgerView] Missing tabbed modal scene at res://Scenes/UI/TabbedModal.tscn.");
                 return;
             }
 
-            _scaffold = scaffoldScene.Instantiate<ModalScaffold>();
-            AddChild(_scaffold);
+            var tabs = tabbedScene.Instantiate<TabbedModal>();
+            _tabs = tabs;
+            AddChild(tabs);
+
+            _scaffold = tabs.Scaffold;
+            if (_scaffold == null)
+            {
+                GD.PushError("[TaiwuLedgerView] TabbedModal.tscn is missing its ModalScaffold child.");
+                return;
+            }
+
             _scaffold.BindModalStack(_modalStack);
             _scaffold.SetTitle(LedgerTitle);
 
@@ -457,9 +461,16 @@ namespace Taiwu_Godot.Scripts.UI
                 _scaffold.CloseButton.CustomMinimumSize = new Vector2(75f, 26f);
             }
 
-            var rootVBox = _scaffold.ContentRoot;
-            if (rootVBox == null) return;
-            rootVBox.AddThemeConstantOverride("separation", 8);
+            var headerRows = tabs.HeaderRows;
+            if (headerRows == null)
+            {
+                GD.PushError("[TaiwuLedgerView] TabbedModal.tscn is missing its HeaderRows node.");
+                return;
+            }
+            if (_scaffold.ContentRoot != null)
+            {
+                _scaffold.ContentRoot.AddThemeConstantOverride("separation", 8);
+            }
 
             _lblSubtitle = new Label
             {
@@ -467,128 +478,76 @@ namespace Taiwu_Godot.Scripts.UI
                 Modulate = new Color(0.984f, 0.749f, 0.141f, 1f) // #FBBF24
             };
             _lblSubtitle.AddThemeFontSizeOverride("font_size", 11);
-            rootVBox.AddChild(_lblSubtitle);
+            headerRows.AddChild(_lblSubtitle);
 
-            // 4-Tab Navigation Bar
-            var tabsHBox = new HBoxContainer();
-            tabsHBox.AddThemeConstantOverride("separation", 6);
-            rootVBox.AddChild(tabsHBox);
-
+            // 4-Tab Navigation Bar: the strip itself is declared in TabbedModal.tscn
             float tabWidth = (840f - 36f - 18f) / 4f;
 
-            _btnTabCultivation = CreateTabButton("1. Cultivation (修持)", tabWidth, () => SwitchTab(0));
-            tabsHBox.AddChild(_btnTabCultivation);
+            tabs.AddTab("1. Cultivation (修持)", BuildCultivationTab(), tabWidth);
+            tabs.AddTab("2. Gu Worms (0)", BuildGuWormsTab(), tabWidth);
+            tabs.AddTab("3. Dao Marks (道痕)", BuildDaoMarksTab(), tabWidth);
+            tabs.AddTab("4. Factions (宗族恩仇)", BuildFactionsTab(), tabWidth);
 
-            _btnTabGuWorms = CreateTabButton("2. Gu Worms (0)", tabWidth, () => SwitchTab(1));
-            tabsHBox.AddChild(_btnTabGuWorms);
-
-            _btnTabDaoMarks = CreateTabButton("3. Dao Marks (道痕)", tabWidth, () => SwitchTab(2));
-            tabsHBox.AddChild(_btnTabDaoMarks);
-
-            _btnTabFactions = CreateTabButton("4. Factions (宗族恩仇)", tabWidth, () => SwitchTab(3));
-            tabsHBox.AddChild(_btnTabFactions);
-
-            // Content Area Container
-            var contentContainer = new PanelContainer
+            // Tab body keeps the ledger's inset lacquer panel
+            var body = tabs.Body;
+            if (body != null)
             {
-                SizeFlagsVertical = SizeFlags.ExpandFill,
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            var contentStyle = new StyleBoxFlat
-            {
-                BgColor = new Color(0.047f, 0.063f, 0.055f, 0.95f),
-                BorderColor = new Color(0.133f, 0.200f, 0.188f, 1f),
-                BorderWidthBottom = 1,
-                BorderWidthTop = 1,
-                BorderWidthLeft = 1,
-                BorderWidthRight = 1
-            };
-            contentContainer.AddThemeStyleboxOverride("panel", contentStyle);
-            rootVBox.AddChild(contentContainer);
+                var bodyStyle = new StyleBoxFlat
+                {
+                    BgColor = new Color(0.047f, 0.063f, 0.055f, 0.95f),
+                    BorderColor = new Color(0.133f, 0.200f, 0.188f, 1f),
+                    BorderWidthBottom = 1,
+                    BorderWidthTop = 1,
+                    BorderWidthLeft = 1,
+                    BorderWidthRight = 1
+                };
+                body.AddThemeStyleboxOverride("panel", bodyStyle);
+            }
 
-            // Build the 4 individual tabs
-            BuildCultivationTab(contentContainer);
-            BuildGuWormsTab(contentContainer);
-            BuildDaoMarksTab(contentContainer);
-            BuildFactionsTab(contentContainer);
+            tabs.TabSelected += HandleStripTabSelected;
 
             SwitchTab(0);
             UpdateAllDisplays();
         }
 
-        private Button CreateTabButton(string text, float minWidth, Action onPressed)
+        /// <summary>
+        /// A strip click selects the page inside TabbedModal; this keeps the view's own tab
+        /// state and its per-tab refresh running exactly as the old hand-built buttons did.
+        /// </summary>
+        private void HandleStripTabSelected(int tabIndex)
         {
-            var btn = new Button
-            {
-                Text = text,
-                CustomMinimumSize = new Vector2(minWidth, 32f),
-                MouseFilter = MouseFilterEnum.Stop,
-                FocusMode = FocusModeEnum.None
-            };
-            btn.Pressed += onPressed;
-            return btn;
+            if (_activeTabIndex == tabIndex) return;
+            SwitchTab(tabIndex);
         }
 
         private void SwitchTab(int tabIndex)
         {
             _activeTabIndex = tabIndex;
-
-            if (_panelCultivation != null) _panelCultivation.Visible = (_activeTabIndex == 0);
-            if (_panelGuWorms != null)     _panelGuWorms.Visible     = (_activeTabIndex == 1);
-            if (_panelDaoMarks != null)    _panelDaoMarks.Visible    = (_activeTabIndex == 2);
-            if (_panelFactions != null)    _panelFactions.Visible    = (_activeTabIndex == 3);
-
-            StyleTabButton(_btnTabCultivation, _activeTabIndex == 0);
-            StyleTabButton(_btnTabGuWorms,     _activeTabIndex == 1);
-            StyleTabButton(_btnTabDaoMarks,    _activeTabIndex == 2);
-            StyleTabButton(_btnTabFactions,    _activeTabIndex == 3);
+            _tabs?.SelectTab(tabIndex);
 
             if (_activeTabIndex == 1) UpdateGuWormsDisplay();
             if (_activeTabIndex == 3) UpdateFactionsDisplay();
         }
 
-        private static void StyleTabButton(Button? btn, bool isActive)
-        {
-            if (btn == null) return;
-            var style = new StyleBoxFlat
-            {
-                BgColor = isActive ? new Color(0.133f, 0.200f, 0.188f, 1f) : new Color(0.082f, 0.118f, 0.114f, 1f),
-                BorderColor = isActive ? new Color(0.961f, 0.620f, 0.043f, 1f) : new Color(0.133f, 0.200f, 0.188f, 0.8f),
-                BorderWidthBottom = isActive ? 2 : 1,
-                BorderWidthTop = 1,
-                BorderWidthLeft = 1,
-                BorderWidthRight = 1,
-                CornerRadiusTopLeft = 3,
-                CornerRadiusTopRight = 3
-            };
-            btn.AddThemeStyleboxOverride("normal", style);
-            btn.AddThemeStyleboxOverride("hover", style);
-            btn.AddThemeStyleboxOverride("pressed", style);
-            btn.Modulate = isActive ? new Color(1f, 1f, 1f, 1f) : new Color(0.7f, 0.75f, 0.8f, 0.9f);
-        }
-
         private void UpdateTabHeaders()
         {
             int totalGu = _equippedGu.Count + _reserveGu.Count;
-            if (_btnTabGuWorms != null)
-            {
-                _btnTabGuWorms.Text = $"2. Gu Worms ({totalGu})";
-            }
+            _tabs?.SetTabLabel(1, $"2. Gu Worms ({totalGu})");
         }
 
         // =========================================================================
         // TAB 0: CULTIVATION & APERTURE (修持)
         // =========================================================================
 
-        private void BuildCultivationTab(PanelContainer container)
+        private Control BuildCultivationTab()
         {
-            _panelCultivation = new MarginContainer { Name = "PanelCultivation" };
-            var margin = (MarginContainer)_panelCultivation;
+            var page = new MarginContainer { Name = "PanelCultivation" };
+            _panelCultivation = page;
+            var margin = page;
             margin.AddThemeConstantOverride("margin_left", 14);
             margin.AddThemeConstantOverride("margin_right", 14);
             margin.AddThemeConstantOverride("margin_top", 12);
             margin.AddThemeConstantOverride("margin_bottom", 12);
-            container.AddChild(_panelCultivation);
 
             var vBox = new VBoxContainer();
             vBox.AddThemeConstantOverride("separation", 10);
@@ -722,6 +681,8 @@ namespace Taiwu_Godot.Scripts.UI
             };
             lblQuote.AddThemeFontSizeOverride("font_size", 10);
             vBox.AddChild(lblQuote);
+
+            return page;
         }
 
         private static Label CreateStatLabel(string text, Color color)
@@ -763,15 +724,15 @@ namespace Taiwu_Godot.Scripts.UI
         // TAB 1: GU WORMS LOADOUT & FEEDING (蛊虫与本命)
         // =========================================================================
 
-        private void BuildGuWormsTab(PanelContainer container)
+        private Control BuildGuWormsTab()
         {
-            _panelGuWorms = new MarginContainer { Name = "PanelGuWorms" };
-            var margin = (MarginContainer)_panelGuWorms;
+            var page = new MarginContainer { Name = "PanelGuWorms" };
+            _panelGuWorms = page;
+            var margin = page;
             margin.AddThemeConstantOverride("margin_left", 14);
             margin.AddThemeConstantOverride("margin_right", 14);
             margin.AddThemeConstantOverride("margin_top", 10);
             margin.AddThemeConstantOverride("margin_bottom", 10);
-            container.AddChild(_panelGuWorms);
 
             var vBox = new VBoxContainer();
             vBox.AddThemeConstantOverride("separation", 8);
@@ -837,21 +798,23 @@ namespace Taiwu_Godot.Scripts.UI
             _reserveContainer = new VBoxContainer();
             _reserveContainer.AddThemeConstantOverride("separation", 6);
             contentList.AddChild(_reserveContainer);
+
+            return page;
         }
 
         // =========================================================================
         // TAB 2: DAO MARKS & RESTRICTIONS (道痕与凡人禁制)
         // =========================================================================
 
-        private void BuildDaoMarksTab(PanelContainer container)
+        private Control BuildDaoMarksTab()
         {
-            _panelDaoMarks = new MarginContainer { Name = "PanelDaoMarks" };
-            var margin = (MarginContainer)_panelDaoMarks;
+            var page = new MarginContainer { Name = "PanelDaoMarks" };
+            _panelDaoMarks = page;
+            var margin = page;
             margin.AddThemeConstantOverride("margin_left", 14);
             margin.AddThemeConstantOverride("margin_right", 14);
             margin.AddThemeConstantOverride("margin_top", 10);
             margin.AddThemeConstantOverride("margin_bottom", 10);
-            container.AddChild(_panelDaoMarks);
 
             var vBox = new VBoxContainer();
             vBox.AddThemeConstantOverride("separation", 8);
@@ -969,6 +932,8 @@ namespace Taiwu_Godot.Scripts.UI
             };
             lblLore.AddThemeFontSizeOverride("font_size", 10);
             vBox.AddChild(lblLore);
+
+            return page;
         }
 
         private PanelContainer CreateExternalPathCard(Texture2D? icon, string name, string cnName)
@@ -1028,15 +993,15 @@ namespace Taiwu_Godot.Scripts.UI
         // TAB 3: AUTONOMOUS INSTITUTIONAL HIERARCHY (宗族恩仇与阵营声望)
         // =========================================================================
 
-        private void BuildFactionsTab(PanelContainer container)
+        private Control BuildFactionsTab()
         {
-            _panelFactions = new MarginContainer { Name = "PanelFactions" };
-            var margin = (MarginContainer)_panelFactions;
+            var page = new MarginContainer { Name = "PanelFactions" };
+            _panelFactions = page;
+            var margin = page;
             margin.AddThemeConstantOverride("margin_left", 14);
             margin.AddThemeConstantOverride("margin_right", 14);
             margin.AddThemeConstantOverride("margin_top", 10);
             margin.AddThemeConstantOverride("margin_bottom", 10);
-            container.AddChild(_panelFactions);
 
             var vBox = new VBoxContainer();
             vBox.AddThemeConstantOverride("separation", 8);
@@ -1069,6 +1034,8 @@ namespace Taiwu_Godot.Scripts.UI
             _factionsContainer.AddThemeConstantOverride("separation", 8);
             _factionsContainer.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             scroll.AddChild(_factionsContainer);
+
+            return page;
         }
 
         // =========================================================================

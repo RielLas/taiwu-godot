@@ -60,7 +60,8 @@ namespace Taiwu_Godot.Scripts.UI
         private readonly string[] _slots = new string[] { "slot_01", "slot_02", "slot_03" };
         private readonly Dictionary<string, SaveMetadataDTO> _cachedSlotMetadata = new();
 
-        // UI references (the chrome itself lives in Scenes/UI/ModalScaffold.tscn)
+        // UI references (chrome, tab strip and tab body live in Scenes/UI/TabbedModal.tscn)
+        private TabbedModal? _tabs;
         private ModalScaffold? _scaffold;
         private Label? _lblStatus;
 
@@ -150,11 +151,7 @@ namespace Taiwu_Godot.Scripts.UI
         private void SwitchToView(int viewIndex)
         {
             _currentViewIndex = viewIndex;
-            if (_panelMainMenu != null) _panelMainMenu.Visible = (_currentViewIndex == 0);
-            if (_panelSaveArchives != null) _panelSaveArchives.Visible = (_currentViewIndex == 1);
-            if (_panelLoadArchives != null) _panelLoadArchives.Visible = (_currentViewIndex == 2);
-            if (_panelControlsGuide != null) _panelControlsGuide.Visible = (_currentViewIndex == 3);
-            if (_panelExitConfirm != null) _panelExitConfirm.Visible = (_currentViewIndex == 4);
+            _tabs?.SelectTab(viewIndex);
 
             if (_currentViewIndex == 1) UpdateSaveSlotsUI();
             if (_currentViewIndex == 2) UpdateLoadSlotsUI();
@@ -218,17 +215,26 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void BuildUIHierarchy()
         {
-            // Chrome (backdrop, panel, header, close button, Escape, modal registration)
-            // is Scenes/UI/ModalScaffold.tscn; this view only fills the body.
-            var scaffoldScene = GD.Load<PackedScene>("res://Scenes/UI/ModalScaffold.tscn");
-            if (scaffoldScene == null)
+            // Chrome, tab strip and tab body come from TabbedModal.tscn, which composes
+            // ModalScaffold.tscn; this view only fills the header row and its sub-views.
+            var tabbedScene = GD.Load<PackedScene>("res://Scenes/UI/TabbedModal.tscn");
+            if (tabbedScene == null)
             {
-                GD.PushError("[TaiwuSystemMenuView] Missing modal scaffold scene at res://Scenes/UI/ModalScaffold.tscn.");
+                GD.PushError("[TaiwuSystemMenuView] Missing tabbed modal scene at res://Scenes/UI/TabbedModal.tscn.");
                 return;
             }
 
-            _scaffold = scaffoldScene.Instantiate<ModalScaffold>();
-            AddChild(_scaffold);
+            var tabs = tabbedScene.Instantiate<TabbedModal>();
+            _tabs = tabs;
+            AddChild(tabs);
+
+            _scaffold = tabs.Scaffold;
+            if (_scaffold == null)
+            {
+                GD.PushError("[TaiwuSystemMenuView] TabbedModal.tscn is missing its ModalScaffold child.");
+                return;
+            }
+
             _scaffold.BindModalStack(_modalStack);
             _scaffold.SetTitle(MenuTitle);
 
@@ -261,9 +267,16 @@ namespace Taiwu_Godot.Scripts.UI
                 _scaffold.HeaderAccessory.AddChild(btnResume);
             }
 
-            var rootVBox = _scaffold.ContentRoot;
-            if (rootVBox == null) return;
-            rootVBox.AddThemeConstantOverride("separation", 14);
+            var headerRows = tabs.HeaderRows;
+            if (headerRows == null)
+            {
+                GD.PushError("[TaiwuSystemMenuView] TabbedModal.tscn is missing its HeaderRows node.");
+                return;
+            }
+            if (_scaffold.ContentRoot != null)
+            {
+                _scaffold.ContentRoot.AddThemeConstantOverride("separation", 14);
+            }
 
             _lblStatus = new Label
             {
@@ -271,30 +284,24 @@ namespace Taiwu_Godot.Scripts.UI
                 Modulate = new Color(0.204f, 0.827f, 0.6f, 1f)
             };
             _lblStatus.AddThemeFontSizeOverride("font_size", 11);
-            rootVBox.AddChild(_lblStatus);
+            headerRows.AddChild(_lblStatus);
 
-            // Dynamic Body
-            var bodyContainer = new PanelContainer
-            {
-                SizeFlagsVertical = SizeFlags.ExpandFill,
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            rootVBox.AddChild(bodyContainer);
-
-            BuildMainMenuTab(bodyContainer);
-            BuildSaveArchivesTab(bodyContainer);
-            BuildLoadArchivesTab(bodyContainer);
-            BuildControlsGuideTab(bodyContainer);
-            BuildExitConfirmTab(bodyContainer);
+            // Sub-views are pages of the tabbed body. The menu navigates with its own buttons,
+            // so no strip buttons are registered and the strip stays collapsed.
+            tabs.AddTab("Main", BuildMainMenuTab(), showButton: false);
+            tabs.AddTab("Save", BuildSaveArchivesTab(), showButton: false);
+            tabs.AddTab("Load", BuildLoadArchivesTab(), showButton: false);
+            tabs.AddTab("Guide", BuildControlsGuideTab(), showButton: false);
+            tabs.AddTab("Exit", BuildExitConfirmTab(), showButton: false);
 
             SwitchToView(0);
         }
 
-        private void BuildMainMenuTab(PanelContainer container)
+        private Control BuildMainMenuTab()
         {
-            _panelMainMenu = new VBoxContainer { Name = "PanelMainMenu", Alignment = BoxContainer.AlignmentMode.Center };
-            _panelMainMenu.AddThemeConstantOverride("separation", 12);
-            container.AddChild(_panelMainMenu);
+            var page = new VBoxContainer { Name = "PanelMainMenu", Alignment = BoxContainer.AlignmentMode.Center };
+            _panelMainMenu = page;
+            page.AddThemeConstantOverride("separation", 12);
 
             var btnCont = new Button { Text = "Resume Journey (继续征途)", CustomMinimumSize = new Vector2(260f, 38f), SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
             btnCont.Pressed += CloseMenu;
@@ -315,13 +322,15 @@ namespace Taiwu_Godot.Scripts.UI
             var btnExit = new Button { Text = "Return to Title (离世归寂)", CustomMinimumSize = new Vector2(260f, 38f), SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
             btnExit.Pressed += () => SwitchToView(4);
             _panelMainMenu.AddChild(btnExit);
+
+            return page;
         }
 
-        private void BuildSaveArchivesTab(PanelContainer container)
+        private Control BuildSaveArchivesTab()
         {
-            _panelSaveArchives = new VBoxContainer { Name = "PanelSaveArchives" };
-            _panelSaveArchives.AddThemeConstantOverride("separation", 10);
-            container.AddChild(_panelSaveArchives);
+            var page = new VBoxContainer { Name = "PanelSaveArchives" };
+            _panelSaveArchives = page;
+            page.AddThemeConstantOverride("separation", 10);
 
             var topRow = new HBoxContainer();
             _panelSaveArchives.AddChild(topRow);
@@ -337,6 +346,8 @@ namespace Taiwu_Godot.Scripts.UI
             _saveSlotsContainer = new VBoxContainer();
             _saveSlotsContainer.AddThemeConstantOverride("separation", 8);
             _panelSaveArchives.AddChild(_saveSlotsContainer);
+
+            return page;
         }
 
         private void UpdateSaveSlotsUI()
@@ -352,11 +363,11 @@ namespace Taiwu_Godot.Scripts.UI
             }
         }
 
-        private void BuildLoadArchivesTab(PanelContainer container)
+        private Control BuildLoadArchivesTab()
         {
-            _panelLoadArchives = new VBoxContainer { Name = "PanelLoadArchives" };
-            _panelLoadArchives.AddThemeConstantOverride("separation", 10);
-            container.AddChild(_panelLoadArchives);
+            var page = new VBoxContainer { Name = "PanelLoadArchives" };
+            _panelLoadArchives = page;
+            page.AddThemeConstantOverride("separation", 10);
 
             var topRow = new HBoxContainer();
             _panelLoadArchives.AddChild(topRow);
@@ -372,6 +383,8 @@ namespace Taiwu_Godot.Scripts.UI
             _loadSlotsContainer = new VBoxContainer();
             _loadSlotsContainer.AddThemeConstantOverride("separation", 8);
             _panelLoadArchives.AddChild(_loadSlotsContainer);
+
+            return page;
         }
 
         private void UpdateLoadSlotsUI()
@@ -449,11 +462,11 @@ namespace Taiwu_Godot.Scripts.UI
             return card;
         }
 
-        private void BuildControlsGuideTab(PanelContainer container)
+        private Control BuildControlsGuideTab()
         {
-            _panelControlsGuide = new VBoxContainer { Name = "PanelControlsGuide" };
-            _panelControlsGuide.AddThemeConstantOverride("separation", 10);
-            container.AddChild(_panelControlsGuide);
+            var page = new VBoxContainer { Name = "PanelControlsGuide" };
+            _panelControlsGuide = page;
+            page.AddThemeConstantOverride("separation", 10);
 
             var topRow = new HBoxContainer();
             _panelControlsGuide.AddChild(topRow);
@@ -484,13 +497,15 @@ namespace Taiwu_Godot.Scripts.UI
             };
             lblGuide.AddThemeFontSizeOverride("font_size", 11);
             _panelControlsGuide.AddChild(lblGuide);
+
+            return page;
         }
 
-        private void BuildExitConfirmTab(PanelContainer container)
+        private Control BuildExitConfirmTab()
         {
-            _panelExitConfirm = new VBoxContainer { Name = "PanelExitConfirm", Alignment = BoxContainer.AlignmentMode.Center };
-            _panelExitConfirm.AddThemeConstantOverride("separation", 16);
-            container.AddChild(_panelExitConfirm);
+            var page = new VBoxContainer { Name = "PanelExitConfirm", Alignment = BoxContainer.AlignmentMode.Center };
+            _panelExitConfirm = page;
+            page.AddThemeConstantOverride("separation", 16);
 
             var lblWarning = new Label
             {
@@ -524,6 +539,8 @@ namespace Taiwu_Godot.Scripts.UI
             };
             btnCancel.Pressed += () => SwitchToView(0);
             btnsRow.AddChild(btnCancel);
+
+            return page;
         }
     }
 }
