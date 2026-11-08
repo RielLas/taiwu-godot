@@ -323,10 +323,10 @@ iteration. Views also hardcode domain values (`_minStonesRequired = 11`, `_phase
    Branch as Scene", then delete the construction code. Do it one view at a time, starting with
    Ledger (biggest), then Cauldron, then HUD. Do not attempt all 11 in one pass.
    Landed: `TilePOIModalView` composes `ModalScaffold.tscn` and instantiates `CultivatorCard.tscn`
-   per resident cultivator; `TaiwuLedgerView` composes the same scaffold and keeps only its
-   subtitle, tab bar and tab bodies. Both views' remaining body rows stay in code until they get
-   their own `.tscn`. The scaffold replaces the per-view Escape priority checks with one
-   stack-top rule.
+   per resident cultivator; `TaiwuLedgerView` and `RefinementCauldronView` compose the same
+   scaffold and keep only their bodies (subtitle, tabs or phase panels, footer). They keep their
+   remaining widget rows in code until each gets its own `.tscn`. The scaffold replaces the
+   per-view Escape priority checks with one stack-top rule.
 6. While rewriting each view, migrate that view's subscriptions to the instance bus (Phase 6) — do
    not migrate the same file twice.
 

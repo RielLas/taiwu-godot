@@ -18,11 +18,17 @@ namespace Taiwu_Godot.Scripts.UI
     /// </summary>
     public partial class RefinementCauldronView : Control, IModalView
     {
+        private const string CauldronTitle = "◆ MORTAL GU REFINEMENT CAULDRON (合炼鼎炉) ◆";
+
         private bool _isOpen = false;
         private TaiwuModalStack? _modalStack;
         public bool IsOpen => _isOpen;
 
-        public void InitializeModalStack(TaiwuModalStack modalStack) => _modalStack = modalStack;
+        public void InitializeModalStack(TaiwuModalStack modalStack)
+        {
+            _modalStack = modalStack;
+            _scaffold?.BindModalStack(modalStack);
+        }
 
         public void Dismiss() => GameEventManager.RaiseRequestCloseCauldron();
 
@@ -61,10 +67,8 @@ namespace Taiwu_Godot.Scripts.UI
         private float _playerEssenceSea = 44f;
         private string _statusMessage = string.Empty;
 
-        // UI Element References
-        private ColorRect? _backdrop;
-        private PanelContainer? _mainModalPanel;
-        private Label? _lblHeaderTitle;
+        // UI Element References (the chrome itself lives in Scenes/UI/ModalScaffold.tscn)
+        private ModalScaffold? _scaffold;
         private Label? _lblRecipeSubtitle;
         private Label? _lblIngredientsSummary;
         private Label? _lblResourcesSummary;
@@ -118,7 +122,6 @@ namespace Taiwu_Godot.Scripts.UI
             GameEventManager.OnPrimevalSeaChanged += HandlePrimevalSeaChanged;
             GameEventManager.OnPrimevalStonesChanged += HandlePrimevalStonesChanged;
             GameEventManager.OnGuInventoryUpdated += HandleGuInventoryUpdated;
-            GameEventManager.OnEscapeRequested += HandleEscapeRequested;
         }
 
         public override void _ExitTree()
@@ -132,33 +135,15 @@ namespace Taiwu_Godot.Scripts.UI
             GameEventManager.OnPrimevalSeaChanged -= HandlePrimevalSeaChanged;
             GameEventManager.OnPrimevalStonesChanged -= HandlePrimevalStonesChanged;
             GameEventManager.OnGuInventoryUpdated -= HandleGuInventoryUpdated;
-            GameEventManager.OnEscapeRequested -= HandleEscapeRequested;
 
             if (_isOpen)
             {
                 _isOpen = false;
-                GameEventManager.TriggerUIModalActive(false);
+                _scaffold?.Close();
             }
         }
 
         public void OpenWithState(CauldronRefinementState state) => HandleCauldronOpened(state);
-
-        private void HandleEscapeRequested()
-        {
-            if (GameEventManager.EscapeHandled) return;
-
-            // Strict LIFO: If Ledger is open, Ledger has priority over Cauldron!
-            if (_modalStack?.IsModalOpen<TaiwuLedgerView>() == true)
-            {
-                return;
-            }
-
-            if (_isOpen)
-            {
-                GameEventManager.RaiseRequestCloseCauldron();
-                GameEventManager.EscapeHandled = true;
-            }
-        }
 
         public override void _UnhandledInput(InputEvent @event)
         {
@@ -228,8 +213,7 @@ namespace Taiwu_Godot.Scripts.UI
             Visible = true;
             if (!wasOpen)
             {
-                GameEventManager.TriggerUIModalActive(true);
-                GameEventManager.RaiseModalOpened(this);
+                _scaffold?.Open(this, CauldronTitle);
             }
             UpdateFromCauldronState(state);
             _statusMessage = string.Empty;
@@ -243,8 +227,7 @@ namespace Taiwu_Godot.Scripts.UI
             Visible = false;
             if (wasOpen)
             {
-                GameEventManager.RaiseModalClosed(this);
-                GameEventManager.TriggerUIModalActive(false);
+                _scaffold?.Close();
             }
         }
 
@@ -253,7 +236,11 @@ namespace Taiwu_Godot.Scripts.UI
             if (_isOpen == isOpen) return;
             _isOpen = isOpen;
             Visible = isOpen;
-            GameEventManager.TriggerUIModalActive(isOpen);
+
+            // Keep the stack in step even if a toggle arrives without the matching
+            // Opened/Closed event, so IsModalOpen<RefinementCauldronView>() stays honest.
+            if (isOpen) _scaffold?.Open(this, CauldronTitle);
+            else _scaffold?.Close();
         }
 
         private void HandleCauldronStateUpdated(CauldronRefinementState state)
@@ -359,80 +346,42 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void BuildUIHierarchy()
         {
-            // Fullscreen backdrop overlay
-            _backdrop = new ColorRect
+            // Chrome (backdrop, panel, header, close button, Escape, modal registration)
+            // is Scenes/UI/ModalScaffold.tscn; this view only fills the body.
+            var scaffoldScene = GD.Load<PackedScene>("res://Scenes/UI/ModalScaffold.tscn");
+            if (scaffoldScene == null)
             {
-                Name = "CauldronBackdrop",
-                Color = new Color(0f, 0f, 0f, 0.75f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            _backdrop.SetAnchorsPreset(LayoutPreset.FullRect);
-            AddChild(_backdrop);
+                GD.PushError("[RefinementCauldronView] Missing modal scaffold scene at res://Scenes/UI/ModalScaffold.tscn.");
+                return;
+            }
 
-            // Center Modal Panel
-            var centerContainer = new CenterContainer
+            _scaffold = scaffoldScene.Instantiate<ModalScaffold>();
+            AddChild(_scaffold);
+            _scaffold.BindModalStack(_modalStack);
+            _scaffold.SetTitle(CauldronTitle);
+
+            // 640x520 crucible window, keeping the original azure title and Return [Esc] button
+            if (_scaffold.Panel != null)
             {
-                Name = "CenterContainer",
-                MouseFilter = MouseFilterEnum.Ignore
-            };
-            centerContainer.SetAnchorsPreset(LayoutPreset.FullRect);
-            AddChild(centerContainer);
-
-            var modalStyle = new StyleBoxFlat
+                _scaffold.Panel.CustomMinimumSize = new Vector2(640f, 520f);
+            }
+            if (_scaffold.Backdrop != null)
             {
-                BgColor = new Color(0.035f, 0.055f, 0.055f, 0.98f), // Midnight Dark Lacquer #090E0E
-                BorderColor = new Color(0.851f, 0.467f, 0.024f, 0.85f), // Rich Amber Gold #D97706
-                BorderWidthBottom = 2,
-                BorderWidthTop = 2,
-                BorderWidthLeft = 2,
-                BorderWidthRight = 2,
-                CornerRadiusBottomLeft = 4,
-                CornerRadiusBottomRight = 4,
-                CornerRadiusTopLeft = 4,
-                CornerRadiusTopRight = 4
-            };
-
-            _mainModalPanel = new PanelContainer
+                _scaffold.Backdrop.Color = new Color(0f, 0f, 0f, 0.75f);
+            }
+            if (_scaffold.TitleLabel != null)
             {
-                Name = "MainModalPanel",
-                CustomMinimumSize = new Vector2(640f, 520f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            _mainModalPanel.AddThemeStyleboxOverride("panel", modalStyle);
-            centerContainer.AddChild(_mainModalPanel);
+                _scaffold.TitleLabel.AddThemeColorOverride("font_color", new Color(0.22f, 0.74f, 0.97f, 1f)); // Azure #38BDF8
+            }
+            if (_scaffold.CloseButton != null)
+            {
+                _scaffold.CloseButton.Text = "← Return [Esc]";
+                _scaffold.CloseButton.CustomMinimumSize = new Vector2(110f, 28f);
+            }
 
-            var margin = new MarginContainer();
-            margin.AddThemeConstantOverride("margin_left", 20);
-            margin.AddThemeConstantOverride("margin_right", 20);
-            margin.AddThemeConstantOverride("margin_top", 16);
-            margin.AddThemeConstantOverride("margin_bottom", 16);
-            _mainModalPanel.AddChild(margin);
-
-            var rootVBox = new VBoxContainer();
+            var rootVBox = _scaffold.ContentRoot;
+            if (rootVBox == null) return;
             rootVBox.AddThemeConstantOverride("separation", 10);
-            margin.AddChild(rootVBox);
-
-            // --- HEADER ---
-            var headerHBox = new HBoxContainer();
-            rootVBox.AddChild(headerHBox);
-
-            _lblHeaderTitle = new Label
-            {
-                Text = "◆ MORTAL GU REFINEMENT CAULDRON (合炼鼎炉) ◆",
-                Modulate = new Color(0.22f, 0.74f, 0.97f, 1f), // Azure #38BDF8
-                SizeFlagsHorizontal = SizeFlags.ExpandFill
-            };
-            _lblHeaderTitle.AddThemeFontSizeOverride("font_size", 15);
-            headerHBox.AddChild(_lblHeaderTitle);
-
-            var btnClose = new Button
-            {
-                Text = "← Return [Esc]",
-                CustomMinimumSize = new Vector2(110f, 28f),
-                MouseFilter = MouseFilterEnum.Stop
-            };
-            btnClose.Pressed += () => GameEventManager.RaiseRequestCloseCauldron();
-            headerHBox.AddChild(btnClose);
 
             _lblRecipeSubtitle = new Label
             {
