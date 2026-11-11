@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Godot;
 using TaiwuGu.Audio;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using Mathf = Godot.Mathf;
 
 namespace Taiwu_Godot.Scripts.Audio
@@ -168,44 +169,24 @@ namespace Taiwu_Godot.Scripts.Audio
 
         private void RegisterEvents()
         {
-            GameEventManager.OnPlayerMoved += HandlePlayerMoved;
-            GameEventManager.OnLedgerToggled += HandleLedgerToggled;
-            GameEventManager.OnPOIModalToggled += HandlePOIModalToggled;
-            GameEventManager.OnCauldronModalToggled += HandleCauldronModalToggled;
-            GameEventManager.OnTransitModalToggled += HandleTransitModalToggled;
-            GameEventManager.OnCauldronPulseHeatRequested += HandleCauldronPulseHeat;
-            GameEventManager.OnCauldronCrushStoneRequested += HandleStoneShatter;
-            GameEventManager.OnBreakthroughCrushStoneRequested += HandleStoneShatter;
-            GameEventManager.OnConsumeStoneRequested += HandleStoneShatter;
-            GameEventManager.OnCauldronSuppressWillRequested += HandleCauldronSuppressWill;
-            GameEventManager.OnCombatAttackRequested += HandleCombatAttack;
-            GameEventManager.OnCombatSecondaryAttackRequested += HandleCombatSecondaryAttack;
-            GameEventManager.OnCombatDashRequested += HandleCombatDash;
-            GameEventManager.OnCombatTriggerGuSlotRequested += HandleCombatGuSlot;
-            GameEventManager.OnCombatTriggerKillerMoveRequested += HandleCombatKillerMove;
-            GameEventManager.OnBattleStageStateChanged += HandleBattleStageChanged;
-            GameEventManager.OnPlaySoundRequested += PlaySoundByType;
+            WorldSignals.OnTopicsChanged += HandleTopicsChanged;
+            WorldSignals.OnLedgerToggled += HandleModalRustle;
+            WorldSignals.OnPOIModalToggled += HandleModalRustle;
+            WorldSignals.OnCauldronModalToggled += HandleModalRustle;
+            WorldSignals.OnTransitModalToggled += HandleModalRustle;
+            WorldSignals.OnBattleStageChanged += HandleBattleStageChanged;
+            WorldSignals.OnSoundRequested += PlaySoundByType;
         }
 
         private void UnregisterEvents()
         {
-            GameEventManager.OnPlayerMoved -= HandlePlayerMoved;
-            GameEventManager.OnLedgerToggled -= HandleLedgerToggled;
-            GameEventManager.OnPOIModalToggled -= HandlePOIModalToggled;
-            GameEventManager.OnCauldronModalToggled -= HandleCauldronModalToggled;
-            GameEventManager.OnTransitModalToggled -= HandleTransitModalToggled;
-            GameEventManager.OnCauldronPulseHeatRequested -= HandleCauldronPulseHeat;
-            GameEventManager.OnCauldronCrushStoneRequested -= HandleStoneShatter;
-            GameEventManager.OnBreakthroughCrushStoneRequested -= HandleStoneShatter;
-            GameEventManager.OnConsumeStoneRequested -= HandleStoneShatter;
-            GameEventManager.OnCauldronSuppressWillRequested -= HandleCauldronSuppressWill;
-            GameEventManager.OnCombatAttackRequested -= HandleCombatAttack;
-            GameEventManager.OnCombatSecondaryAttackRequested -= HandleCombatSecondaryAttack;
-            GameEventManager.OnCombatDashRequested -= HandleCombatDash;
-            GameEventManager.OnCombatTriggerGuSlotRequested -= HandleCombatGuSlot;
-            GameEventManager.OnCombatTriggerKillerMoveRequested -= HandleCombatKillerMove;
-            GameEventManager.OnBattleStageStateChanged -= HandleBattleStageChanged;
-            GameEventManager.OnPlaySoundRequested -= PlaySoundByType;
+            WorldSignals.OnTopicsChanged -= HandleTopicsChanged;
+            WorldSignals.OnLedgerToggled -= HandleModalRustle;
+            WorldSignals.OnPOIModalToggled -= HandleModalRustle;
+            WorldSignals.OnCauldronModalToggled -= HandleModalRustle;
+            WorldSignals.OnTransitModalToggled -= HandleModalRustle;
+            WorldSignals.OnBattleStageChanged -= HandleBattleStageChanged;
+            WorldSignals.OnSoundRequested -= PlaySoundByType;
         }
 
         /// <summary>
@@ -260,15 +241,15 @@ namespace Taiwu_Godot.Scripts.Audio
 
         // --- Event Handlers ---
 
-        private void HandlePlayerMoved(GridCoord newPos)
+        private void HandleTopicsChanged(DirtyTopic topics)
         {
-            if (CanPlay("footstep", COOLDOWN_FOOTSTEP))
+            if ((topics & DirtyTopic.PlayerPos) != 0 && CanPlay("footstep", COOLDOWN_FOOTSTEP))
             {
                 PlaySFX(_clipFootstep, 0.70f, 0.92f, 1.08f);
             }
         }
 
-        private void HandleLedgerToggled(bool isOpen)
+        private void HandleModalRustle(bool isOpen)
         {
             if (isOpen && CanPlay("rustle", COOLDOWN_RUSTLE))
             {
@@ -276,81 +257,7 @@ namespace Taiwu_Godot.Scripts.Audio
             }
         }
 
-        private void HandlePOIModalToggled(bool isOpen)
-        {
-            if (isOpen && CanPlay("rustle", COOLDOWN_RUSTLE))
-            {
-                PlaySFX(_clipParchment, 0.80f, 0.95f, 1.05f);
-            }
-        }
-
-        private void HandleCauldronModalToggled(bool isOpen)
-        {
-            if (isOpen && CanPlay("rustle", COOLDOWN_RUSTLE))
-            {
-                PlaySFX(_clipParchment, 0.80f, 0.95f, 1.05f);
-            }
-        }
-
-        private void HandleTransitModalToggled(bool isOpen, bool isRegional)
-        {
-            if (isOpen && CanPlay("rustle", COOLDOWN_RUSTLE))
-            {
-                PlaySFX(_clipParchment, 0.80f, 0.95f, 1.05f);
-            }
-        }
-
-        private void HandleCauldronPulseHeat()
-        {
-            PlaySFX(_clipCauldronFire, 0.90f, 0.93f, 1.07f);
-        }
-
-        private void HandleStoneShatter()
-        {
-            PlaySFX(_clipStoneShatter, 0.95f, 0.94f, 1.06f);
-        }
-
-        private void HandleCauldronSuppressWill()
-        {
-            PlaySFX(_clipCauldronSteam, 0.75f, 0.96f, 1.04f);
-        }
-
-        private void HandleCombatAttack(WorldVec2 target)
-        {
-            if (CanPlay("slash", COOLDOWN_SLASH))
-            {
-                PlaySFX(_clipBladeSlash, 0.85f, 0.92f, 1.08f);
-            }
-        }
-
-        private void HandleCombatSecondaryAttack(WorldVec2 target)
-        {
-            if (CanPlay("impact", COOLDOWN_IMPACT))
-            {
-                PlaySFX(_clipBluntImpact, 0.90f, 0.90f, 1.05f);
-            }
-        }
-
-        private void HandleCombatDash(WorldVec2 dir)
-        {
-            PlaySFX(_clipDashWhoosh, 0.90f, 0.95f, 1.05f);
-        }
-
-        private void HandleCombatGuSlot(int slotIndex)
-        {
-            PlaySFX(_clipWoodenKnock, 0.85f, 0.94f, 1.06f);
-        }
-
-        private void HandleCombatKillerMove(int moveIndex)
-        {
-            PlaySFX(_clipBluntImpact, 1.0f, 0.85f, 0.95f);
-            PlaySFX(_clipBladeSlash, 0.90f, 1.05f, 1.15f);
-        }
-
-        private void HandleBattleStageChanged(bool inBattle)
-        {
-            _isInCombat = inBattle;
-        }
+        private void HandleBattleStageChanged(bool inBattle) => _isInCombat = inBattle;
 
         public void PlaySoundByType(HalalSoundType soundType)
         {

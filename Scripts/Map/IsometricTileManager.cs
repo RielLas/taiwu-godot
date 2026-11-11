@@ -1,29 +1,27 @@
 using System;
 using Godot;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using TaiwuGu.Map;
 
 namespace Taiwu_Godot.Scripts.Map
 {
     /// <summary>
-    /// Projects <see cref="WorldMapState"/> into the isometric mesh.
-    ///
-    /// This class never authors tiles. Terrain, POIs, obstacles and visibility all belong to the
-    /// domain (SectorGenerator / ExplorationService), so what the player sees and what the simulation
-    /// and save file contain cannot drift apart.
+    /// Projects SectorGridComponent directly from WorldStore into the isometric mesh.
+    /// Zero state duplication: terrain, POIs, obstacles, and visibility live strictly inside SectorGridComponent.
     /// </summary>
     public partial class IsometricTileManager : IsometricTileRenderer
     {
         public const float TILE_THICKNESS = 0.25f;
 
-        private TaiwuGridRenderer? gridRenderer;
+        private TaiwuGridRenderer? _gridRenderer;
+        private IWorldStateProvider? _worldProvider;
 
-        private static WorldMapState? MapState => MapContextProvider.WorldMapResolver?.Invoke();
+        private SectorGridComponent? CurrentSector => _worldProvider?.Current.GetCurrentSector();
 
         public override void _Ready()
         {
-            GameEventManager.OnGameLoaded += HandleGameLoaded;
-
+            WorldSignals.OnTopicsChanged += HandleTileTopicsChanged;
             SyncDimensionsFromState();
             base._Ready();
             EnsureGridRenderer();
@@ -31,44 +29,47 @@ namespace Taiwu_Godot.Scripts.Map
 
         public override void _ExitTree()
         {
-            GameEventManager.OnGameLoaded -= HandleGameLoaded;
+            WorldSignals.OnTopicsChanged -= HandleTileTopicsChanged;
             base._ExitTree();
+        }
+
+        public void Initialize(IWorldStateProvider provider)
+        {
+            _worldProvider = provider;
+            SyncFromWorld();
         }
 
         public override void RebuildTileMesh()
         {
             base.RebuildTileMesh();
-            gridRenderer?.GenerateGridLines();
+            _gridRenderer?.GenerateGridLines();
         }
 
         private void EnsureGridRenderer()
         {
-            if (gridRenderer == null)
+            if (_gridRenderer == null)
             {
-                gridRenderer = new TaiwuGridRenderer { Name = "TaiwuGridRenderer" };
-                AddChild(gridRenderer);
+                _gridRenderer = new TaiwuGridRenderer { Name = "TaiwuGridRenderer" };
+                AddChild(_gridRenderer);
             }
-            gridRenderer.GenerateGridLines();
+            _gridRenderer.GenerateGridLines();
         }
 
-        private void HandleGameLoaded(string slotID, bool success)
+        private void HandleTileTopicsChanged(DirtyTopic topics)
         {
-            if (!success) return;
-
-            WorldMapState? map = MapState;
-            if (map != null)
+            if ((topics & DirtyTopic.Map) != 0)
             {
-                SyncFromStateContext(map);
+                SyncFromWorld();
             }
         }
 
-        /// <summary>Re-reads grid dimensions and re-projects the mesh after state changes (load, transit).</summary>
-        public void SyncFromStateContext(WorldMapState mapState)
+        public void SyncFromWorld()
         {
-            if (mapState == null) return;
+            SectorGridComponent? sector = CurrentSector;
+            if (sector == null) return;
 
-            GridWidth = mapState.GridWidth > 0 ? mapState.GridWidth : GridWidth;
-            GridHeight = mapState.GridHeight > 0 ? mapState.GridHeight : GridHeight;
+            GridWidth = sector.GridWidth > 0 ? sector.GridWidth : GridWidth;
+            GridHeight = sector.GridHeight > 0 ? sector.GridHeight : GridHeight;
 
             if (GenerateMeshVisuals)
             {
@@ -79,37 +80,35 @@ namespace Taiwu_Godot.Scripts.Map
 
         private void SyncDimensionsFromState()
         {
-            WorldMapState? map = MapState;
-            if (map == null) return;
+            SectorGridComponent? sector = CurrentSector;
+            if (sector == null) return;
 
-            GridWidth = map.GridWidth > 0 ? map.GridWidth : GridWidth;
-            GridHeight = map.GridHeight > 0 ? map.GridHeight : GridHeight;
+            GridWidth = sector.GridWidth > 0 ? sector.GridWidth : GridWidth;
+            GridHeight = sector.GridHeight > 0 ? sector.GridHeight : GridHeight;
         }
 
         protected override (BiomeType biome, TilePOIType poi, bool visible, bool explored, bool active) GetTileDisplayInfo(int x, int y)
         {
-            WorldMapState? map = MapState;
-            if (map?.Tiles == null)
+            SectorGridComponent? sector = CurrentSector;
+            if (sector == null)
             {
-                // No state means no world. Never invent tiles: that was the source of the old desync.
                 return (BiomeType.BambooMountain, TilePOIType.None, false, false, false);
             }
 
-            TileNode tile = map.GetTile(x, y);
+            TileNode tile = sector.GetTile(x, y);
             return (tile.Biome, tile.POI, tile.IsVisible, tile.IsExplored, tile.IsActive);
         }
 
         public bool IsTileWalkable(Vector2I pos)
         {
-            WorldMapState? map = MapState;
-            return map != null && map.IsWalkable(pos.ToGridCoord());
+            SectorGridComponent? sector = CurrentSector;
+            return sector != null && sector.IsWalkable(pos.ToGridCoord());
         }
 
         public TileNode GetTile(int x, int y)
         {
-            WorldMapState? map = MapState;
-            if (map == null) return default;
-            return map.GetTile(x, y);
+            SectorGridComponent? sector = CurrentSector;
+            return sector != null ? sector.GetTile(x, y) : default;
         }
     }
 }

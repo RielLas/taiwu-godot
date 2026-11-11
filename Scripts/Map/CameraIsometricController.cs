@@ -1,14 +1,10 @@
 using System;
 using Godot;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 
 namespace Taiwu_Godot.Scripts.Map
 {
-    /// <summary>
-    /// Phase 2: Isometric Camera Controller (Godot 2D).
-    /// Locks cleanly to the PlayerCultivatorController with position smoothing and smooth zoom.
-    /// Strictly obeys Constitutional Law 1 (Observer Mandate) and eliminates fragile edge-panning hacks.
-    /// </summary>
     public partial class CameraIsometricController : Camera2D
     {
         [Export] public Node2D? Target { get; set; }
@@ -31,13 +27,13 @@ namespace Taiwu_Godot.Scripts.Map
             _targetZoom = DefaultZoom;
             Zoom = new Vector2(_targetZoom, _targetZoom);
 
-            GameEventManager.OnPauseToggled += HandlePauseToggled;
-            GameEventManager.OnUIModalActive += HandleUIModalActive;
-            GameEventManager.OnBattleStageStateChanged += HandleBattleStageStateChanged;
-            GameEventManager.OnPanRequested += HandlePan;
-            GameEventManager.OnZoomRequested += HandleZoom;
-            GameEventManager.OnRecenterCameraRequested += LockOnTarget;
-            GameEventManager.OnPlayerMoved += HandlePlayerMoved;
+            WorldSignals.OnPauseToggled += HandlePauseToggled;
+            WorldSignals.OnUIModalActive += HandleUIModalActive;
+            WorldSignals.OnBattleStageChanged += HandleBattleStageStateChanged;
+            WorldSignals.OnPanRequested += HandlePan;
+            WorldSignals.OnZoomRequested += HandleZoom;
+            WorldSignals.OnRecenterCameraRequested += LockOnTarget;
+            WorldSignals.OnTopicsChanged += HandleTopicsChanged;
 
             if (Target != null)
             {
@@ -47,13 +43,13 @@ namespace Taiwu_Godot.Scripts.Map
 
         public override void _ExitTree()
         {
-            GameEventManager.OnPauseToggled -= HandlePauseToggled;
-            GameEventManager.OnUIModalActive -= HandleUIModalActive;
-            GameEventManager.OnBattleStageStateChanged -= HandleBattleStageStateChanged;
-            GameEventManager.OnPanRequested -= HandlePan;
-            GameEventManager.OnZoomRequested -= HandleZoom;
-            GameEventManager.OnRecenterCameraRequested -= LockOnTarget;
-            GameEventManager.OnPlayerMoved -= HandlePlayerMoved;
+            WorldSignals.OnPauseToggled -= HandlePauseToggled;
+            WorldSignals.OnUIModalActive -= HandleUIModalActive;
+            WorldSignals.OnBattleStageChanged -= HandleBattleStageStateChanged;
+            WorldSignals.OnPanRequested -= HandlePan;
+            WorldSignals.OnZoomRequested -= HandleZoom;
+            WorldSignals.OnRecenterCameraRequested -= LockOnTarget;
+            WorldSignals.OnTopicsChanged -= HandleTopicsChanged;
         }
 
         public void Initialize(Node2D targetNode)
@@ -66,22 +62,16 @@ namespace Taiwu_Godot.Scripts.Map
             }
         }
 
-        public void LockOnTarget()
-        {
-            IsLockedToTarget = true;
-        }
-
-        public void UnlockTarget()
-        {
-            IsLockedToTarget = false;
-        }
+        public void LockOnTarget() => IsLockedToTarget = true;
+        public void UnlockTarget() => IsLockedToTarget = false;
 
         private void HandlePauseToggled(bool isPaused) => _isPauseLocked = isPaused;
         private void HandleUIModalActive(bool isActive) => _isUIModalLocked = isActive;
         private void HandleBattleStageStateChanged(bool inBattle) => _isBattleLocked = inBattle;
 
-        private void HandlePlayerMoved(GridCoord newGridPos)
+        private void HandleTopicsChanged(DirtyTopic topics)
         {
+            if ((topics & DirtyTopic.PlayerPos) == 0) return;
             if (_isPauseLocked || _isUIModalLocked || _isBattleLocked) return;
             LockOnTarget();
         }

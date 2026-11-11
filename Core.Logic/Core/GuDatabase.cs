@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using TaiwuGu.Entities;
 
 namespace TaiwuGu.Core
 {
@@ -143,7 +144,7 @@ namespace TaiwuGu.Core
             return false;
         }
 
-        public static GuWormData? CreateGuWormData(string guId, bool isWild = false)
+        public static GuWormComponent? CreateGuWormComponent(string guId, bool isWild = false)
         {
             if (!TryGet(guId, out var def) || def == null) return null;
 
@@ -152,7 +153,7 @@ namespace TaiwuGu.Core
 
             float satiety = isWild ? (float)Random.Shared.Next(40, 91) : 100f;
 
-            return new GuWormData
+            return new GuWormComponent
             {
                 GuID = def.Id,
                 Name = !string.IsNullOrEmpty(def.ChineseName) ? $"{def.CanonicalName} ({def.ChineseName})" : def.CanonicalName,

@@ -1,15 +1,17 @@
 using System;
 using Godot;
 using Color = Godot.Color;
+using TaiwuGu.Combat;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using TaiwuGu.Map;
+using TaiwuGu.Systems;
 
 namespace Taiwu_Godot.Scripts.UI
 {
     /// <summary>
     /// Phase 2: Taiwu Master HUD View (Godot 2D).
-    /// Pure Presentation Layer Observer under Constitutional Laws 1, 4 & 6.
-    /// Dispatches user clicks as Command Intents via GameEventManager.
+    /// Direct-read presentation observer wired to WorldStore via IWorldStateProvider & WorldSignals.
     /// Replicates Unity's clean code-drawn dark-lacquer minimalist aesthetic:
     /// - Top-Left: Solid flat cyan AP bar and flat emerald Sea bar in midnight slots with dim hotkeys.
     /// - Top-Center: Crisp dark-lacquer banner with amber gold title and ivory subtitle.
@@ -18,23 +20,14 @@ namespace Taiwu_Godot.Scripts.UI
     public partial class TaiwuHUDView : Control
     {
         private TaiwuModalStack? _modalStack;
+        private IWorldStateProvider? _stateProvider;
 
-        public void InitializeModalStack(TaiwuModalStack modalStack) => _modalStack = modalStack;
-        // Region, calendar, action points, sea, stones and rank all arrive as events; the HUD
-        // seeds no world state of its own.
-        private string _regionTitle = string.Empty;
-        private int _currentYear;
-        private string _solarTermDisplay = string.Empty;
-        private int _currentAP;
-        private int _maxAP;
-
-        private float _currentEssenceSea;
-        private float _maxEssenceCapacity;
-        private int _primevalStones;
-
-        private int _cultivatorRank;
-        private int _cultivatorSubstage;
-        private string _cultivatorSubstageName = string.Empty;
+        public void Initialize(TaiwuModalStack modalStack, IWorldStateProvider stateProvider)
+        {
+            _modalStack = modalStack;
+            _stateProvider = stateProvider;
+            RefreshFromStore();
+        }
 
         // UI Node references
         private Label? _lblRegionTitle;
@@ -56,26 +49,20 @@ namespace Taiwu_Godot.Scripts.UI
 
             BuildUIHierarchy();
 
-            GameEventManager.OnActionPointsChanged += HandleActionPointsChanged;
-            GameEventManager.OnSolarTermAdvanced += HandleSolarTermAdvanced;
-            GameEventManager.OnPrimevalSeaChanged += HandlePrimevalSeaChanged;
-            GameEventManager.OnPrimevalStonesChanged += HandlePrimevalStonesChanged;
-            GameEventManager.OnCultivatorCultivationChanged += HandleCultivatorCultivationChanged;
-            GameEventManager.OnRegionChanged += HandleRegionChanged;
-            GameEventManager.OnTileInspected += HandleTileInspected;
+            WorldSignals.OnTopicsChanged += HandleTopicsChanged;
+            WorldSignals.OnScenicToastRequested += HandleTileInspected;
+            WorldSignals.OnTerrainHazardTriggered += HandleTerrainHazard;
+            WorldSignals.OnRoadAmbushOccurred += HandleRoadAmbush;
 
-            UpdateAllDisplays();
+            RefreshFromStore();
         }
 
         public override void _ExitTree()
         {
-            GameEventManager.OnActionPointsChanged -= HandleActionPointsChanged;
-            GameEventManager.OnSolarTermAdvanced -= HandleSolarTermAdvanced;
-            GameEventManager.OnPrimevalSeaChanged -= HandlePrimevalSeaChanged;
-            GameEventManager.OnPrimevalStonesChanged -= HandlePrimevalStonesChanged;
-            GameEventManager.OnCultivatorCultivationChanged -= HandleCultivatorCultivationChanged;
-            GameEventManager.OnRegionChanged -= HandleRegionChanged;
-            GameEventManager.OnTileInspected -= HandleTileInspected;
+            WorldSignals.OnTopicsChanged -= HandleTopicsChanged;
+            WorldSignals.OnScenicToastRequested -= HandleTileInspected;
+            WorldSignals.OnTerrainHazardTriggered -= HandleTerrainHazard;
+            WorldSignals.OnRoadAmbushOccurred -= HandleRoadAmbush;
 
             _toastTween?.Kill();
         }
@@ -317,7 +304,7 @@ namespace Taiwu_Godot.Scripts.UI
             _lblRegionTitle = new Label
             {
                 Name = "LblRegionTitle",
-                Text = _regionTitle,
+                Text = string.Empty,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Modulate = new Color(0.984f, 0.749f, 0.141f, 1f), // Imperial Amber Gold #FBBF24
                 MouseFilter = MouseFilterEnum.Ignore
@@ -328,7 +315,7 @@ namespace Taiwu_Godot.Scripts.UI
             _lblDateSubtitle = new Label
             {
                 Name = "LblDateSubtitle",
-                Text = $"Year {_currentYear} | {_solarTermDisplay}",
+                Text = string.Empty,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Modulate = new Color(0.886f, 0.910f, 0.941f, 1f), // Soft Ivory White #E2E8F0
                 MouseFilter = MouseFilterEnum.Ignore
@@ -451,13 +438,15 @@ namespace Taiwu_Godot.Scripts.UI
             btnCauldron.AddThemeFontSizeOverride("font_size", 11);
             btnCauldron.Pressed += () =>
             {
+                var world = _stateProvider?.Current;
+                if (world == null) return;
                 if (_modalStack?.IsModalOpen<RefinementCauldronView>() == true)
                 {
-                    GameEventManager.RaiseRequestCloseCauldron();
+                    RefinementSystem.CloseCauldron(world);
                 }
                 else
                 {
-                    GameEventManager.RaiseRequestOpenCauldron();
+                    RefinementSystem.OpenCauldron(world);
                 }
             };
             buttonsHBox.AddChild(btnCauldron);
@@ -475,7 +464,7 @@ namespace Taiwu_Godot.Scripts.UI
             btnSystem.AddThemeStyleboxOverride("pressed", slateHover);
             btnSystem.AddThemeColorOverride("font_color", new Color(0.886f, 0.910f, 0.941f, 1f)); // Soft white #E2E8F0
             btnSystem.AddThemeFontSizeOverride("font_size", 11);
-            btnSystem.Pressed += () => GameEventManager.TriggerEscape();
+            btnSystem.Pressed += () => WorldSignals.EmitEscape();
             buttonsHBox.AddChild(btnSystem);
 
             // Cultivator Realm & Primeval Stone Badge (Two-tone BBCode matching Unity Image 2)
@@ -556,59 +545,38 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void OnPassMonthPressed()
         {
-            // Strict CQRS-Lite: Dispatch command intent, never mutate state directly!
-            GameEventManager.RaiseRequestAdvanceSolarTerm();
+            var world = _stateProvider?.Current;
+            if (world != null) TimeSystem.RollOverMonth(world);
         }
 
-        private void HandleActionPointsChanged(int currentAP, int maxBudget)
+        private void HandleTopicsChanged(DirtyTopic topics)
         {
-            _currentAP = currentAP;
-            _maxAP = maxBudget;
-            UpdateAPDisplay();
-        }
-
-        private void HandleSolarTermAdvanced(int year, SolarTerm term, string termName)
-        {
-            _currentYear = year;
-            _solarTermDisplay = termName;
-            UpdateSolarTermDisplay();
-        }
-
-        private void HandlePrimevalSeaChanged(float currentSea, float maxCapacity)
-        {
-            _currentEssenceSea = currentSea;
-            _maxEssenceCapacity = maxCapacity;
-            UpdateSeaDisplay();
-        }
-
-        private void HandlePrimevalStonesChanged(int stones)
-        {
-            _primevalStones = stones;
-            UpdateBadgeDisplay();
-        }
-
-        private void HandleCultivatorCultivationChanged(int rank, int substage, string substageName)
-        {
-            _cultivatorRank = rank;
-            _cultivatorSubstage = substage;
-            _cultivatorSubstageName = substageName;
-            UpdateBadgeDisplay();
-        }
-
-        private void HandleRegionChanged(WorldRegionID region, string regionName)
-        {
-            _regionTitle = $"{RegionalWallLaw.GetRegionName(region)}: {regionName}";
-            if (_lblRegionTitle != null)
+            if ((topics & (DirtyTopic.Calendar | DirtyTopic.Cultivator | DirtyTopic.Aperture | DirtyTopic.Map)) != 0)
             {
-                _lblRegionTitle.Text = _regionTitle;
+                RefreshFromStore();
             }
         }
 
         private void HandleTileInspected(string title, string seal, string lore, GridCoord pos)
         {
+            ShowToast($"【{seal}】 {title}\n{lore}");
+        }
+
+        private void HandleTerrainHazard(GridCoord pos, string hazardName, int hpDmg, float seaDmg)
+        {
+            ShowToast($"【危】 Terrain Hazard: {hazardName}\nHP -{hpDmg} | Sea -{seaDmg:F1}%");
+        }
+
+        private void HandleRoadAmbush(ArenaEncounterType encounter, GridCoord pos)
+        {
+            ShowToast($"【伏击】 Mountain Road Ambush ({encounter})\nTransit paused pending combat resolution at {pos}.");
+        }
+
+        private void ShowToast(string text)
+        {
             if (_scenicToastPanel == null || _lblScenicToast == null) return;
 
-            _lblScenicToast.Text = $"【{seal}】 {title}\n{lore}";
+            _lblScenicToast.Text = text;
             _scenicToastPanel.Visible = true;
 
             _toastTween?.Kill();
@@ -622,57 +590,48 @@ namespace Taiwu_Godot.Scripts.UI
             }));
         }
 
-        private void UpdateAllDisplays()
+        private void RefreshFromStore()
         {
-            UpdateAPDisplay();
-            UpdateSeaDisplay();
-            UpdateSolarTermDisplay();
-            UpdateBadgeDisplay();
-        }
+            var world = _stateProvider?.Current;
+            if (world == null) return;
 
-        private void UpdateAPDisplay()
-        {
+            var clock = world.GetSingleton<WorldClockComponent>();
+            var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+            var ap = world.Get<ApertureComponent>(world.PlayerEntity);
+            var sector = world.GetCurrentSector();
+
+            int currentAP = clock?.ActionPointsRemaining ?? 0;
+            int maxAP = clock?.MonthlyAPBudget ?? 30;
             if (_barAP != null)
             {
-                _barAP.MaxValue = Math.Max(1, _maxAP);
-                _barAP.Value = _currentAP;
+                _barAP.MaxValue = Math.Max(1, maxAP);
+                _barAP.Value = currentAP;
             }
-            if (_lblAPText != null)
-            {
-                _lblAPText.Text = $"AP: {_currentAP}/{_maxAP}";
-            }
-            if (_btnPassMonth != null)
-            {
-                _btnPassMonth.Text = $"Pass Month ({_currentAP} AP)";
-            }
-        }
+            if (_lblAPText != null) _lblAPText.Text = $"AP: {currentAP}/{maxAP}";
+            if (_btnPassMonth != null) _btnPassMonth.Text = $"Pass Month ({currentAP} AP)";
 
-        private void UpdateSeaDisplay()
-        {
+            float currentSea = ap?.CurrentEssenceSea ?? 0f;
+            float maxSea = cult?.AptitudePercent ?? 44f;
             if (_barSea != null)
             {
-                _barSea.MaxValue = Math.Max(0.01f, _maxEssenceCapacity);
-                _barSea.Value = _currentEssenceSea;
+                _barSea.MaxValue = Math.Max(0.01f, maxSea);
+                _barSea.Value = currentSea;
             }
-            if (_lblSeaText != null)
-            {
-                _lblSeaText.Text = $"Sea: {_currentEssenceSea:F1}% / {_maxEssenceCapacity:F1}%";
-            }
-        }
+            if (_lblSeaText != null) _lblSeaText.Text = $"Sea: {currentSea:F1}% / {maxSea:F1}%";
 
-        private void UpdateSolarTermDisplay()
-        {
-            if (_lblDateSubtitle != null)
+            if (_lblDateSubtitle != null && clock != null)
             {
-                _lblDateSubtitle.Text = $"Year {_currentYear} | {_solarTermDisplay}";
+                _lblDateSubtitle.Text = $"Year {clock.CurrentYear} | {clock.GetSolarTermName()}";
             }
-        }
 
-        private void UpdateBadgeDisplay()
-        {
-            if (_lblCultivatorBadge != null)
+            if (_lblRegionTitle != null && sector != null)
             {
-                _lblCultivatorBadge.Text = $"[right][color=#34D399]Rank {_cultivatorRank} {_cultivatorSubstageName} | [/color][color=#E2E8F0]🪨 {_primevalStones}[/color][/right]";
+                _lblRegionTitle.Text = $"{RegionalWallLaw.GetRegionName(sector.Region)}: {sector.DisplayName}";
+            }
+
+            if (_lblCultivatorBadge != null && ap != null && cult != null)
+            {
+                _lblCultivatorBadge.Text = $"[right][color=#34D399]Rank {ap.Rank} {ap.GetSubstageName()} | [/color][color=#E2E8F0]🪨 {cult.PrimevalStones}[/color][/right]";
             }
         }
     }

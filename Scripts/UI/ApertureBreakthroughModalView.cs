@@ -1,6 +1,8 @@
 using System;
 using Godot;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
+using TaiwuGu.Systems;
 using Color = Godot.Color;
 using Mathf = Godot.Mathf;
 
@@ -8,18 +10,23 @@ namespace Taiwu_Godot.Scripts.UI
 {
     /// <summary>
     /// Phase 2 / Milestone 2.1: Aperture Major Realm Breakthrough Modal.
-    /// Elevates the breakthrough experience with:
-    /// - Live Daoist Harmonic Resonance Wave Track with sinusoidal pulse & sweet spot.
-    /// - Foreign Turbulence high-frequency jitter destabilization.
-    /// - Authentic bronze-framed gauges with crimson, emerald, and cyan fluid.
-    /// - Membrane fracture feedback and Ascension Banner.
-    /// - 100% Halal compliance and strict CQRS event symmetry.
+    /// Direct-read presentation observer wired to WorldStore & BreakthroughSystem.
     /// </summary>
     public partial class ApertureBreakthroughModalView : CanvasLayer, IModalView
     {
         private bool _isOpen = false;
+        private bool _treeBuilt = false;
+        private IWorldStateProvider? _stateProvider;
         public bool IsOpen => _isOpen;
-        public void Dismiss() => GameEventManager.RaiseRequestCloseBreakthrough();
+
+        public void Initialize(IWorldStateProvider stateProvider) => _stateProvider = stateProvider;
+
+        public void Dismiss()
+        {
+            if (_stateProvider?.Current is { } world)
+                BreakthroughSystem.CloseSession(world);
+        }
+
         private BreakthroughSessionSnapshot _latestSnapshot;
 
         // UI Controls
@@ -61,27 +68,25 @@ namespace Taiwu_Godot.Scripts.UI
             Layer = 15; // Above overworld HUD (5) and Ledger (10)
             Visible = false;
 
-            LoadTextures();
-            BuildViewTree();
+            if (!_treeBuilt)
+            {
+                LoadTextures();
+                BuildViewTree();
+                _treeBuilt = true;
+            }
 
-            // Subscribe to CQRS events
-            GameEventManager.OnBreakthroughSessionOpened += HandleBreakthroughSessionOpened;
-            GameEventManager.OnBreakthroughSessionClosed += HandleBreakthroughSessionClosed;
-            GameEventManager.OnBreakthroughStateUpdated   += HandleBreakthroughStateUpdated;
-            GameEventManager.OnBreakthroughWaveImpact    += HandleBreakthroughWaveImpact;
-            GameEventManager.OnBreakthroughResolved      += HandleBreakthroughResolved;
-            GameEventManager.OnEscapeRequested           += HandleEscapeRequested;
+            WorldSignals.OnTopicsChanged          += HandleTopicsChanged;
+            WorldSignals.OnBreakthroughWaveImpact += HandleBreakthroughWaveImpact;
+            WorldSignals.OnBreakthroughResolved   += HandleBreakthroughResolved;
+            WorldSignals.OnEscapeRequested        += HandleEscapeRequested;
         }
 
         public override void _ExitTree()
         {
-            // Unsubscribe strictly from all events (Constitutional Law 2)
-            GameEventManager.OnBreakthroughSessionOpened -= HandleBreakthroughSessionOpened;
-            GameEventManager.OnBreakthroughSessionClosed -= HandleBreakthroughSessionClosed;
-            GameEventManager.OnBreakthroughStateUpdated   -= HandleBreakthroughStateUpdated;
-            GameEventManager.OnBreakthroughWaveImpact    -= HandleBreakthroughWaveImpact;
-            GameEventManager.OnBreakthroughResolved      -= HandleBreakthroughResolved;
-            GameEventManager.OnEscapeRequested           -= HandleEscapeRequested;
+            WorldSignals.OnTopicsChanged          -= HandleTopicsChanged;
+            WorldSignals.OnBreakthroughWaveImpact -= HandleBreakthroughWaveImpact;
+            WorldSignals.OnBreakthroughResolved   -= HandleBreakthroughResolved;
+            WorldSignals.OnEscapeRequested        -= HandleEscapeRequested;
         }
 
         private void LoadTextures()
@@ -308,14 +313,14 @@ namespace Taiwu_Godot.Scripts.UI
 
             _btnWave = CreateStyledButton("Assault Tidal Wave [Space / Click]", new Color(0.98f, 0.75f, 0.14f, 1f), () =>
             {
-                GameEventManager.RaiseRequestReleaseEssenceWave(1.0f);
+                if (_stateProvider?.Current is { } world) BreakthroughSystem.ReleaseEssenceWave(world, 1.0f);
             });
             _btnWave.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             actionsGrid.AddChild(_btnWave);
 
             _btnCrushStone = CreateStyledButton("Crush Primeval Stone [C]", new Color(0.22f, 0.74f, 0.97f, 1f), () =>
             {
-                GameEventManager.RaiseRequestBreakthroughCrushStone();
+                if (_stateProvider?.Current is { } world) BreakthroughSystem.CrushStone(world);
             });
             _btnCrushStone.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             actionsGrid.AddChild(_btnCrushStone);
@@ -329,15 +334,12 @@ namespace Taiwu_Godot.Scripts.UI
 
             _btnRelicGu = CreateStyledButton("Consume Relic Gu (Instant Transmutation) [R]", new Color(0.20f, 0.83f, 0.60f, 1f), () =>
             {
-                GameEventManager.RaiseRequestBreakthroughUseRelicGu();
+                if (_stateProvider?.Current is { } world) BreakthroughSystem.TryUseRelicGuBypass(world);
             });
             _btnRelicGu.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             secondaryActions.AddChild(_btnRelicGu);
 
-            _btnAbort = CreateStyledButton("Abort Seclusion (Rest & Recover) [Esc]", new Color(0.94f, 0.44f, 0.44f, 1f), () =>
-            {
-                GameEventManager.RaiseRequestCloseBreakthrough();
-            });
+            _btnAbort = CreateStyledButton("Abort Seclusion (Rest & Recover) [Esc]", new Color(0.94f, 0.44f, 0.44f, 1f), Dismiss);
             _btnAbort.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             secondaryActions.AddChild(_btnAbort);
 
@@ -388,10 +390,7 @@ namespace Taiwu_Godot.Scripts.UI
             _lblResolutionDetail.AddThemeColorOverride("font_color", Colors.White);
             resVBox.AddChild(_lblResolutionDetail);
 
-            _btnResolutionExit = CreateStyledButton("Exit Seclusion Chamber [Esc]", new Color(0.98f, 0.75f, 0.14f, 1f), () =>
-            {
-                GameEventManager.RaiseRequestCloseBreakthrough();
-            });
+            _btnResolutionExit = CreateStyledButton("Exit Seclusion Chamber [Esc]", new Color(0.98f, 0.75f, 0.14f, 1f), Dismiss);
             _btnResolutionExit.CustomMinimumSize = new Vector2(240, 38);
             _btnResolutionExit.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
             resVBox.AddChild(_btnResolutionExit);
@@ -464,55 +463,61 @@ namespace Taiwu_Godot.Scripts.UI
             }
 
             // Keyboard Shortcuts
-            if (_latestSnapshot.State == BreakthroughState.PoundingInSession)
+            if (_latestSnapshot.State == BreakthroughState.PoundingInSession && _stateProvider?.Current is { } world)
             {
                 if (Godot.Input.IsActionJustPressed("ui_select") || Godot.Input.IsKeyPressed(Key.Space))
                 {
-                    GameEventManager.RaiseRequestReleaseEssenceWave(1.0f);
+                    BreakthroughSystem.ReleaseEssenceWave(world, 1.0f);
                 }
                 else if (Godot.Input.IsKeyPressed(Key.C))
                 {
-                    GameEventManager.RaiseRequestBreakthroughCrushStone();
+                    BreakthroughSystem.CrushStone(world);
                 }
                 else if (Godot.Input.IsKeyPressed(Key.R))
                 {
-                    GameEventManager.RaiseRequestBreakthroughUseRelicGu();
+                    BreakthroughSystem.TryUseRelicGuBypass(world);
                 }
             }
         }
 
         private void HandleEscapeRequested()
         {
-            if (!_isOpen) return;
+            if (!_isOpen || WorldSignals.EscapeHandled) return;
 
-            // High-priority modal intercept (LIFO)
-            GameEventManager.EscapeHandled = true;
-            GameEventManager.RaiseRequestCloseBreakthrough();
+            WorldSignals.EscapeHandled = true;
+            Dismiss();
         }
 
-        private void HandleBreakthroughSessionOpened(BreakthroughSessionSnapshot snapshot)
+        private void HandleTopicsChanged(DirtyTopic topics)
         {
-            _isOpen = true;
-            Visible = true;
-            _latestSnapshot = snapshot;
-            if (_resolutionPanel != null) _resolutionPanel.Visible = false;
+            if ((topics & (DirtyTopic.Breakthrough | DirtyTopic.Cultivator | DirtyTopic.Aperture)) == 0)
+                return;
 
-            GameEventManager.RaiseModalOpened(this);
-            UpdateUIFromSnapshot(snapshot);
-        }
+            var world = _stateProvider?.Current;
+            if (world == null) return;
 
-        private void HandleBreakthroughSessionClosed()
-        {
-            _isOpen = false;
-            Visible = false;
-            if (_resolutionPanel != null) _resolutionPanel.Visible = false;
-            GameEventManager.RaiseModalClosed(this);
-        }
+            var session = BreakthroughSystem.GetOrCreateSession(world);
+            if (session.IsOpen && !_isOpen)
+            {
+                _isOpen = true;
+                Visible = true;
+                if (_resolutionPanel != null) _resolutionPanel.Visible = false;
+                WorldSignals.EmitModalOpened(this);
+            }
+            else if (!session.IsOpen && _isOpen)
+            {
+                _isOpen = false;
+                Visible = false;
+                if (_resolutionPanel != null) _resolutionPanel.Visible = false;
+                WorldSignals.EmitModalClosed(this);
+                return;
+            }
 
-        private void HandleBreakthroughStateUpdated(BreakthroughSessionSnapshot snapshot)
-        {
-            _latestSnapshot = snapshot;
-            UpdateUIFromSnapshot(snapshot);
+            if (_isOpen)
+            {
+                _latestSnapshot = BreakthroughSystem.BuildSnapshot(world);
+                UpdateUIFromSnapshot(_latestSnapshot);
+            }
         }
 
         private void HandleBreakthroughWaveImpact(bool isHarmonic, bool isDispersion, float damage)

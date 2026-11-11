@@ -1,13 +1,16 @@
 using System;
 using Godot;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using TaiwuGu.Psychology;
+using TaiwuGu.Systems;
 using Color = Godot.Color;
 
 namespace Taiwu_Godot.Scripts.UI
 {
     /// <summary>
     /// Phase 2 / Milestone 2.3: Scroll of Taiwu-style Bottom NPC Dialogue Pavilion (太吾式人际会晤画阁).
+    /// Direct-read presentation observer wired to WorldStore & SocialVendettaSystem.
     /// Displays NPC information, favorability bar, greeting speech, interaction feedback,
     /// and 5 core Daoist social actions: Spar, Barter, Extort, Ambush, Depart.
     /// Strictly adheres to Halal mandate (calligraphy, seal tokens, sacred geometry) and event symmetry.
@@ -15,9 +18,13 @@ namespace Taiwu_Godot.Scripts.UI
     public partial class NPCDialoguePavilionView : CanvasLayer, IModalView
     {
         private bool _isOpen = false;
+        private IWorldStateProvider? _stateProvider;
+        private EntityId? _currentNpcId;
+        private bool _treeBuilt = false;
+
         public bool IsOpen => _isOpen;
-        public void Dismiss() => GameEventManager.RaiseRequestCloseNPCDialogue();
-        private CultivatorEntityData? _currentNPC;
+        public void Initialize(IWorldStateProvider stateProvider) => _stateProvider = stateProvider;
+        public void Dismiss() => CloseDialogue();
 
         private Control? _pavilionBox;
         private Label? _lblNPCName;
@@ -37,20 +44,24 @@ namespace Taiwu_Godot.Scripts.UI
             Layer = 14; // Above HUD, below top-level alerts
             Visible = false;
 
-            BuildViewTree();
+            if (!_treeBuilt)
+            {
+                BuildViewTree();
+                _treeBuilt = true;
+            }
 
-            GameEventManager.OnNPCDialogueOpened   += HandleDialogueOpened;
-            GameEventManager.OnNPCDialogueFeedback += HandleDialogueFeedback;
-            GameEventManager.OnNPCDialogueClosed   += HandleDialogueClosed;
-            GameEventManager.OnEscapeRequested     += HandleEscapeRequested;
+            WorldSignals.OnOpenNPCDialogueRequested += HandleDialogueOpened;
+            WorldSignals.OnDialogueFeedback        += HandleDialogueFeedback;
+            WorldSignals.OnTopicsChanged           += HandleTopicsChanged;
+            WorldSignals.OnEscapeRequested         += HandleEscapeRequested;
         }
 
         public override void _ExitTree()
         {
-            GameEventManager.OnNPCDialogueOpened   -= HandleDialogueOpened;
-            GameEventManager.OnNPCDialogueFeedback -= HandleDialogueFeedback;
-            GameEventManager.OnNPCDialogueClosed   -= HandleDialogueClosed;
-            GameEventManager.OnEscapeRequested     -= HandleEscapeRequested;
+            WorldSignals.OnOpenNPCDialogueRequested -= HandleDialogueOpened;
+            WorldSignals.OnDialogueFeedback        -= HandleDialogueFeedback;
+            WorldSignals.OnTopicsChanged           -= HandleTopicsChanged;
+            WorldSignals.OnEscapeRequested         -= HandleEscapeRequested;
         }
 
         private void BuildViewTree()
@@ -172,32 +183,33 @@ namespace Taiwu_Godot.Scripts.UI
 
             _btnSpar = CreateActionButton("Spar (切磋)\n[+25 Favor]", new Color(0.20f, 0.83f, 0.60f, 1f), () =>
             {
-                if (_currentNPC != null) GameEventManager.RaiseRequestNPCSpar(_currentNPC.EntityId);
+                if (_stateProvider?.Current is { } world && _currentNpcId is { } npcId)
+                    SocialVendettaSystem.ExecuteSpar(world, npcId);
             });
             actionsHBox.AddChild(_btnSpar);
 
             _btnBarter = CreateActionButton("Barter (交易)\n[Rations & Stones]", new Color(0.22f, 0.74f, 0.97f, 1f), () =>
             {
-                if (_currentNPC != null) GameEventManager.RaiseRequestNPCBarter(_currentNPC.EntityId);
+                if (_stateProvider?.Current is { } world && _currentNpcId is { } npcId)
+                    SocialVendettaSystem.ExecuteBarter(world, npcId);
             });
             actionsHBox.AddChild(_btnBarter);
 
             _btnExtort = CreateActionButton("Extort (勒索)\n[Demand Stones]", new Color(0.95f, 0.65f, 0.20f, 1f), () =>
             {
-                if (_currentNPC != null) GameEventManager.RaiseRequestNPCExtort(_currentNPC.EntityId);
+                if (_stateProvider?.Current is { } world && _currentNpcId is { } npcId)
+                    SocialVendettaSystem.ExecuteExtort(world, npcId);
             });
             actionsHBox.AddChild(_btnExtort);
 
             _btnAmbush = CreateActionButton("Ambush (截杀)\n[Lethal Combat]", new Color(0.94f, 0.35f, 0.35f, 1f), () =>
             {
-                if (_currentNPC != null) GameEventManager.RaiseRequestNPCAmbush(_currentNPC.EntityId);
+                if (_stateProvider?.Current is { } world && _currentNpcId is { } npcId)
+                    SocialVendettaSystem.ExecuteAmbush(world, npcId);
             });
             actionsHBox.AddChild(_btnAmbush);
 
-            _btnDepart = CreateActionButton("Depart (告辞)\n[Esc / Leave]", new Color(0.80f, 0.85f, 0.88f, 1f), () =>
-            {
-                GameEventManager.RaiseRequestCloseNPCDialogue();
-            });
+            _btnDepart = CreateActionButton("Depart (告辞)\n[Esc / Leave]", new Color(0.80f, 0.85f, 0.88f, 1f), CloseDialogue);
             actionsHBox.AddChild(_btnDepart);
         }
 
@@ -245,32 +257,53 @@ namespace Taiwu_Godot.Scripts.UI
             return btn;
         }
 
-        private void HandleDialogueOpened(CultivatorEntityData npc, string greeting)
+        private void HandleDialogueOpened(EntityId npcId)
         {
-            _currentNPC = npc;
+            var world = _stateProvider?.Current;
+            if (world == null || !world.TryGet<CultivatorComponent>(npcId, out var cult))
+                return;
+
+            _currentNpcId = npcId;
             _isOpen = true;
             Visible = true;
-            GameEventManager.RaiseModalOpened(this);
+            WorldSignals.EmitModalOpened(this);
 
-            if (_lblNPCName != null)
-            {
-                _lblNPCName.Text = $"【修】 {npc.Name}";
-            }
-            if (_lblNPCDetails != null)
-            {
-                _lblNPCDetails.Text = $"Clan: {npc.Clan} | Rank {npc.Rank} (Substage {npc.Substage})\nDisposition: {npc.Disposition}\nStones: {npc.PrimevalStones} 块 | Age: {npc.Age}/{npc.LifespanYears} yrs";
-            }
-            if (_barFavorability != null)
-            {
-                _barFavorability.Value = npc.Favorability;
-            }
+            RefreshNpcDisplay(world, npcId, cult);
             if (_lblSpeechText != null)
             {
-                _lblSpeechText.Text = greeting;
+                _lblSpeechText.Text = SocialVendettaSystem.GetGreeting(cult);
             }
             if (_lblFeedbackText != null)
             {
                 _lblFeedbackText.Text = "";
+            }
+        }
+
+        private void RefreshNpcDisplay(WorldStore world, EntityId npcId, CultivatorComponent cult)
+        {
+            var ap = world.Get<ApertureComponent>(npcId);
+            if (_lblNPCName != null)
+            {
+                _lblNPCName.Text = $"【修】 {cult.Name}";
+            }
+            if (_lblNPCDetails != null)
+            {
+                _lblNPCDetails.Text = $"Clan: {cult.Clan} | Rank {ap?.Rank ?? 1} (Substage {ap?.Substage ?? 1})\nDisposition: {cult.Disposition}\nStones: {cult.PrimevalStones} 块 | Age: {cult.Age}/{cult.LifespanYears} yrs";
+            }
+            if (_barFavorability != null)
+            {
+                _barFavorability.Value = cult.Favorability;
+            }
+        }
+
+        private void HandleTopicsChanged(DirtyTopic topics)
+        {
+            if (!_isOpen || (topics & DirtyTopic.NPCs) == 0 || _currentNpcId is not { } npcId)
+                return;
+
+            if (_stateProvider?.Current is { } world && world.TryGet<CultivatorComponent>(npcId, out var cult))
+            {
+                RefreshNpcDisplay(world, npcId, cult);
             }
         }
 
@@ -280,26 +313,28 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 _lblFeedbackText.Text = feedback;
             }
-            if (_barFavorability != null && _currentNPC != null)
+            if (_currentNpcId is { } npcId && _stateProvider?.Current is { } world &&
+                world.TryGet<CultivatorComponent>(npcId, out var cult))
             {
-                _barFavorability.Value = _currentNPC.Favorability;
+                RefreshNpcDisplay(world, npcId, cult);
             }
         }
 
-        private void HandleDialogueClosed()
+        public void CloseDialogue()
         {
+            if (!_isOpen) return;
             _isOpen = false;
             Visible = false;
-            _currentNPC = null;
-            GameEventManager.RaiseModalClosed(this);
+            _currentNpcId = null;
+            WorldSignals.EmitModalClosed(this);
         }
 
         private void HandleEscapeRequested()
         {
-            if (!_isOpen) return;
+            if (!_isOpen || WorldSignals.EscapeHandled) return;
 
-            GameEventManager.EscapeHandled = true;
-            GameEventManager.RaiseRequestCloseNPCDialogue();
+            WorldSignals.EscapeHandled = true;
+            CloseDialogue();
         }
     }
 }

@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using Godot;
 using Color = Godot.Color;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
+using TaiwuGu.Systems;
 
 namespace Taiwu_Godot.Scripts.UI
 {
     /// <summary>
     /// Phase 3 & 4: Alchemical Refinement Cauldron View (Godot 2D).
-    /// Pure Presentation Layer Observer under Constitutional Laws 1, 4 & 6.
-    /// Strictly decoupled from Domain Services & GameStateContext.
+    /// Direct-read presentation observer wired to WorldStore & RefinementSystem.
     /// 3-Phase Interactive Alchemical State Machine:
     /// - Phase 1: Thermal Equilibrium (heat pulse to stay within 20°C - 80°C green zone)
     /// - Phase 2: Will Fusion (steer will focus needle over wild will spike, suppress will)
@@ -22,52 +23,25 @@ namespace Taiwu_Godot.Scripts.UI
 
         private bool _isOpen = false;
         private TaiwuModalStack? _modalStack;
+        private IWorldStateProvider? _stateProvider;
         public bool IsOpen => _isOpen;
 
-        public void InitializeModalStack(TaiwuModalStack modalStack)
+        public void Initialize(TaiwuModalStack modalStack, IWorldStateProvider stateProvider)
         {
             _modalStack = modalStack;
+            _stateProvider = stateProvider;
             _scaffold?.BindModalStack(modalStack);
+            RefreshFromStore();
         }
 
-        public void Dismiss() => GameEventManager.RaiseRequestCloseCauldron();
+        public void Dismiss()
+        {
+            if (_stateProvider?.Current is { } world)
+                RefinementSystem.CloseCauldron(world);
+        }
 
-        // Presentation cached state
-        private RefinementPhase _currentPhase = RefinementPhase.Idle;
-        private RefinementFailureTier _lastFailureTier = RefinementFailureTier.None;
-
-        // Every recipe, resource and timer below is filled from CauldronRefinementState or the
-        // resource events; the view owns no recipe, balance value or duration of its own.
-        private string _recipeName = string.Empty;
-        private string _primaryGuName = string.Empty;
-        private string _secondaryGuName = string.Empty;
-        private string _resultGuName = string.Empty;
-        private int _targetRank;
-        private int _minStonesRequired;
-
-        private bool _hasPrimaryGu;
-        private bool _hasSecondaryGu;
-        private bool _primaryIsVital;
-
-        private float _cauldronTemperature;
-        private float _phase1Timer;
-        private float _phase1Duration;
-
-        private float _wildWillResistance;
-        private float _masterWillFocus;
-        private float _wildWillFrequency;
-        private float _willAlignmentProgress;
-        private float _phase2Timer;
-        private float _phase2Duration;
-
-        private float _nascentStability;
-        private float _phase3Timer;
-        private float _phase3Duration;
-        private int _stonesCrushed;
-
-        private int _playerStones;
-        private float _playerEssenceSea;
         private string _statusMessage = string.Empty;
+        private string _resolvedGuName = string.Empty;
 
         // UI Element References (the chrome itself lives in Scenes/UI/ModalScaffold.tscn)
         private ModalScaffold? _scaffold;
@@ -115,28 +89,18 @@ namespace Taiwu_Godot.Scripts.UI
 
             BuildUIHierarchy();
 
-            GameEventManager.OnCauldronOpened += HandleCauldronOpened;
-            GameEventManager.OnCauldronClosed += HandleCauldronClosed;
-            GameEventManager.OnCauldronModalToggled += HandleCauldronModalToggled;
-            GameEventManager.OnCauldronStateUpdated += HandleCauldronStateUpdated;
-            GameEventManager.OnCauldronSuccess += HandleCauldronSuccess;
-            GameEventManager.OnCauldronFailed += HandleCauldronFailed;
-            GameEventManager.OnPrimevalSeaChanged += HandlePrimevalSeaChanged;
-            GameEventManager.OnPrimevalStonesChanged += HandlePrimevalStonesChanged;
-            GameEventManager.OnGuInventoryUpdated += HandleGuInventoryUpdated;
+            WorldSignals.OnTopicsChanged        += HandleTopicsChanged;
+            WorldSignals.OnCauldronModalToggled += HandleCauldronModalToggled;
+            WorldSignals.OnRefinementResolved   += HandleRefinementResolved;
+
+            RefreshFromStore();
         }
 
         public override void _ExitTree()
         {
-            GameEventManager.OnCauldronOpened -= HandleCauldronOpened;
-            GameEventManager.OnCauldronClosed -= HandleCauldronClosed;
-            GameEventManager.OnCauldronModalToggled -= HandleCauldronModalToggled;
-            GameEventManager.OnCauldronStateUpdated -= HandleCauldronStateUpdated;
-            GameEventManager.OnCauldronSuccess -= HandleCauldronSuccess;
-            GameEventManager.OnCauldronFailed -= HandleCauldronFailed;
-            GameEventManager.OnPrimevalSeaChanged -= HandlePrimevalSeaChanged;
-            GameEventManager.OnPrimevalStonesChanged -= HandlePrimevalStonesChanged;
-            GameEventManager.OnGuInventoryUpdated -= HandleGuInventoryUpdated;
+            WorldSignals.OnTopicsChanged        -= HandleTopicsChanged;
+            WorldSignals.OnCauldronModalToggled -= HandleCauldronModalToggled;
+            WorldSignals.OnRefinementResolved   -= HandleRefinementResolved;
 
             if (_isOpen)
             {
@@ -145,45 +109,46 @@ namespace Taiwu_Godot.Scripts.UI
             }
         }
 
-        public void OpenWithState(CauldronRefinementState state) => HandleCauldronOpened(state);
-
         public override void _UnhandledInput(InputEvent @event)
         {
             if (!_isOpen) return;
+            var world = _stateProvider?.Current;
+            if (world == null) return;
 
+            var session = RefinementSystem.GetOrCreateSession(world);
             if (@event is InputEventKey k && k.Pressed && !k.Echo)
             {
-                if (_currentPhase == RefinementPhase.Phase1_Extraction)
+                if (session.CurrentPhase == RefinementPhase.Phase1_Extraction)
                 {
                     if (k.Keycode == Key.W || k.Keycode == Key.Up)
                     {
-                        GameEventManager.RaiseRequestCauldronPulseHeat();
+                        RefinementSystem.PulseHeat(world);
                         GetViewport().SetInputAsHandled();
                     }
                 }
-                else if (_currentPhase == RefinementPhase.Phase2_WillFusion)
+                else if (session.CurrentPhase == RefinementPhase.Phase2_WillFusion)
                 {
                     if (k.Keycode == Key.A || k.Keycode == Key.Left)
                     {
-                        GameEventManager.RaiseRequestCauldronAdjustWillFocus(-0.08f);
+                        RefinementSystem.AdjustWillFocus(world, -0.08f);
                         GetViewport().SetInputAsHandled();
                     }
                     else if (k.Keycode == Key.D || k.Keycode == Key.Right)
                     {
-                        GameEventManager.RaiseRequestCauldronAdjustWillFocus(0.08f);
+                        RefinementSystem.AdjustWillFocus(world, 0.08f);
                         GetViewport().SetInputAsHandled();
                     }
                     else if (k.Keycode == Key.Space || k.Keycode == Key.Enter)
                     {
-                        GameEventManager.RaiseRequestCauldronSuppressWill();
+                        RefinementSystem.SuppressWill(world);
                         GetViewport().SetInputAsHandled();
                     }
                 }
-                else if (_currentPhase == RefinementPhase.Phase3_Condensation)
+                else if (session.CurrentPhase == RefinementPhase.Phase3_Condensation)
                 {
                     if (k.Keycode == Key.F || k.Keycode == Key.Space || k.Keycode == Key.Enter)
                     {
-                        GameEventManager.RaiseRequestCauldronCrushStone();
+                        RefinementSystem.CrushStone(world);
                         GetViewport().SetInputAsHandled();
                     }
                 }
@@ -193,43 +158,21 @@ namespace Taiwu_Godot.Scripts.UI
         public override void _Process(double delta)
         {
             if (!_isOpen) return;
+            var world = _stateProvider?.Current;
+            if (world == null) return;
 
-            if (_currentPhase == RefinementPhase.Phase2_WillFusion)
+            var session = RefinementSystem.GetOrCreateSession(world);
+            if (session.CurrentPhase == RefinementPhase.Phase2_WillFusion)
             {
                 float steerSpeed = 1.0f * (float)delta;
                 if (Godot.Input.IsKeyPressed(Key.A) || Godot.Input.IsKeyPressed(Key.Left))
                 {
-                    GameEventManager.RaiseRequestCauldronAdjustWillFocus(-steerSpeed);
+                    RefinementSystem.AdjustWillFocus(world, -steerSpeed);
                 }
                 else if (Godot.Input.IsKeyPressed(Key.D) || Godot.Input.IsKeyPressed(Key.Right))
                 {
-                    GameEventManager.RaiseRequestCauldronAdjustWillFocus(steerSpeed);
+                    RefinementSystem.AdjustWillFocus(world, steerSpeed);
                 }
-            }
-        }
-
-        private void HandleCauldronOpened(CauldronRefinementState state)
-        {
-            bool wasOpen = _isOpen;
-            _isOpen = true;
-            Visible = true;
-            if (!wasOpen)
-            {
-                _scaffold?.Open(this, CauldronTitle);
-            }
-            UpdateFromCauldronState(state);
-            _statusMessage = string.Empty;
-            UpdatePhaseUI();
-        }
-
-        private void HandleCauldronClosed()
-        {
-            bool wasOpen = _isOpen;
-            _isOpen = false;
-            Visible = false;
-            if (wasOpen)
-            {
-                _scaffold?.Close();
             }
         }
 
@@ -239,111 +182,32 @@ namespace Taiwu_Godot.Scripts.UI
             _isOpen = isOpen;
             Visible = isOpen;
 
-            // Keep the stack in step even if a toggle arrives without the matching
-            // Opened/Closed event, so IsModalOpen<RefinementCauldronView>() stays honest.
-            if (isOpen) _scaffold?.Open(this, CauldronTitle);
-            else _scaffold?.Close();
-        }
-
-        private void HandleCauldronStateUpdated(CauldronRefinementState state)
-        {
-            UpdateFromCauldronState(state);
-            UpdatePhaseUI();
-        }
-
-        private void UpdateFromCauldronState(CauldronRefinementState state)
-        {
-            if (state == null) return;
-
-            _currentPhase = state.CurrentPhase;
-            _lastFailureTier = state.LastFailureTier;
-
-            if (state.ActiveRecipe != null)
+            if (isOpen)
             {
-                _recipeName = state.ActiveRecipe.RecipeName;
-                _resultGuName = state.ActiveRecipe.ResultGuName;
-                _targetRank = state.ActiveRecipe.TargetRank;
-                _phase1Duration = state.ActiveRecipe.Phase1Duration;
-                _phase2Duration = state.ActiveRecipe.Phase2Duration;
-                _phase3Duration = state.ActiveRecipe.Phase3Duration;
-                _minStonesRequired = state.CalculateMinStonesRequired();
+                _statusMessage = string.Empty;
+                _resolvedGuName = string.Empty;
+                _scaffold?.Open(this, CauldronTitle);
+                RefreshFromStore();
             }
-
-            _cauldronTemperature = state.CauldronTemperature;
-            _phase1Timer = state.Phase1Timer;
-
-            _wildWillResistance = state.WildWillResistance;
-            _masterWillFocus = state.MasterWillFocus;
-            _wildWillFrequency = state.WildWillFrequency;
-            _willAlignmentProgress = state.WillAlignmentProgress;
-            _phase2Timer = state.Phase2Timer;
-
-            _nascentStability = state.NascentStability;
-            _phase3Timer = state.Phase3Timer;
-            _stonesCrushed = state.StonesCrushed;
+            else
+            {
+                _scaffold?.Close();
+            }
         }
 
-        private void HandleCauldronSuccess(GuWormData refinedGu)
+        private void HandleTopicsChanged(DirtyTopic topics)
         {
-            _currentPhase = RefinementPhase.Success;
-            if (refinedGu != null)
+            if ((topics & (DirtyTopic.Cauldron | DirtyTopic.Cultivator | DirtyTopic.Aperture | DirtyTopic.Inventory)) != 0)
             {
-                _resultGuName = refinedGu.Name;
+                RefreshFromStore();
             }
-            _statusMessage = $"Alchemical fusion complete! Obtained [{_resultGuName}].";
-            UpdatePhaseUI();
         }
 
-        private void HandleCauldronFailed(RefinementFailureTier tier, string reason)
+        private void HandleRefinementResolved(GuWormComponent? refinedGu, RefinementFailureTier tier, string message)
         {
-            _currentPhase = RefinementPhase.Failure;
-            _lastFailureTier = tier;
-            _statusMessage = reason;
-            UpdatePhaseUI();
-        }
-
-        private void HandlePrimevalSeaChanged(float currentSea, float maxCap)
-        {
-            _playerEssenceSea = currentSea;
-            UpdateResourceSummaries();
-        }
-
-        private void HandlePrimevalStonesChanged(int stones)
-        {
-            _playerStones = stones;
-            UpdateResourceSummaries();
-        }
-
-        private void HandleGuInventoryUpdated(List<GuWormData> equipped, List<GuWormData> reserve)
-        {
-            if (equipped == null) return;
-
-            var primary = equipped.Find(g => g.GuID == "gu_moonlight_01" || g.GuID.Contains("moonlight"));
-            var secondary = equipped.Find(g => g.GuID == "gu_white_boar_01" || g.GuID.Contains("boar"));
-
-            if (primary == null && reserve != null)
-            {
-                primary = reserve.Find(g => g.GuID == "gu_moonlight_01" || g.GuID.Contains("moonlight"));
-            }
-            if (secondary == null && reserve != null)
-            {
-                secondary = reserve.Find(g => g.GuID == "gu_white_boar_01" || g.GuID.Contains("boar"));
-            }
-
-            _hasPrimaryGu = primary != null;
-            if (primary != null)
-            {
-                _primaryGuName = primary.Name;
-                _primaryIsVital = primary.IsVitalGu;
-            }
-
-            _hasSecondaryGu = secondary != null;
-            if (secondary != null)
-            {
-                _secondaryGuName = secondary.Name;
-            }
-
-            UpdateResourceSummaries();
+            _statusMessage = message;
+            _resolvedGuName = refinedGu?.Name ?? string.Empty;
+            RefreshFromStore();
         }
 
         private void BuildUIHierarchy()
@@ -387,7 +251,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             _lblRecipeSubtitle = new Label
             {
-                Text = $"Recipe: {_recipeName} | Target: Rank {_targetRank}",
+                Text = string.Empty,
                 Modulate = new Color(0.984f, 0.749f, 0.141f, 1f) // Amber Gold #FBBF24
             };
             _lblRecipeSubtitle.AddThemeFontSizeOverride("font_size", 11);
@@ -454,7 +318,7 @@ namespace Taiwu_Godot.Scripts.UI
                 CustomMinimumSize = new Vector2(0f, 32f),
                 MouseFilter = MouseFilterEnum.Stop
             };
-            btnLeave.Pressed += () => GameEventManager.RaiseRequestCloseCauldron();
+            btnLeave.Pressed += Dismiss;
             rootVBox.AddChild(btnLeave);
         }
 
@@ -491,7 +355,11 @@ namespace Taiwu_Godot.Scripts.UI
                 SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
                 MouseFilter = MouseFilterEnum.Stop
             };
-            btnIgnite.Pressed += () => GameEventManager.RaiseRequestInitiateRefinement();
+            btnIgnite.Pressed += () =>
+            {
+                if (_stateProvider?.Current is { } world)
+                    RefinementSystem.InitiateRefinement(world);
+            };
             _panelIdle.AddChild(btnIgnite);
 
             // 2. Phase 1 Panel: Thermal Equilibrium
@@ -557,7 +425,11 @@ namespace Taiwu_Godot.Scripts.UI
                 SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
                 MouseFilter = MouseFilterEnum.Stop
             };
-            btnPulseHeat.Pressed += () => GameEventManager.RaiseRequestCauldronPulseHeat();
+            btnPulseHeat.Pressed += () =>
+            {
+                if (_stateProvider?.Current is { } world)
+                    RefinementSystem.PulseHeat(world);
+            };
             _panelPhase1.AddChild(btnPulseHeat);
 
             // 3. Phase 2 Panel: Will Fusion
@@ -605,11 +477,11 @@ namespace Taiwu_Godot.Scripts.UI
 
             _trackWillFusion.GuiInput += (ev) =>
             {
-                if (ev is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left && mb.Pressed)
+                if (ev is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left && mb.Pressed && _stateProvider?.Current is { } world)
                 {
                     float ratio = Math.Clamp(mb.Position.X / 440f, 0f, 1f);
-                    float delta = ratio - _masterWillFocus;
-                    GameEventManager.RaiseRequestCauldronAdjustWillFocus(delta);
+                    float curFocus = RefinementSystem.GetOrCreateSession(world).MasterWillFocus;
+                    RefinementSystem.AdjustWillFocus(world, ratio - curFocus);
                 }
             };
             _panelPhase2.AddChild(_trackWillFusion);
@@ -619,15 +491,27 @@ namespace Taiwu_Godot.Scripts.UI
             _panelPhase2.AddChild(willBtnsHBox);
 
             var btnSteerLeft = new Button { Text = "◀ Steer [A]", CustomMinimumSize = new Vector2(90f, 36f) };
-            btnSteerLeft.Pressed += () => GameEventManager.RaiseRequestCauldronAdjustWillFocus(-0.08f);
+            btnSteerLeft.Pressed += () =>
+            {
+                if (_stateProvider?.Current is { } world)
+                    RefinementSystem.AdjustWillFocus(world, -0.08f);
+            };
             willBtnsHBox.AddChild(btnSteerLeft);
 
             var btnSuppress = new Button { Text = "⚡ SUPPRESS WILL! [Space] (-1.5% Sea)", CustomMinimumSize = new Vector2(240f, 36f) };
-            btnSuppress.Pressed += () => GameEventManager.RaiseRequestCauldronSuppressWill();
+            btnSuppress.Pressed += () =>
+            {
+                if (_stateProvider?.Current is { } world)
+                    RefinementSystem.SuppressWill(world);
+            };
             willBtnsHBox.AddChild(btnSuppress);
 
             var btnSteerRight = new Button { Text = "Steer [D] ▶", CustomMinimumSize = new Vector2(90f, 36f) };
-            btnSteerRight.Pressed += () => GameEventManager.RaiseRequestCauldronAdjustWillFocus(0.08f);
+            btnSteerRight.Pressed += () =>
+            {
+                if (_stateProvider?.Current is { } world)
+                    RefinementSystem.AdjustWillFocus(world, 0.08f);
+            };
             willBtnsHBox.AddChild(btnSteerRight);
 
             // 4. Phase 3 Panel: Condensation & Stability
@@ -674,7 +558,11 @@ namespace Taiwu_Godot.Scripts.UI
                 SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
                 MouseFilter = MouseFilterEnum.Stop
             };
-            btnCrush.Pressed += () => GameEventManager.RaiseRequestCauldronCrushStone();
+            btnCrush.Pressed += () =>
+            {
+                if (_stateProvider?.Current is { } world)
+                    RefinementSystem.CrushStone(world);
+            };
             _panelPhase3.AddChild(btnCrush);
 
             // 5. Success Panel
@@ -714,25 +602,10 @@ namespace Taiwu_Godot.Scripts.UI
             _lblStatusOutcome.AddThemeFontSizeOverride("font_size", 12);
             _panelFailure.AddChild(_lblStatusOutcome);
 
-            UpdatePhaseUI();
+            RefreshFromStore();
         }
 
-        private void UpdateResourceSummaries()
-        {
-            if (_lblIngredientsSummary != null)
-            {
-                string pri = _hasPrimaryGu ? $"{_primaryGuName}{(_primaryIsVital ? " (★ Vital Gu)" : "")}" : "Missing";
-                string sec = _hasSecondaryGu ? _secondaryGuName : "Missing";
-                _lblIngredientsSummary.Text = $"Primary: {pri} | Secondary: {sec}";
-            }
-
-            if (_lblResourcesSummary != null)
-            {
-                _lblResourcesSummary.Text = $"Primeval Stones: {_playerStones} / {_minStonesRequired} Min Needed | Aperture Sea: {_playerEssenceSea:F1}% (Min 25%)";
-            }
-        }
-
-        private void UpdatePhaseUI()
+        private void RefreshFromStore()
         {
             if (_panelIdle == null || _panelPhase1 == null || _panelPhase2 == null ||
                 _panelPhase3 == null || _panelSuccess == null || _panelFailure == null)
@@ -740,57 +613,96 @@ namespace Taiwu_Godot.Scripts.UI
                 return;
             }
 
-            _panelIdle.Visible = _currentPhase == RefinementPhase.Idle;
-            _panelPhase1.Visible = _currentPhase == RefinementPhase.Phase1_Extraction;
-            _panelPhase2.Visible = _currentPhase == RefinementPhase.Phase2_WillFusion;
-            _panelPhase3.Visible = _currentPhase == RefinementPhase.Phase3_Condensation;
-            _panelSuccess.Visible = _currentPhase == RefinementPhase.Success;
-            _panelFailure.Visible = _currentPhase == RefinementPhase.Failure;
+            var world = _stateProvider?.Current;
+            if (world == null) return;
 
-            if (_currentPhase == RefinementPhase.Phase1_Extraction)
+            var state = RefinementSystem.GetOrCreateSession(world);
+            var recipe = state.ActiveRecipe;
+            var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+            var ap = world.Get<ApertureComponent>(world.PlayerEntity);
+            var (equipped, reserve) = GuEcologySystem.GetLoadout(world);
+
+            string priId = recipe?.PrimaryGuID ?? "gu_moonlight_01";
+            string secId = recipe?.SecondaryGuID ?? "gu_white_boar_01";
+            var primary = equipped.Find(g => g.GuID == priId || g.GuID.Contains("moonlight"))
+                       ?? reserve.Find(g => g.GuID == priId || g.GuID.Contains("moonlight"));
+            var secondary = equipped.Find(g => g.GuID == secId || g.GuID.Contains("boar"))
+                         ?? reserve.Find(g => g.GuID == secId || g.GuID.Contains("boar"));
+
+            string recipeName = recipe?.RecipeName ?? string.Empty;
+            int targetRank = recipe?.TargetRank ?? 2;
+            string resultGuName = !string.IsNullOrEmpty(_resolvedGuName) ? _resolvedGuName : (recipe?.ResultGuName ?? string.Empty);
+
+            if (_lblRecipeSubtitle != null)
             {
-                if (_barTemperature != null) _barTemperature.Value = _cauldronTemperature;
-                if (_lblTempTimer != null) _lblTempTimer.Text = $"Phase 1: Material Extraction (提炼) - Time: {_phase1Timer:F1}s / {_phase1Duration:F1}s";
-                if (_lblTempStatus != null) _lblTempStatus.Text = $"Cauldron Temperature: {_cauldronTemperature:F0}°C (Ideal Range: 20°C - 80°C)";
+                _lblRecipeSubtitle.Text = $"Recipe: {recipeName} | Target: Rank {targetRank}";
             }
-            else if (_currentPhase == RefinementPhase.Phase2_WillFusion)
+
+            if (_lblIngredientsSummary != null)
             {
-                if (_lblWillTimer != null) _lblWillTimer.Text = $"Phase 2: Will Fusion (融意) - Alignment: {_willAlignmentProgress:F0}%/50% | Wild Resistance: {_wildWillResistance:F0}%/100%";
-                if (_barWillAlignment != null) _barWillAlignment.Value = _willAlignmentProgress;
-                if (_barWildResistance != null) _barWildResistance.Value = _wildWillResistance;
+                string pri = primary != null ? $"{primary.Name}{(primary.IsVitalGu ? " (★ Vital Gu)" : "")}" : "Missing";
+                string sec = secondary != null ? secondary.Name : "Missing";
+                _lblIngredientsSummary.Text = $"Primary: {pri} | Secondary: {sec}";
+            }
+
+            if (_lblResourcesSummary != null)
+            {
+                int stones = cult?.PrimevalStones ?? 0;
+                float sea = ap?.CurrentEssenceSea ?? 0f;
+                int minStones = state.CalculateMinStonesRequired();
+                _lblResourcesSummary.Text = $"Primeval Stones: {stones} / {minStones} Min Needed | Aperture Sea: {sea:F1}% (Min 25%)";
+            }
+
+            var phase = state.CurrentPhase;
+            _panelIdle.Visible = phase == RefinementPhase.Idle;
+            _panelPhase1.Visible = phase == RefinementPhase.Phase1_Extraction;
+            _panelPhase2.Visible = phase == RefinementPhase.Phase2_WillFusion;
+            _panelPhase3.Visible = phase == RefinementPhase.Phase3_Condensation;
+            _panelSuccess.Visible = phase == RefinementPhase.Success;
+            _panelFailure.Visible = phase == RefinementPhase.Failure;
+
+            if (phase == RefinementPhase.Phase1_Extraction)
+            {
+                if (_barTemperature != null) _barTemperature.Value = state.CauldronTemperature;
+                if (_lblTempTimer != null) _lblTempTimer.Text = $"Phase 1: Material Extraction (提炼) - Time: {state.Phase1Timer:F1}s / {recipe?.Phase1Duration ?? 4.0f:F1}s";
+                if (_lblTempStatus != null) _lblTempStatus.Text = $"Cauldron Temperature: {state.CauldronTemperature:F0}°C (Ideal Range: 20°C - 80°C)";
+            }
+            else if (phase == RefinementPhase.Phase2_WillFusion)
+            {
+                if (_lblWillTimer != null) _lblWillTimer.Text = $"Phase 2: Will Fusion (融意) - Alignment: {state.WillAlignmentProgress:F0}%/50% | Wild Resistance: {state.WildWillResistance:F0}%/100%";
+                if (_barWillAlignment != null) _barWillAlignment.Value = state.WillAlignmentProgress;
+                if (_barWildResistance != null) _barWildResistance.Value = state.WildWillResistance;
 
                 if (_wildWillZoneRect != null)
                 {
                     float trackW = 440f;
                     float zoneW = 60f;
-                    float zoneX = Math.Clamp((trackW * _wildWillFrequency) - (zoneW * 0.5f), 0f, trackW - zoneW);
+                    float zoneX = Math.Clamp((trackW * state.WildWillFrequency) - (zoneW * 0.5f), 0f, trackW - zoneW);
                     _wildWillZoneRect.Position = new Vector2(zoneX, 0f);
                 }
 
                 if (_masterFocusNeedleRect != null)
                 {
                     float trackW = 440f;
-                    float needleX = Math.Clamp((trackW * _masterWillFocus) - 5f, 0f, trackW - 10f);
+                    float needleX = Math.Clamp((trackW * state.MasterWillFocus) - 5f, 0f, trackW - 10f);
                     _masterFocusNeedleRect.Position = new Vector2(needleX, -3f);
                 }
             }
-            else if (_currentPhase == RefinementPhase.Phase3_Condensation)
+            else if (phase == RefinementPhase.Phase3_Condensation)
             {
-                if (_lblStabilityTimer != null) _lblStabilityTimer.Text = $"Phase 3: Condensation (成形) - Time: {_phase3Timer:F1}s / {_phase3Duration:F1}s";
-                if (_barNascentStability != null) _barNascentStability.Value = _nascentStability;
-                if (_lblCrushedCounter != null) _lblCrushedCounter.Text = $"Nascent Dao Mark Stability: {_nascentStability:F0}% (Stones Crushed: {_stonesCrushed})";
+                if (_lblStabilityTimer != null) _lblStabilityTimer.Text = $"Phase 3: Condensation (成形) - Time: {state.Phase3Timer:F1}s / {recipe?.Phase3Duration ?? 3.5f:F1}s";
+                if (_barNascentStability != null) _barNascentStability.Value = state.NascentStability;
+                if (_lblCrushedCounter != null) _lblCrushedCounter.Text = $"Nascent Dao Mark Stability: {state.NascentStability:F0}% (Stones Crushed: {state.StonesCrushed})";
             }
-            else if (_currentPhase == RefinementPhase.Success)
+            else if (phase == RefinementPhase.Success)
             {
-                if (_lblSuccessTitle != null) _lblSuccessTitle.Text = $"★★★ REFINEMENT SUCCESS! ★★★\nObtained [{_resultGuName}] (Rank {_targetRank})";
+                if (_lblSuccessTitle != null) _lblSuccessTitle.Text = $"★★★ REFINEMENT SUCCESS! ★★★\nObtained [{resultGuName}] (Rank {targetRank})";
             }
-            else if (_currentPhase == RefinementPhase.Failure)
+            else if (phase == RefinementPhase.Failure)
             {
-                if (_lblFailureTitle != null) _lblFailureTitle.Text = $"【 炼化失败 】 REFINEMENT FAILED ({_lastFailureTier}) 【 毁损 】\nAuxiliary components destroyed. Check Aperture health!";
+                if (_lblFailureTitle != null) _lblFailureTitle.Text = $"【 炼化失败 】 REFINEMENT FAILED ({state.LastFailureTier}) 【 毁损 】\nAuxiliary components destroyed. Check Aperture health!";
                 if (_lblStatusOutcome != null) _lblStatusOutcome.Text = _statusMessage;
             }
-
-            UpdateResourceSummaries();
         }
     }
 }

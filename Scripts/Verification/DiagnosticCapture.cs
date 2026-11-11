@@ -1,12 +1,15 @@
 using System;
 using Godot;
+using TaiwuGu.Core;
+using TaiwuGu.Entities;
+using TaiwuGu.Map;
+using TaiwuGu.Systems;
 
 namespace Taiwu_Godot.Scripts.Verification
 {
     /// <summary>
     /// Headless Verification Harness:
-    /// Runs for several frames, exercises modal flows, captures a rendered viewport image to disk,
-    /// verifies scene hierarchy integrity, and exits cleanly.
+    /// Exercises ECS flows, verifies scene hierarchy integrity, captures viewport images, and quits cleanly.
     /// </summary>
     public partial class DiagnosticCapture : Node
     {
@@ -30,32 +33,15 @@ namespace Taiwu_Godot.Scripts.Verification
 
         public override void _Ready()
         {
-            // CRUCIAL: Allow harness to process even when SystemMenu pauses scene tree
             ProcessMode = ProcessModeEnum.Always;
 
-            var args = OS.GetCmdlineArgs();
+            ApplyArgs(OS.GetCmdlineArgs());
+            ApplyArgs(OS.GetCmdlineUserArgs());
+        }
+
+        private void ApplyArgs(string[] args)
+        {
             foreach (var arg in args)
-            {
-                if (arg == "--capture") AutoCaptureAndQuit = true;
-                if (arg == "--verify")
-                {
-                    _verify = true;
-                    AutoCaptureAndQuit = true;
-                }
-                if (arg == "--strict-poi") _strictPoi = true;
-                if (arg == "--map" || arg == "--overworld") _captureMapOnly = true;
-                if (arg == "--breakthrough") _captureBreakthrough = true;
-                if (arg == "--onwork") _captureOnWork = true;
-                if (arg == "--npc") _captureNPC = true;
-                if (arg == "--tile-npc") _captureTileNPC = true;
-                if (arg == "--encounter") _captureEncounter = true;
-                if (arg == "--transit") _captureTransit = true;
-                if (arg == "--audio") _testAudio = true;
-                if (arg == "--all") _testAll = true;
-                if (arg == "--landmark") _testLandmark = true;
-            }
-            var userArgs = OS.GetCmdlineUserArgs();
-            foreach (var arg in userArgs)
             {
                 if (arg == "--capture") AutoCaptureAndQuit = true;
                 if (arg == "--verify")
@@ -80,12 +66,12 @@ namespace Taiwu_Godot.Scripts.Verification
         public override void _Process(double delta)
         {
             if (!AutoCaptureAndQuit) return;
+            var world = Bootstrapper?.StateProvider?.Current;
 
             _frameCount++;
 
             if (_verify)
             {
-                // Wait for the bootstrapper, tile manager and initial broadcasts to settle.
                 if (_frameCount == 10)
                 {
                     int exitCode = VerificationRunner.Run(Bootstrapper, _strictPoi);
@@ -95,59 +81,54 @@ namespace Taiwu_Godot.Scripts.Verification
                 return;
             }
 
+            if (world == null) return;
+
             if (_testLandmark)
             {
-                var bootstrapper = Bootstrapper;
                 if (_frameCount == 5)
                 {
                     GD.Print("[DiagnosticCapture] (--landmark) Step 1: Testing direct click / inspect on current tile (15, 15)...");
-                    TaiwuGu.Core.GameEventManager.RaiseRequestInspectTile(new TaiwuGu.Core.GridCoord(15, 15));
+                    ExplorationSystem.InspectTile(world, new GridCoord(15, 15));
                 }
                 else if (_frameCount == 10)
                 {
-                    bool isOpen = bootstrapper?.POIModalView?.IsOpen == true;
-                    GD.Print($"[DiagnosticCapture] (--landmark) POI Modal IsOpen after inspect: {isOpen}, ModalStack Count: {bootstrapper?.ModalStack?.Count}");
-                    if (!isOpen)
-                    {
-                        GD.PrintErr("[DiagnosticCapture] FAIL: POI Modal failed to open on direct current tile inspect!");
-                    }
-                    bootstrapper?.ModalStack?.TryPop();
-                    GD.Print($"[DiagnosticCapture] (--landmark) POI Modal IsOpen after Pop: {bootstrapper?.POIModalView?.IsOpen}");
+                    bool isOpen = Bootstrapper?.POIModalView?.IsOpen == true;
+                    GD.Print($"[DiagnosticCapture] (--landmark) POI Modal IsOpen after inspect: {isOpen}, ModalStack Count: {Bootstrapper?.ModalStack?.Count}");
+                    if (!isOpen) GD.PrintErr("[DiagnosticCapture] FAIL: POI Modal failed to open on direct current tile inspect!");
+                    Bootstrapper?.ModalStack?.TryPop();
+                    GD.Print($"[DiagnosticCapture] (--landmark) POI Modal IsOpen after Pop: {Bootstrapper?.POIModalView?.IsOpen}");
                 }
                 else if (_frameCount == 15)
                 {
                     GD.Print("[DiagnosticCapture] (--landmark) Step 2: Testing scenic non-interactive landmark inspect (Ancient Pine)...");
-                    // Place AncientPine at (16, 16)
-                    var worldMap = bootstrapper?.StateContext?.WorldMap;
-                    if (worldMap?.Tiles != null)
+                    var sector = world.GetCurrentSector();
+                    if (sector != null)
                     {
-                        worldMap.Tiles[16 * 30 + 16].POI = TaiwuGu.Map.TilePOIType.AncientPine;
+                        var tiles = sector.EnsureHydrated();
+                        tiles[16 * sector.GridWidth + 16].POI = TilePOIType.AncientPine;
                     }
-                    TaiwuGu.Core.GameEventManager.RaiseRequestInspectTile(new TaiwuGu.Core.GridCoord(16, 16));
+                    ExplorationSystem.InspectTile(world, new GridCoord(16, 16));
                 }
                 else if (_frameCount == 20)
                 {
-                    bool modalOpened = bootstrapper?.POIModalView?.IsOpen == true;
+                    bool modalOpened = Bootstrapper?.POIModalView?.IsOpen == true;
                     GD.Print($"[DiagnosticCapture] (--landmark) Scenic inspect verified: POIModal IsOpen = {modalOpened} (Expected: False)");
-                    if (modalOpened)
-                    {
-                        GD.PrintErr("[DiagnosticCapture] FAIL: Scenic landmark should NOT open modal dialog!");
-                    }
+                    if (modalOpened) GD.PrintErr("[DiagnosticCapture] FAIL: Scenic landmark should NOT open modal dialog!");
                 }
                 else if (_frameCount == 25)
                 {
                     GD.Print("[DiagnosticCapture] (--landmark) Step 3: Testing impassable obstacle tile (Boulder Precipice)...");
-                    if (bootstrapper?.TileManager != null)
+                    if (Bootstrapper?.TileManager != null)
                     {
-                        bootstrapper.TileManager.GetTile(14, 14); // ensure grid active
-                        bool isWalkable = bootstrapper.TileManager.IsTileWalkable(new Vector2I(14, 14));
+                        Bootstrapper.TileManager.GetTile(14, 14);
+                        bool isWalkable = Bootstrapper.TileManager.IsTileWalkable(new Vector2I(14, 14));
                         GD.Print($"[DiagnosticCapture] (--landmark) Normal tile (14, 14) walkable: {isWalkable}");
 
-                        // Set obstacle
-                        var wm = bootstrapper?.StateContext?.WorldMap;
-                        if (wm?.Tiles != null)
+                        var sector = world.GetCurrentSector();
+                        if (sector != null)
                         {
-                            wm.Tiles[14 * 30 + 14].POI = TaiwuGu.Map.TilePOIType.BoulderPrecipice;
+                            var tiles = sector.EnsureHydrated();
+                            tiles[14 * sector.GridWidth + 14].POI = TilePOIType.BoulderPrecipice;
                         }
                     }
                     CaptureFrame("test_landmark_overhaul.png");
@@ -162,70 +143,68 @@ namespace Taiwu_Godot.Scripts.Verification
 
             if (_testAll)
             {
-                var bootstrapper = Bootstrapper;
                 if (_frameCount == 5)
                 {
                     GD.Print("[DiagnosticCapture] (--all) Step 1: Testing Movement, Audio & ModalStack baseline...");
-                    if (bootstrapper?.ModalStack == null)
-                    {
-                        GD.PrintErr("[DiagnosticCapture] FAIL: ModalStack is null!");
-                    }
-                    TaiwuGu.Core.GameEventManager.RaiseRequestPlaySound(TaiwuGu.Core.HalalSoundType.Footstep);
-                    TaiwuGu.Core.GameEventManager.RaiseRequestMove(new TaiwuGu.Core.GridCoord(16, 15));
+                    if (Bootstrapper?.ModalStack == null) GD.PrintErr("[DiagnosticCapture] FAIL: ModalStack is null!");
+                    WorldSignals.EmitSound(HalalSoundType.Footstep);
+                    ExplorationSystem.MovePlayer(world, new GridCoord(16, 15));
                 }
                 else if (_frameCount == 10)
                 {
                     GD.Print("[DiagnosticCapture] (--all) Step 2: Testing Alchemical Cauldron opening & ModalStack...");
-                    TaiwuGu.Core.GameEventManager.RaiseRequestOpenCauldron();
+                    RefinementSystem.OpenCauldron(world);
                 }
                 else if (_frameCount == 15)
                 {
-                    GD.Print($"[DiagnosticCapture] (--all) Cauldron IsOpen: {bootstrapper?.CauldronView?.IsOpen}, ModalStack Count: {bootstrapper?.ModalStack?.Count}");
-                    TaiwuGu.Core.GameEventManager.RaiseRequestCauldronPulseHeat();
+                    GD.Print($"[DiagnosticCapture] (--all) Cauldron IsOpen: {Bootstrapper?.CauldronView?.IsOpen}, ModalStack Count: {Bootstrapper?.ModalStack?.Count}");
+                    RefinementSystem.PulseHeat(world);
                 }
                 else if (_frameCount == 20)
                 {
                     GD.Print("[DiagnosticCapture] (--all) Step 3: Popping Cauldron via ModalStack.TryPop()...");
-                    bootstrapper?.ModalStack?.TryPop();
-                    GD.Print($"[DiagnosticCapture] (--all) Cauldron IsOpen after Pop: {bootstrapper?.CauldronView?.IsOpen}");
+                    Bootstrapper?.ModalStack?.TryPop();
+                    GD.Print($"[DiagnosticCapture] (--all) Cauldron IsOpen after Pop: {Bootstrapper?.CauldronView?.IsOpen}");
                 }
                 else if (_frameCount == 25)
                 {
                     GD.Print("[DiagnosticCapture] (--all) Step 4: Testing Breakthrough Seclusion opening & ModalStack...");
-                    if (bootstrapper?.StateContext?.Cultivator != null)
+                    var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+                    var ap = world.Get<ApertureComponent>(world.PlayerEntity);
+                    if (cult != null && ap != null)
                     {
-                        bootstrapper.StateContext.Cultivator.Substage = 4;
-                        bootstrapper.StateContext.Cultivator.CurrentEssenceSea = bootstrapper.StateContext.Cultivator.AptitudePercent;
+                        ap.Substage = 4;
+                        ap.CurrentEssenceSea = cult.AptitudePercent;
                     }
-                    TaiwuGu.Core.GameEventManager.RaiseRequestOpenBreakthroughMinigame();
+                    BreakthroughSystem.OpenSession(world);
                 }
                 else if (_frameCount == 30)
                 {
-                    GD.Print($"[DiagnosticCapture] (--all) Breakthrough IsOpen: {bootstrapper?.BreakthroughModalView?.IsOpen}, ModalStack Count: {bootstrapper?.ModalStack?.Count}");
-                    bootstrapper?.ModalStack?.TryPop();
-                    GD.Print($"[DiagnosticCapture] (--all) Breakthrough IsOpen after Pop: {bootstrapper?.BreakthroughModalView?.IsOpen}");
+                    GD.Print($"[DiagnosticCapture] (--all) Breakthrough IsOpen: {Bootstrapper?.BreakthroughModalView?.IsOpen}, ModalStack Count: {Bootstrapper?.ModalStack?.Count}");
+                    Bootstrapper?.ModalStack?.TryPop();
+                    GD.Print($"[DiagnosticCapture] (--all) Breakthrough IsOpen after Pop: {Bootstrapper?.BreakthroughModalView?.IsOpen}");
                 }
                 else if (_frameCount == 35)
                 {
                     GD.Print("[DiagnosticCapture] (--all) Step 5: Testing Transit Modal opening & ModalStack...");
-                    TaiwuGu.Core.GameEventManager.RaiseRequestOpenTransitModal(false);
+                    TransitSystem.OpenTransitModal(world, false);
                 }
                 else if (_frameCount == 40)
                 {
-                    GD.Print($"[DiagnosticCapture] (--all) Transit IsOpen: {bootstrapper?.TransitModalView?.IsOpen}, ModalStack Count: {bootstrapper?.ModalStack?.Count}");
-                    bootstrapper?.ModalStack?.TryPop();
-                    GD.Print($"[DiagnosticCapture] (--all) Transit IsOpen after Pop: {bootstrapper?.TransitModalView?.IsOpen}");
+                    GD.Print($"[DiagnosticCapture] (--all) Transit IsOpen: {Bootstrapper?.TransitModalView?.IsOpen}, ModalStack Count: {Bootstrapper?.ModalStack?.Count}");
+                    Bootstrapper?.ModalStack?.TryPop();
+                    GD.Print($"[DiagnosticCapture] (--all) Transit IsOpen after Pop: {Bootstrapper?.TransitModalView?.IsOpen}");
                 }
                 else if (_frameCount == 45)
                 {
                     GD.Print("[DiagnosticCapture] (--all) Step 6: Testing System Menu & Atomic Save...");
-                    bootstrapper?.SystemMenuView?.OpenMenu();
-                    TaiwuGu.Core.GameEventManager.RaiseRequestSaveGame("slot_01");
+                    Bootstrapper?.SystemMenuView?.OpenMenu();
+                    _ = SaveSystem.SaveAsync("slot_01", world);
                 }
                 else if (_frameCount == 50)
                 {
-                    GD.Print($"[DiagnosticCapture] (--all) SystemMenu IsOpen: {bootstrapper?.SystemMenuView?.IsOpen}");
-                    bootstrapper?.ModalStack?.TryPop();
+                    GD.Print($"[DiagnosticCapture] (--all) SystemMenu IsOpen: {Bootstrapper?.SystemMenuView?.IsOpen}");
+                    Bootstrapper?.ModalStack?.TryPop();
                     CaptureFrame("test_grand_convergence_all.png");
                 }
                 else if (_frameCount >= 55)
@@ -241,20 +220,20 @@ namespace Taiwu_Godot.Scripts.Verification
                 if (_frameCount == 5)
                 {
                     GD.Print("[DiagnosticCapture] Testing Halal Audio Intent Events...");
-                    TaiwuGu.Core.GameEventManager.RaiseRequestPlaySound(TaiwuGu.Core.HalalSoundType.ParchmentRustle);
-                    TaiwuGu.Core.GameEventManager.RaiseRequestPlaySound(TaiwuGu.Core.HalalSoundType.CauldronFire);
-                    TaiwuGu.Core.GameEventManager.RaiseRequestPlaySound(TaiwuGu.Core.HalalSoundType.StoneShatter);
-                    TaiwuGu.Core.GameEventManager.RaiseRequestPlaySound(TaiwuGu.Core.HalalSoundType.BladeSlash);
-                    TaiwuGu.Core.GameEventManager.RaiseRequestPlaySound(TaiwuGu.Core.HalalSoundType.BluntImpact);
-                    TaiwuGu.Core.GameEventManager.RaiseRequestPlaySound(TaiwuGu.Core.HalalSoundType.DashWhoosh);
-                    TaiwuGu.Core.GameEventManager.RaiseRequestPlaySound(TaiwuGu.Core.HalalSoundType.CauldronSteam);
-                    TaiwuGu.Core.GameEventManager.RaiseRequestPlaySound(TaiwuGu.Core.HalalSoundType.WoodenKnock);
-                    TaiwuGu.Core.GameEventManager.TriggerBattleStageStateChanged(true);
+                    WorldSignals.EmitSound(HalalSoundType.ParchmentRustle);
+                    WorldSignals.EmitSound(HalalSoundType.CauldronFire);
+                    WorldSignals.EmitSound(HalalSoundType.StoneShatter);
+                    WorldSignals.EmitSound(HalalSoundType.BladeSlash);
+                    WorldSignals.EmitSound(HalalSoundType.BluntImpact);
+                    WorldSignals.EmitSound(HalalSoundType.DashWhoosh);
+                    WorldSignals.EmitSound(HalalSoundType.CauldronSteam);
+                    WorldSignals.EmitSound(HalalSoundType.WoodenKnock);
+                    WorldSignals.EmitBattleStageChanged(true);
                 }
                 else if (_frameCount == 15)
                 {
-                    TaiwuGu.Core.GameEventManager.TriggerBattleStageStateChanged(false);
-                    TaiwuGu.Core.GameEventManager.RaiseRequestPlaySound(TaiwuGu.Core.HalalSoundType.Footstep);
+                    WorldSignals.EmitBattleStageChanged(false);
+                    WorldSignals.EmitSound(HalalSoundType.Footstep);
                 }
                 else if (_frameCount == 20)
                 {
@@ -272,7 +251,7 @@ namespace Taiwu_Godot.Scripts.Verification
             {
                 if (_frameCount == 5)
                 {
-                    TaiwuGu.Core.GameEventManager.RaiseRequestOpenTransitModal(false);
+                    TransitSystem.OpenTransitModal(world, false);
                     GD.Print("[DiagnosticCapture] Opened Inter-Mountain Transit Modal.");
                 }
                 else if (_frameCount == 20)
@@ -291,8 +270,8 @@ namespace Taiwu_Godot.Scripts.Verification
             {
                 if (_frameCount == 5)
                 {
-                    var target = TaiwuGu.Core.WildOrganismData.CreateWildOrganism("gu_moonlight_r1", TaiwuGu.Core.WildOrganismTemperament.Ferocious);
-                    TaiwuGu.Core.GameEventManager.RaiseRequestOpenWildGuEncounter(target);
+                    var target = WildOrganismData.CreateWildOrganism("gu_moonlight_r1", WildOrganismTemperament.Ferocious);
+                    WildEncounterSystem.OpenEncounter(world, target);
                     GD.Print("[DiagnosticCapture] Opened Wild Gu Encounter Modal.");
                 }
                 else if (_frameCount == 20)
@@ -311,7 +290,7 @@ namespace Taiwu_Godot.Scripts.Verification
             {
                 if (_frameCount == 5)
                 {
-                    TaiwuGu.Core.GameEventManager.RaiseRequestMove(new TaiwuGu.Core.GridCoord(15, 14));
+                    ExplorationSystem.MovePlayer(world, new GridCoord(15, 14), openInteractivePOI: true);
                     GD.Print("[DiagnosticCapture] Moved to tile (15, 14) with resident cultivator.");
                 }
                 else if (_frameCount == 35)
@@ -328,14 +307,15 @@ namespace Taiwu_Godot.Scripts.Verification
 
             if (_captureNPC)
             {
-                if (_frameCount == 5)
+                EntityId npcId = world.FindByExternalId("npc_chi_disciple");
+                if (_frameCount == 5 && npcId.IsValid)
                 {
-                    TaiwuGu.Core.GameEventManager.RaiseRequestInteractWithNPC("npc_chi_disciple");
+                    WorldSignals.EmitOpenNPCDialogue(npcId);
                     GD.Print("[DiagnosticCapture] Interacted with Gu Yue Chi Cheng.");
                 }
-                else if (_frameCount == 10)
+                else if (_frameCount == 10 && npcId.IsValid)
                 {
-                    TaiwuGu.Core.GameEventManager.RaiseRequestNPCBarter("npc_chi_disciple");
+                    SocialVendettaSystem.ExecuteBarter(world, npcId);
                     GD.Print("[DiagnosticCapture] Executed Barter with Gu Yue Chi Cheng.");
                 }
                 else if (_frameCount == 20)
@@ -354,7 +334,7 @@ namespace Taiwu_Godot.Scripts.Verification
             {
                 if (_frameCount == 5)
                 {
-                    TaiwuGu.Core.GameEventManager.RaiseRequestShowOnWorkNotice(
+                    WorldSignals.EmitOnWorkNotice(
                         "Jia Family Caravan Barter Economy (贾家商队)",
                         "The grand trade pavilion is currently ON WORK.\nSeasonal arrivals (Bailu / Qiufen), Stone Gambling Den, and Gu auctions are underway."
                     );
@@ -376,23 +356,24 @@ namespace Taiwu_Godot.Scripts.Verification
             {
                 if (_frameCount == 5)
                 {
-                    var ctx = TaiwuGu.Core.StateContextProvider.ContextResolver?.Invoke();
-                    if (ctx?.Cultivator != null)
+                    var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+                    var ap = world.Get<ApertureComponent>(world.PlayerEntity);
+                    if (cult != null && ap != null)
                     {
-                        ctx.Cultivator.Substage = 4;
-                        ctx.Cultivator.CurrentEssenceSea = ctx.Cultivator.AptitudePercent;
+                        ap.Substage = 4;
+                        ap.CurrentEssenceSea = cult.AptitudePercent;
                     }
-                    TaiwuGu.Core.GameEventManager.RaiseRequestOpenBreakthroughMinigame();
+                    BreakthroughSystem.OpenSession(world);
                     GD.Print("[DiagnosticCapture] Triggered Aperture Breakthrough Seclusion at Substage 4 Peak.");
                 }
                 else if (_frameCount == 10)
                 {
-                    TaiwuGu.Core.GameEventManager.RaiseRequestReleaseEssenceWave(1.0f);
+                    BreakthroughSystem.ReleaseEssenceWave(world, 1.0f);
                     GD.Print("[DiagnosticCapture] Triggered Tidal Wave Assault.");
                 }
                 else if (_frameCount == 15)
                 {
-                    TaiwuGu.Core.GameEventManager.RaiseRequestBreakthroughCrushStone();
+                    BreakthroughSystem.CrushStone(world);
                     GD.Print("[DiagnosticCapture] Triggered Stone Crushing mid-breakthrough.");
                 }
                 else if (_frameCount == 22)
@@ -409,7 +390,7 @@ namespace Taiwu_Godot.Scripts.Verification
 
             if (_frameCount == 5 && !_captureMapOnly)
             {
-                TaiwuGu.Core.GameEventManager.TriggerLedgerToggle();
+                WorldSignals.EmitToggleLedger();
             }
             if (_frameCount == 15)
             {
@@ -424,6 +405,11 @@ namespace Taiwu_Godot.Scripts.Verification
 
         private void CaptureFrame(string filename)
         {
+            if (string.Equals(DisplayServer.GetName(), "headless", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             var viewport = GetViewport();
             if (viewport != null)
             {

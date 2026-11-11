@@ -1,15 +1,10 @@
 using System;
 using System.Collections.Generic;
-using Godot;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 
 namespace Taiwu_Godot.Scripts.UI
 {
-    /// <summary>
-    /// Centralized LIFO Modal Stack Manager under Constitutional Laws 3, 4 & 6.
-    /// Dynamically tracks active presentation modals with zero cross-modal coupling.
-    /// Manages top-level Esc pop operations and UI modal active broadcasts.
-    /// </summary>
     public class TaiwuModalStack : IDisposable
     {
         private readonly List<IModalView> _activeModals = new();
@@ -24,40 +19,29 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 if (modal is TModal && modal.IsOpen) return true;
             }
-
             return false;
         }
 
         public TaiwuModalStack()
         {
-            GameEventManager.OnModalOpened += HandleModalOpened;
-            GameEventManager.OnModalClosed += HandleModalClosed;
+            WorldSignals.OnModalOpened += HandleModalOpened;
+            WorldSignals.OnModalClosed += HandleModalClosed;
         }
 
         private void HandleModalOpened(IModalView modal)
         {
             if (modal == null) return;
-            if (!_activeModals.Contains(modal))
-            {
-                _activeModals.Add(modal);
-            }
-            GameEventManager.TriggerUIModalActive(true);
+            if (!_activeModals.Contains(modal)) _activeModals.Add(modal);
+            WorldSignals.EmitUIModalActive(true);
         }
 
         private void HandleModalClosed(IModalView modal)
         {
             if (modal == null) return;
             _activeModals.Remove(modal);
-            if (_activeModals.Count == 0)
-            {
-                GameEventManager.TriggerUIModalActive(false);
-            }
+            if (_activeModals.Count == 0) WorldSignals.EmitUIModalActive(false);
         }
 
-        /// <summary>
-        /// Attempts to pop and dismiss the uppermost active modal.
-        /// Returns true if a modal was popped and dismissed; false if no modals were open.
-        /// </summary>
         public bool TryPop()
         {
             while (_activeModals.Count > 0)
@@ -68,27 +52,23 @@ namespace Taiwu_Godot.Scripts.UI
                 if (top.IsOpen)
                 {
                     top.Dismiss();
-                    if (_activeModals.Count == 0)
-                    {
-                        GameEventManager.TriggerUIModalActive(false);
-                    }
+                    if (_activeModals.Count == 0) WorldSignals.EmitUIModalActive(false);
                     return true;
                 }
             }
-
             return false;
         }
 
         public void Clear()
         {
             _activeModals.Clear();
-            GameEventManager.TriggerUIModalActive(false);
+            WorldSignals.EmitUIModalActive(false);
         }
 
         public void Dispose()
         {
-            GameEventManager.OnModalOpened -= HandleModalOpened;
-            GameEventManager.OnModalClosed -= HandleModalClosed;
+            WorldSignals.OnModalOpened -= HandleModalOpened;
+            WorldSignals.OnModalClosed -= HandleModalClosed;
             _activeModals.Clear();
         }
     }

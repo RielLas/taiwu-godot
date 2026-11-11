@@ -3,17 +3,20 @@ using Godot;
 using Color = Godot.Color;
 using Mathf = Godot.Mathf;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 
 namespace Taiwu_Godot.Scripts.UI
 {
     /// <summary>
     /// Page 1 of the ledger: realm, membrane, aperture sea and wall gauges, the four chamber
     /// actions and the lore footnote. It renders a <see cref="CultivationSnapshot"/> and owns
-    /// no cached state of its own; the breakthrough button raises an intent because the ledger
-    /// has to close itself before the minigame opens.
+    /// no cached state of its own; chamber actions and breakthrough requests are raised as typed events.
     /// </summary>
     public partial class CultivationTab : MarginContainer
     {
+        public event Action? MeditateRequested;
+        public event Action? ConsumeStoneRequested;
+        public event Action? WashWallRequested;
         public event Action? BreakthroughRequested;
 
         private Label? _lblRealm;
@@ -173,16 +176,16 @@ namespace Taiwu_Godot.Scripts.UI
 
             actionsHBox.AddChild(CreateActionButton(
                 "Meditate & Condense\n(-1 AP / Replenish Sea)",
-                () => GameEventManager.RaiseRequestMeditate()));
+                () => MeditateRequested?.Invoke()));
 
             _btnStone = CreateActionButton(
                 "Crush Primeval Stone",
-                () => GameEventManager.RaiseRequestConsumeStone());
+                () => ConsumeStoneRequested?.Invoke());
             actionsHBox.AddChild(_btnStone);
 
             _btnWash = CreateActionButton(
                 "Wash Aperture Wall",
-                () => GameEventManager.RaiseRequestWashApertureWall());
+                () => WashWallRequested?.Invoke());
             actionsHBox.AddChild(_btnWash);
 
             _btnBreakthrough = CreateActionButton(
@@ -218,7 +221,7 @@ namespace Taiwu_Godot.Scripts.UI
             if (_lblHumanDaoMarks != null)
                 _lblHumanDaoMarks.Text = $"Human Path Dao Marks: {state.HumanPathDaoMarks} Marks (+{state.HumanPathDaoMarks * 2}% Wash, +{state.HumanPathDaoMarks}% Batter)";
 
-            double density = CultivatorData.CalculateDensityCoefficient(state.Rank, state.Substage);
+            double density = ApertureComponent.CalculateDensityCoefficient(state.Rank, state.Substage);
             if (_lblDensity != null)
                 _lblDensity.Text = $"Density Multiplier: {density:N0}x (Qualitative Purity)";
 
@@ -281,7 +284,7 @@ namespace Taiwu_Godot.Scripts.UI
             }
 
             // Stone recovery figure on the crush button
-            float singleRecovery = CultivatorData.CalculateStoneRecoveryPercentage(state.Rank, state.Substage, state.AptitudePercent);
+            float singleRecovery = ApertureComponent.CalculateStoneRecoveryPercentage(state.Rank, state.Substage, state.AptitudePercent);
             if (_btnStone != null)
             {
                 _btnStone.Text = $"Crush Primeval Stone\n(-1 Stone / +{singleRecovery:F1}% Sea)";

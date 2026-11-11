@@ -1,15 +1,13 @@
 using System;
 using Godot;
 using TaiwuGu.Core;
-using Taiwu_Godot.Scripts.UI;
+using TaiwuGu.Entities;
 
 namespace Taiwu_Godot.Scripts.Input
 {
     /// <summary>
-    /// Phase 2: Standalone Desktop Hardware Input Provider (Godot 2D).
-    /// Handles Keyboard, Mouse, and Desktop Wheel interactions.
-    /// Critical Polish Point 2: Processes mouse clicks strictly inside _UnhandledInput
-    /// so UI Control nodes in TaiwuHUDView automatically absorb clicks.
+    /// Standalone Desktop Hardware Input Provider (Godot 2D).
+    /// Handles mouse wheel zoom, drag/WASD pan, and pointer world clicks inside _UnhandledInput.
     /// </summary>
     public partial class StandaloneInputProvider : Node2D
     {
@@ -40,39 +38,28 @@ namespace Taiwu_Godot.Scripts.Input
         {
             if (@event is InputEventMouseButton mb)
             {
-                // Suppress overworld clicks and scroll wheel when modal is active
                 if (_isModalActive) return;
 
-                // Scroll Wheel Zoom
                 if (mb.ButtonIndex == MouseButton.WheelUp && mb.Pressed)
                 {
-                    GameEventManager.TriggerZoom(1.0f);
+                    WorldSignals.EmitZoom(1.0f);
                     GetViewport().SetInputAsHandled();
                     return;
                 }
                 else if (mb.ButtonIndex == MouseButton.WheelDown && mb.Pressed)
                 {
-                    GameEventManager.TriggerZoom(-1.0f);
+                    WorldSignals.EmitZoom(-1.0f);
                     GetViewport().SetInputAsHandled();
                     return;
                 }
 
-                // Middle / Right Drag Panning
                 if (mb.ButtonIndex == MouseButton.Middle || mb.ButtonIndex == MouseButton.Right)
                 {
-                    if (mb.Pressed)
-                    {
-                        _isDragging = true;
-                    }
-                    else
-                    {
-                        _isDragging = false;
-                    }
+                    _isDragging = mb.Pressed;
                     GetViewport().SetInputAsHandled();
                     return;
                 }
 
-                // Primary Pointer Click (Left Mouse Button)
                 if (mb.ButtonIndex == MouseButton.Left)
                 {
                     if (mb.Pressed)
@@ -85,9 +72,8 @@ namespace Taiwu_Godot.Scripts.Input
                     {
                         if (!_dragThresholdExceeded)
                         {
-                            // In Godot 2D, GetGlobalMousePosition() accounts for camera transformation & zoom
                             Vector2 worldPos = GetGlobalMousePosition();
-                            GameEventManager.TriggerWorldClick(worldPos.ToWorldVec2());
+                            WorldSignals.EmitWorldClick(worldPos.ToWorldVec2());
                         }
                         _isPointerDown = false;
                         _dragThresholdExceeded = false;
@@ -100,19 +86,16 @@ namespace Taiwu_Godot.Scripts.Input
             {
                 if (_isModalActive) return;
 
-                if (_isPointerDown && !_dragThresholdExceeded)
+                if (_isPointerDown && !_dragThresholdExceeded &&
+                    mm.Position.DistanceTo(_pointerDownPos) > DRAG_THRESHOLD)
                 {
-                    if (mm.Position.DistanceTo(_pointerDownPos) > DRAG_THRESHOLD)
-                    {
-                        _dragThresholdExceeded = true;
-                    }
+                    _dragThresholdExceeded = true;
                 }
 
                 if (_isDragging)
                 {
-                    GameEventManager.TriggerPan(mm.Relative.ToWorldVec2());
+                    WorldSignals.EmitPan(mm.Relative.ToWorldVec2());
                     GetViewport().SetInputAsHandled();
-                    return;
                 }
             }
         }
@@ -121,7 +104,6 @@ namespace Taiwu_Godot.Scripts.Input
         {
             if (_isModalActive) return;
 
-            // Continuous Keyboard Panning (WASD / Arrow Keys)
             Vector2 kbMove = Vector2.Zero;
             if (Godot.Input.IsKeyPressed(Key.W) || Godot.Input.IsKeyPressed(Key.Up)) kbMove.Y -= 1f;
             if (Godot.Input.IsKeyPressed(Key.S) || Godot.Input.IsKeyPressed(Key.Down)) kbMove.Y += 1f;
@@ -131,7 +113,7 @@ namespace Taiwu_Godot.Scripts.Input
             if (kbMove != Vector2.Zero)
             {
                 Vector2 dir = kbMove.Normalized();
-                GameEventManager.TriggerPan(new WorldVec2(dir.X * 10000f, dir.Y * 10000f));
+                WorldSignals.EmitPan(new WorldVec2(dir.X * 10000f, dir.Y * 10000f));
             }
         }
     }

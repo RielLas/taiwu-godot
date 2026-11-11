@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Godot;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using TaiwuGu.Map;
 using TaiwuGu.Serialization;
 using Taiwu_Godot.Scripts.Map;
@@ -9,17 +10,9 @@ using Taiwu_Godot.Scripts.Map;
 namespace Taiwu_Godot.Scripts.Verification
 {
     /// <summary>
-    /// Headless acceptance checks over the real scene graph and the real save pipeline.
-    /// Returns a process exit code, so a broken boot, a desynced map, or a lossy save fails the run
-    /// instead of producing a screenshot for a human to squint at.
-    ///
+    /// Headless acceptance checks over the real scene graph, ECS WorldStore, and SaveDiskIO v3.0.0 pipeline.
     /// Usage:
-    ///   godot --headless --path . -- --verify
     ///   godot --headless --path . -- --verify --strict-poi
-    ///
-    /// --strict-poi adds POI parity between WorldMapState and the rendered grid. It is expected to
-    /// FAIL until the map has a single authority (REFACTOR_PLAN.md, Phase 2); that is the point of
-    /// the gate.
     /// </summary>
     public static class VerificationRunner
     {
@@ -30,9 +23,9 @@ namespace Taiwu_Godot.Scripts.Verification
             var failures = new List<string>();
             var notes = new List<string>();
 
-            if (bootstrapper?.StateContext == null)
+            if (bootstrapper?.StateProvider?.Current == null)
             {
-                GD.PrintErr("[verify] FAIL: Bootstrapper or StateContext is null; nothing to verify.");
+                GD.PrintErr("[verify] FAIL: Bootstrapper or WorldStore is null; nothing to verify.");
                 return 1;
             }
 
@@ -48,7 +41,7 @@ namespace Taiwu_Godot.Scripts.Verification
 
             if (failures.Count == 0)
             {
-                GD.Print("[verify] PASS: state shape, rendered grid, and save round-trip are consistent.");
+                GD.Print("[verify] PASS: ECS WorldStore shape, rendered grid, spatial index, and v3.0.0 save round-trip are consistent.");
                 return 0;
             }
 
@@ -62,41 +55,57 @@ namespace Taiwu_Godot.Scripts.Verification
 
         private static void CheckStateShape(TaiwuGameBootstrapper bootstrapper, List<string> failures)
         {
-            WorldMapState? map = bootstrapper.StateContext?.WorldMap;
-            if (map?.Tiles == null)
+            var world = bootstrapper.World;
+            var sector = world.GetCurrentSector();
+            if (sector == null)
             {
-                failures.Add("WorldMap.Tiles is null; the domain map was never generated.");
+                failures.Add("WorldStore.GetCurrentSector() is null.");
                 return;
             }
 
-            int expected = map.GridWidth * map.GridHeight;
-            if (map.Tiles.Length != expected)
+            var tiles = sector.EnsureHydrated();
+            int expected = sector.GridWidth * sector.GridHeight;
+            if (tiles.Length != expected)
             {
-                failures.Add($"WorldMap.Tiles length {map.Tiles.Length} does not match {map.GridWidth}x{map.GridHeight} ({expected}).");
+                failures.Add($"Sector.Tiles length {tiles.Length} does not match {sector.GridWidth}x{sector.GridHeight} ({expected}).");
             }
 
-            if (map.Tiles.Length == 0)
+            if (tiles.Length == 0)
             {
-                failures.Add("WorldMap.Tiles is empty.");
+                failures.Add("Sector.Tiles is empty.");
                 return;
             }
 
             int clanPosts = 0;
-            for (int i = 0; i < map.Tiles.Length; i++)
+            for (int i = 0; i < tiles.Length; i++)
             {
-                if (map.Tiles[i].POI == TilePOIType.ClanPost) clanPosts++;
+                if (tiles[i].POI == TilePOIType.ClanPost) clanPosts++;
             }
 
             if (clanPosts == 0)
             {
-                failures.Add("No ClanPost tile exists in the domain map; the starting sector is not seeded.");
+                failures.Add("No ClanPost tile exists in SectorGridComponent.");
+            }
+
+            int factionCount = 0;
+            foreach (var _ in world.GetAll<FactionComponent>()) factionCount++;
+            if (factionCount < 6)
+            {
+                failures.Add($"Expected 6 faction entities, found {factionCount}.");
+            }
+
+            int guCount = 0;
+            foreach (var _ in world.GetOwned<GuWormComponent>(world.PlayerEntity)) guCount++;
+            if (guCount == 0)
+            {
+                failures.Add("Player owns zero starter GuWormComponent entities.");
             }
         }
 
         private static void CheckRenderedGridShape(TaiwuGameBootstrapper bootstrapper, List<string> failures)
         {
             IsometricTileManager? tiles = bootstrapper.TileManager;
-            WorldMapState? map = bootstrapper.StateContext?.WorldMap;
+            SectorGridComponent? sector = bootstrapper.World.GetCurrentSector();
 
             if (tiles == null)
             {
@@ -104,18 +113,17 @@ namespace Taiwu_Godot.Scripts.Verification
                 return;
             }
 
-            if (map == null) return;
+            if (sector == null) return;
 
-            if (tiles.GridWidth != map.GridWidth || tiles.GridHeight != map.GridHeight)
+            if (tiles.GridWidth != sector.GridWidth || tiles.GridHeight != sector.GridHeight)
             {
-                failures.Add($"Rendered grid {tiles.GridWidth}x{tiles.GridHeight} does not match state grid {map.GridWidth}x{map.GridHeight}.");
+                failures.Add($"Rendered grid {tiles.GridWidth}x{tiles.GridHeight} does not match SectorGridComponent {sector.GridWidth}x{sector.GridHeight}.");
                 return;
             }
 
-            // Catches transposed indexing: every rendered cell must report its own coordinates.
-            for (int x = 0; x < map.GridWidth; x++)
+            for (int x = 0; x < sector.GridWidth; x++)
             {
-                for (int y = 0; y < map.GridHeight; y++)
+                for (int y = 0; y < sector.GridHeight; y++)
                 {
                     TileNode rendered = tiles.GetTile(x, y);
                     if (rendered.GridPos.X != x || rendered.GridPos.Y != y)
@@ -129,25 +137,23 @@ namespace Taiwu_Godot.Scripts.Verification
 
         private static void CheckSaveRoundTrip(TaiwuGameBootstrapper bootstrapper, List<string> failures)
         {
-            GameStateContext? ctx = bootstrapper.StateContext;
-            if (ctx == null) return;
-
+            WorldStore world = bootstrapper.World;
             try
             {
-                if (!SaveLoadEngine.SaveContext(VerifySlotId, ctx))
+                if (!SaveDiskIO.SaveWorld(VerifySlotId, world))
                 {
-                    failures.Add("SaveLoadEngine.SaveContext returned false; no save was written.");
+                    failures.Add("SaveDiskIO.SaveWorld returned false; no save was written.");
                     return;
                 }
 
-                GameStateContext? loaded = SaveLoadEngine.LoadContext(VerifySlotId);
+                WorldStore? loaded = SaveDiskIO.LoadWorld(VerifySlotId);
                 if (loaded == null)
                 {
-                    failures.Add("SaveLoadEngine.LoadContext returned null for a save that was just written.");
+                    failures.Add("SaveDiskIO.LoadWorld returned null for a save that was just written.");
                     return;
                 }
 
-                CompareContext(ctx, loaded, failures);
+                CompareWorld(world, loaded, failures);
             }
             catch (Exception ex)
             {
@@ -155,82 +161,108 @@ namespace Taiwu_Godot.Scripts.Verification
             }
             finally
             {
-                SaveLoadEngine.DeleteSlot(VerifySlotId);
+                SaveDiskIO.DeleteSlot(VerifySlotId);
             }
         }
 
-        private static void CompareContext(GameStateContext before, GameStateContext after, List<string> failures)
+        private static void CompareWorld(WorldStore before, WorldStore after, List<string> failures)
         {
-            if (before.Cultivator == null || after.Cultivator == null)
+            var cultA = before.Get<CultivatorComponent>(before.PlayerEntity);
+            var cultB = after.Get<CultivatorComponent>(after.PlayerEntity);
+            var apA = before.Get<ApertureComponent>(before.PlayerEntity);
+            var apB = after.Get<ApertureComponent>(after.PlayerEntity);
+
+            if (cultA == null || cultB == null || apA == null || apB == null)
             {
-                failures.Add("Cultivator state is missing before or after save.");
+                failures.Add("Player CultivatorComponent or ApertureComponent missing before/after save.");
             }
             else
             {
-                if (before.Cultivator.Name != after.Cultivator.Name)
-                    failures.Add($"Cultivator name changed across save: '{before.Cultivator.Name}' -> '{after.Cultivator.Name}'.");
-                if (before.Cultivator.Rank != after.Cultivator.Rank)
-                    failures.Add($"Cultivator rank changed across save: {before.Cultivator.Rank} -> {after.Cultivator.Rank}.");
-                if (before.Cultivator.Substage != after.Cultivator.Substage)
-                    failures.Add($"Cultivator substage changed across save: {before.Cultivator.Substage} -> {after.Cultivator.Substage}.");
-                if (before.Cultivator.PrimevalStones != after.Cultivator.PrimevalStones)
-                    failures.Add($"Primeval stones changed across save: {before.Cultivator.PrimevalStones} -> {after.Cultivator.PrimevalStones}.");
-                if (!NearlyEqual(before.Cultivator.CurrentEssenceSea, after.Cultivator.CurrentEssenceSea))
-                    failures.Add($"Essence sea changed across save: {before.Cultivator.CurrentEssenceSea} -> {after.Cultivator.CurrentEssenceSea}.");
-                if (!NearlyEqual(before.Cultivator.AptitudePercent, after.Cultivator.AptitudePercent))
-                    failures.Add($"Aptitude changed across save: {before.Cultivator.AptitudePercent} -> {after.Cultivator.AptitudePercent}.");
+                if (cultA.Name != cultB.Name)
+                    failures.Add($"Player name changed across save: '{cultA.Name}' -> '{cultB.Name}'.");
+                if (apA.Rank != apB.Rank)
+                    failures.Add($"Player rank changed across save: {apA.Rank} -> {apB.Rank}.");
+                if (apA.Substage != apB.Substage)
+                    failures.Add($"Player substage changed across save: {apA.Substage} -> {apB.Substage}.");
+                if (cultA.PrimevalStones != cultB.PrimevalStones)
+                    failures.Add($"Primeval stones changed across save: {cultA.PrimevalStones} -> {cultB.PrimevalStones}.");
+                if (!NearlyEqual(apA.CurrentEssenceSea, apB.CurrentEssenceSea))
+                    failures.Add($"Essence sea changed across save: {apA.CurrentEssenceSea} -> {apB.CurrentEssenceSea}.");
+                if (!NearlyEqual(cultA.AptitudePercent, cultB.AptitudePercent))
+                    failures.Add($"Aptitude changed across save: {cultA.AptitudePercent} -> {cultB.AptitudePercent}.");
             }
 
-            if (before.Calendar == null || after.Calendar == null)
+            var clockA = before.GetSingleton<WorldClockComponent>();
+            var clockB = after.GetSingleton<WorldClockComponent>();
+            if (clockA == null || clockB == null)
             {
-                failures.Add("Calendar state is missing before or after save.");
+                failures.Add("WorldClockComponent missing before or after save.");
             }
             else
             {
-                if (before.Calendar.CurrentYear != after.Calendar.CurrentYear)
-                    failures.Add($"Calendar year changed across save: {before.Calendar.CurrentYear} -> {after.Calendar.CurrentYear}.");
-                if (before.Calendar.CurrentSolarTermIndex != after.Calendar.CurrentSolarTermIndex)
-                    failures.Add($"Solar term changed across save: {before.Calendar.CurrentSolarTermIndex} -> {after.Calendar.CurrentSolarTermIndex}.");
-                if (before.Calendar.ActionPointsRemaining != after.Calendar.ActionPointsRemaining)
-                    failures.Add($"Action points changed across save: {before.Calendar.ActionPointsRemaining} -> {after.Calendar.ActionPointsRemaining}.");
+                if (clockA.CurrentYear != clockB.CurrentYear)
+                    failures.Add($"Calendar year changed across save: {clockA.CurrentYear} -> {clockB.CurrentYear}.");
+                if (clockA.CurrentSolarTermIndex != clockB.CurrentSolarTermIndex)
+                    failures.Add($"Solar term changed across save: {clockA.CurrentSolarTermIndex} -> {clockB.CurrentSolarTermIndex}.");
+                if (clockA.ActionPointsRemaining != clockB.ActionPointsRemaining)
+                    failures.Add($"Action points changed across save: {clockA.ActionPointsRemaining} -> {clockB.ActionPointsRemaining}.");
             }
 
-            int beforeGu = GuCount(before);
-            int afterGu = GuCount(after);
+            int beforeGu = CountOwnedGu(before, before.PlayerEntity);
+            int afterGu = CountOwnedGu(after, after.PlayerEntity);
             if (beforeGu != afterGu)
             {
-                failures.Add($"Gu inventory size changed across save: {beforeGu} -> {afterGu}.");
+                failures.Add($"Player owned Gu entity count changed across save: {beforeGu} -> {afterGu}.");
             }
 
-            CompareTiles(before.WorldMap, after.WorldMap, failures);
-        }
-
-        private static int GuCount(GameStateContext ctx)
-        {
-            return (ctx.GuInventory?.EquippedGu?.Count ?? 0) + (ctx.GuInventory?.ReserveGu?.Count ?? 0);
-        }
-
-        private static void CompareTiles(WorldMapState? before, WorldMapState? after, List<string> failures)
-        {
-            if (before?.Tiles == null || after?.Tiles == null)
+            // Verify spatial index rebuilt cleanly after load
+            int spatialBefore = CountEntitiesAt(before, new GridCoord(15, 14));
+            int spatialAfter = CountEntitiesAt(after, new GridCoord(15, 14));
+            if (spatialBefore != spatialAfter || spatialAfter == 0)
             {
-                failures.Add("WorldMap.Tiles is missing before or after save.");
+                failures.Add($"Spatial index at (15,14) mismatch across save: {spatialBefore} -> {spatialAfter}.");
+            }
+
+            CompareTiles(before.GetCurrentSector(), after.GetCurrentSector(), failures);
+        }
+
+        private static int CountOwnedGu(WorldStore world, EntityId ownerId)
+        {
+            int count = 0;
+            foreach (var _ in world.GetOwned<GuWormComponent>(ownerId)) count++;
+            return count;
+        }
+
+        private static int CountEntitiesAt(WorldStore world, GridCoord coord)
+        {
+            int count = 0;
+            foreach (var _ in world.GetEntitiesAt(coord, world.CurrentSectorKey)) count++;
+            return count;
+        }
+
+        private static void CompareTiles(SectorGridComponent? before, SectorGridComponent? after, List<string> failures)
+        {
+            var tilesA = before?.EnsureHydrated();
+            var tilesB = after?.EnsureHydrated();
+            if (tilesA == null || tilesB == null)
+            {
+                failures.Add("SectorGridComponent.Tiles is missing before or after save.");
                 return;
             }
 
-            if (before.Tiles.Length != after.Tiles.Length)
+            if (tilesA.Length != tilesB.Length)
             {
-                failures.Add($"Tile count changed across save: {before.Tiles.Length} -> {after.Tiles.Length}.");
+                failures.Add($"Tile count changed across save: {tilesA.Length} -> {tilesB.Length}.");
                 return;
             }
 
             int mismatches = 0;
             string firstMismatch = string.Empty;
 
-            for (int i = 0; i < before.Tiles.Length; i++)
+            for (int i = 0; i < tilesA.Length; i++)
             {
-                TileNode a = before.Tiles[i];
-                TileNode b = after.Tiles[i];
+                TileNode a = tilesA[i];
+                TileNode b = tilesB[i];
 
                 bool same = a.Biome == b.Biome
                     && a.POI == b.POI
@@ -254,7 +286,7 @@ namespace Taiwu_Godot.Scripts.Verification
 
             if (mismatches > 0)
             {
-                failures.Add($"{mismatches}/{before.Tiles.Length} tiles changed across save/load. First: {firstMismatch}");
+                failures.Add($"{mismatches}/{tilesA.Length} tiles changed across save/load. First: {firstMismatch}");
             }
         }
 
@@ -265,37 +297,29 @@ namespace Taiwu_Godot.Scripts.Verification
             List<string> notes)
         {
             IsometricTileManager? tiles = bootstrapper.TileManager;
-            WorldMapState? map = bootstrapper.StateContext?.WorldMap;
-            if (tiles == null || map?.Tiles == null) return;
+            SectorGridComponent? sector = bootstrapper.World.GetCurrentSector();
+            if (tiles == null || sector == null) return;
 
-            int width = Math.Min(tiles.GridWidth, map.GridWidth);
-            int height = Math.Min(tiles.GridHeight, map.GridHeight);
+            var sectorTiles = sector.EnsureHydrated();
+            int width = Math.Min(tiles.GridWidth, sector.GridWidth);
+            int height = Math.Min(tiles.GridHeight, sector.GridHeight);
             int mismatches = 0;
 
             for (int x = 0; x < width; x++)
             {
                 for (int y = 0; y < height; y++)
                 {
-                    if (map.GetTile(x, y).POI != tiles.GetTile(x, y).POI) mismatches++;
+                    if (sectorTiles[y * sector.GridWidth + x].POI != tiles.GetTile(x, y).POI) mismatches++;
                 }
             }
 
             if (mismatches == 0) return;
 
-            string message = $"POI parity: {mismatches}/{width * height} tiles differ between WorldMapState and IsometricTileManager; two tile generators still exist.";
-            if (strictPoi)
-            {
-                failures.Add(message);
-            }
-            else
-            {
-                notes.Add(message + " Not gating this run; use --strict-poi once Phase 2 lands.");
-            }
+            string message = $"POI parity: {mismatches}/{width * height} tiles differ between SectorGridComponent and IsometricTileManager.";
+            if (strictPoi) failures.Add(message);
+            else notes.Add(message);
         }
 
-        private static bool NearlyEqual(float a, float b)
-        {
-            return MathF.Abs(a - b) <= 1e-4f;
-        }
+        private static bool NearlyEqual(float a, float b) => MathF.Abs(a - b) <= 1e-4f;
     }
 }

@@ -1,6 +1,8 @@
 using System;
 using Godot;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
+using TaiwuGu.Systems;
 using Color = Godot.Color;
 using Mathf = Godot.Mathf;
 
@@ -8,18 +10,20 @@ namespace Taiwu_Godot.Scripts.UI
 {
     /// <summary>
     /// Phase 2 / Milestone 2.5: Wild Organism Will Subjugation Modal (野生蛊虫强行炼化).
-    /// Halal-compliant presentation:
-    /// - Traditional Chinese seal calligraphy and Daoist harmonic frequency track.
-    /// - Dual bronze-framed dragon gauges for Feral Will Resistance and Alignment Progress.
-    /// - Dynamic tolerance window scaling with canonical rank differential (ΔR).
-    /// - Instantaneous Will Overwrite (ΔR >= 3) shortcut.
-    /// - Strict CQRS-Lite event symmetry and LIFO Escape priority.
+    /// Direct-read presentation observer wired to WorldStore & WildEncounterSystem.
     /// </summary>
     public partial class WildGuEncounterModalView : CanvasLayer, IModalView
     {
         private bool _isOpen = false;
-        public void Dismiss() => GameEventManager.RaiseRequestCloseWildGuEncounter();
-        private SubjugationSessionSnapshot _latestSnapshot;
+        private IWorldStateProvider? _stateProvider;
+
+        public void Initialize(IWorldStateProvider stateProvider) => _stateProvider = stateProvider;
+
+        public void Dismiss()
+        {
+            if (_stateProvider?.Current is { } world)
+                WildEncounterSystem.CloseEncounter(world);
+        }
 
         // UI Controls
         private Control? _modalContainer;
@@ -64,20 +68,16 @@ namespace Taiwu_Godot.Scripts.UI
             LoadTextures();
             BuildUI();
 
-            GameEventManager.OnWildGuEncounterOpened += HandleEncounterOpened;
-            GameEventManager.OnWildGuEncounterStateUpdated += HandleEncounterStateUpdated;
-            GameEventManager.OnWildGuEncounterResolved += HandleEncounterResolved;
-            GameEventManager.OnWildGuEncounterClosed += HandleEncounterClosed;
-            GameEventManager.OnEscapeRequested += HandleEscapeRequested;
+            WorldSignals.OnTopicsChanged          += HandleTopicsChanged;
+            WorldSignals.OnWildEncounterResolved  += HandleEncounterResolved;
+            WorldSignals.OnEscapeRequested        += HandleEscapeRequested;
         }
 
         public override void _ExitTree()
         {
-            GameEventManager.OnWildGuEncounterOpened -= HandleEncounterOpened;
-            GameEventManager.OnWildGuEncounterStateUpdated -= HandleEncounterStateUpdated;
-            GameEventManager.OnWildGuEncounterResolved -= HandleEncounterResolved;
-            GameEventManager.OnWildGuEncounterClosed -= HandleEncounterClosed;
-            GameEventManager.OnEscapeRequested -= HandleEscapeRequested;
+            WorldSignals.OnTopicsChanged          -= HandleTopicsChanged;
+            WorldSignals.OnWildEncounterResolved  -= HandleEncounterResolved;
+            WorldSignals.OnEscapeRequested        -= HandleEscapeRequested;
         }
 
         private void LoadTextures()
@@ -229,7 +229,10 @@ namespace Taiwu_Godot.Scripts.UI
                 CustomMinimumSize = new Vector2(0f, 44f),
                 Visible = false
             };
-            _btnInstantOverwrite.Pressed += () => GameEventManager.RaiseRequestEncounterInstantSubjugate();
+            _btnInstantOverwrite.Pressed += () =>
+            {
+                if (_stateProvider?.Current is { } world) WildEncounterSystem.InstantSubjugate(world);
+            };
             _clashingContainer.AddChild(_btnInstantOverwrite);
 
             // Progress Bars (Wild Will & Alignment)
@@ -282,7 +285,10 @@ namespace Taiwu_Godot.Scripts.UI
                 Text = "◀ Steer Left",
                 CustomMinimumSize = new Vector2(100f, 30f)
             };
-            _btnSteerLeft.Pressed += () => GameEventManager.RaiseRequestAdjustEncounterNeedle(-0.06f);
+            _btnSteerLeft.Pressed += () =>
+            {
+                if (_stateProvider?.Current is { } world) WildEncounterSystem.AdjustNeedle(world, -0.06f);
+            };
             steerHBox.AddChild(_btnSteerLeft);
 
             _sliderNeedle = new HSlider
@@ -294,7 +300,10 @@ namespace Taiwu_Godot.Scripts.UI
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
                 CustomMinimumSize = new Vector2(0f, 30f)
             };
-            _sliderNeedle.ValueChanged += (val) => GameEventManager.RaiseRequestSetEncounterNeedle((float)val);
+            _sliderNeedle.ValueChanged += (val) =>
+            {
+                if (_stateProvider?.Current is { } world) WildEncounterSystem.SetNeedle(world, (float)val);
+            };
             steerHBox.AddChild(_sliderNeedle);
 
             _btnSteerRight = new Button
@@ -302,7 +311,10 @@ namespace Taiwu_Godot.Scripts.UI
                 Text = "Steer Right ▶",
                 CustomMinimumSize = new Vector2(100f, 30f)
             };
-            _btnSteerRight.Pressed += () => GameEventManager.RaiseRequestAdjustEncounterNeedle(0.06f);
+            _btnSteerRight.Pressed += () =>
+            {
+                if (_stateProvider?.Current is { } world) WildEncounterSystem.AdjustNeedle(world, 0.06f);
+            };
             steerHBox.AddChild(_btnSteerRight);
 
             // Action: Essence Pulse Wave
@@ -311,7 +323,10 @@ namespace Taiwu_Godot.Scripts.UI
                 Text = "🌊 PULSE ESSENCE WAVE (真元冲刷 -4% Sea)\n[Force Feral Will Into Alignment]",
                 CustomMinimumSize = new Vector2(0f, 40f)
             };
-            _btnPulseEssence.Pressed += () => GameEventManager.RaiseRequestEncounterPulseEssence();
+            _btnPulseEssence.Pressed += () =>
+            {
+                if (_stateProvider?.Current is { } world) WildEncounterSystem.PulseEssence(world);
+            };
             _clashingContainer.AddChild(_btnPulseEssence);
 
             // Resolution Panel (Succeeded or Backlash)
@@ -346,7 +361,7 @@ namespace Taiwu_Godot.Scripts.UI
                 CustomMinimumSize = new Vector2(180f, 34f),
                 SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter
             };
-            _btnResolutionClose.Pressed += () => GameEventManager.RaiseRequestCloseWildGuEncounter();
+            _btnResolutionClose.Pressed += Dismiss;
             _resolutionPanel.AddChild(_btnResolutionClose);
 
             // Bottom Spacer & Abandon Button
@@ -364,7 +379,7 @@ namespace Taiwu_Godot.Scripts.UI
                 Text = "Abandon Encounter (离开)",
                 CustomMinimumSize = new Vector2(180f, 32f)
             };
-            _btnBottomAction.Pressed += () => GameEventManager.RaiseRequestCloseWildGuEncounter();
+            _btnBottomAction.Pressed += Dismiss;
             bottomHBox.AddChild(_btnBottomAction);
 
             var bottomSpacerR = new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -373,34 +388,43 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void HandleEscapeRequested()
         {
-            if (!_isOpen || GameEventManager.EscapeHandled) return;
+            if (!_isOpen || WorldSignals.EscapeHandled) return;
 
-            GameEventManager.RaiseRequestCloseWildGuEncounter();
-            GameEventManager.EscapeHandled = true;
+            Dismiss();
+            WorldSignals.EscapeHandled = true;
         }
 
-        private void HandleEncounterOpened(SubjugationSessionSnapshot snapshot)
+        private void HandleTopicsChanged(DirtyTopic topics)
         {
-            _isOpen = true;
-            _latestSnapshot = snapshot;
-            Visible = true;
-            GameEventManager.RaiseModalOpened(this);
+            if ((topics & DirtyTopic.WildEncounter) == 0) return;
+            var world = _stateProvider?.Current;
+            if (world == null) return;
 
-            if (_clashingContainer != null) _clashingContainer.Visible = true;
-            if (_resolutionPanel != null) _resolutionPanel.Visible = false;
-            if (_btnBottomAction != null) _btnBottomAction.Text = "Abandon Encounter (离开)";
+            var session = WildEncounterSystem.GetOrCreateSession(world);
+            if (session.IsOpen && !_isOpen)
+            {
+                _isOpen = true;
+                Visible = true;
+                WorldSignals.EmitModalOpened(this);
+                if (_clashingContainer != null) _clashingContainer.Visible = true;
+                if (_resolutionPanel != null) _resolutionPanel.Visible = false;
+                if (_btnBottomAction != null) _btnBottomAction.Text = "Abandon Encounter (离开)";
+            }
+            else if (!session.IsOpen && _isOpen)
+            {
+                _isOpen = false;
+                Visible = false;
+                WorldSignals.EmitModalClosed(this);
+                return;
+            }
 
-            UpdateUIFromSnapshot(snapshot);
+            if (_isOpen)
+            {
+                UpdateUIFromSnapshot(WildEncounterSystem.BuildSnapshot(world));
+            }
         }
 
-        private void HandleEncounterStateUpdated(SubjugationSessionSnapshot snapshot)
-        {
-            if (!_isOpen) return;
-            _latestSnapshot = snapshot;
-            UpdateUIFromSnapshot(snapshot);
-        }
-
-        private void HandleEncounterResolved(SubjugationState state, GuWormData? gu, string msg)
+        private void HandleEncounterResolved(SubjugationState state, GuWormComponent? gu, string msg)
         {
             if (!_isOpen) return;
 
@@ -421,13 +445,6 @@ namespace Taiwu_Godot.Scripts.UI
                 _lblResolutionHeader.Modulate = new Color(0.937f, 0.267f, 0.267f, 1f);
                 _lblResolutionDetail!.Text = $"{msg}\nAperture essence suffered 20% leakage backlash damage.";
             }
-        }
-
-        private void HandleEncounterClosed()
-        {
-            _isOpen = false;
-            Visible = false;
-            GameEventManager.RaiseModalClosed(this);
         }
 
         private void UpdateUIFromSnapshot(SubjugationSessionSnapshot s)

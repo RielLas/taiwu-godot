@@ -3,22 +3,16 @@ using System.Collections.Generic;
 using Godot;
 using Color = Godot.Color;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using TaiwuGu.Serialization;
+using TaiwuGu.Systems;
 using Taiwu_Godot.Scripts.Map;
 
 namespace Taiwu_Godot.Scripts.UI
 {
     /// <summary>
     /// Phase 3: System & Pause Menu View (系统菜单 / 封卷存盘) (Godot 2D).
-    /// Pure Presentation Layer Observer under Constitutional Laws 1, 4 & 6.
-    /// Strictly decoupled from Domain Services & GameStateContext.
-    /// Features:
-    /// - Strict LIFO ESC Interception: Only opens when Ledger, Cauldron, POI modal, and route preview are closed.
-    /// - Temporal Stasis: Sets GetTree().Paused = true while open, unfreezes on close.
-    /// - Multi-slot Save & Load via SaveDiskIO metadata and CQRS command intents.
-    /// - Controls Guide for keybindings.
-    /// - Return to Title confirmation.
-    /// Halal compliant dark-lacquer Xianxia aesthetic.
+    /// Direct-read presentation observer wired to SaveSystem, WorldStateProvider & WorldSignals.
     /// </summary>
     public partial class TaiwuSystemMenuView : Control, IModalView
     {
@@ -27,12 +21,14 @@ namespace Taiwu_Godot.Scripts.UI
         private bool _isOpen = false;
         private TaiwuModalStack? _modalStack;
         private PlayerCultivatorController? _playerController;
+        private WorldStateProvider? _stateProvider;
         public bool IsOpen => _isOpen;
 
-        public void InitializeModalStack(TaiwuModalStack modalStack, PlayerCultivatorController? playerController)
+        public void Initialize(TaiwuModalStack modalStack, PlayerCultivatorController? playerController, WorldStateProvider stateProvider)
         {
             _modalStack = modalStack;
             _playerController = playerController;
+            _stateProvider = stateProvider;
             _scaffold?.BindModalStack(modalStack);
         }
 
@@ -84,18 +80,18 @@ namespace Taiwu_Godot.Scripts.UI
 
             BuildUIHierarchy();
 
-            GameEventManager.OnEscapeRequested += HandleEscapeRequested;
-            GameEventManager.OnGameSaved += HandleGameSaved;
-            GameEventManager.OnGameLoaded += HandleGameLoaded;
-            GameEventManager.OnSaveDeleted += HandleSaveDeleted;
+            WorldSignals.OnEscapeRequested           += HandleEscapeRequested;
+            WorldSignals.OnGameSaved                 += HandleGameSaved;
+            WorldSignals.OnGameLoaded                += HandleGameLoaded;
+            WorldSignals.OnSaveDeleted               += HandleSaveDeleted;
         }
 
         public override void _ExitTree()
         {
-            GameEventManager.OnEscapeRequested -= HandleEscapeRequested;
-            GameEventManager.OnGameSaved -= HandleGameSaved;
-            GameEventManager.OnGameLoaded -= HandleGameLoaded;
-            GameEventManager.OnSaveDeleted -= HandleSaveDeleted;
+            WorldSignals.OnEscapeRequested           -= HandleEscapeRequested;
+            WorldSignals.OnGameSaved                 -= HandleGameSaved;
+            WorldSignals.OnGameLoaded                -= HandleGameLoaded;
+            WorldSignals.OnSaveDeleted               -= HandleSaveDeleted;
 
             if (_isOpen)
             {
@@ -105,21 +101,17 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void HandleEscapeRequested()
         {
-            if (GameEventManager.EscapeHandled) return;
+            if (WorldSignals.EscapeHandled) return;
 
-            // While the menu is open Escape belongs to its scaffold: only the top modal answers,
-            // and it calls Dismiss() (back out of a sub-view, else resume). Here we cover only
-            // the closed state, where Esc opens the menu if nothing else claims the key.
             if (_isOpen) return;
 
-            // Strict LIFO: Only when all modals are closed does Esc toggle SystemMenu
             if (_modalStack?.IsModalOpen<TaiwuLedgerView>() == true) return;
             if (_modalStack?.IsModalOpen<RefinementCauldronView>() == true) return;
             if (_modalStack?.IsModalOpen<TilePOIModalView>() == true) return;
             if (_playerController?.HasTargetSelection == true) return;
 
             OpenMenu();
-            GameEventManager.EscapeHandled = true;
+            WorldSignals.EscapeHandled = true;
         }
 
         public void OpenMenu()
@@ -130,7 +122,7 @@ namespace Taiwu_Godot.Scripts.UI
             _statusMessage = "";
 
             GetTree().Paused = true; // Temporal Stasis
-            GameEventManager.TriggerPauseToggled(true);
+            WorldSignals.EmitPauseToggled(true);
             _scaffold?.Open(this, MenuTitle);
 
             RefreshSlotMetadata();
@@ -145,7 +137,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             GetTree().Paused = false; // Restore Temporal Flow
             _scaffold?.Close();
-            GameEventManager.TriggerPauseToggled(false);
+            WorldSignals.EmitPauseToggled(false);
         }
 
         private void SwitchToView(int viewIndex)
@@ -436,13 +428,17 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 var btnSave = new Button { Text = "Save (存入)", CustomMinimumSize = new Vector2(90f, 28f) };
                 string sid = slotId;
-                btnSave.Pressed += () => GameEventManager.RaiseRequestSaveGame(sid);
+                btnSave.Pressed += () =>
+                {
+                    if (_stateProvider?.Current is { } world)
+                        _ = SaveSystem.SaveAsync(sid, world);
+                };
                 row.AddChild(btnSave);
 
                 if (meta != null)
                 {
                     var btnDelete = new Button { Text = "Delete", CustomMinimumSize = new Vector2(70f, 28f) };
-                    btnDelete.Pressed += () => GameEventManager.RaiseRequestDeleteSave(sid);
+                    btnDelete.Pressed += () => SaveSystem.DeleteSlot(sid);
                     row.AddChild(btnDelete);
                 }
             }
@@ -455,7 +451,11 @@ namespace Taiwu_Godot.Scripts.UI
                     Disabled = (meta == null)
                 };
                 string sid = slotId;
-                btnLoad.Pressed += () => GameEventManager.RaiseRequestLoadGame(sid);
+                btnLoad.Pressed += () =>
+                {
+                    if (_stateProvider != null)
+                        SaveSystem.LoadAndSwap(sid, _stateProvider);
+                };
                 row.AddChild(btnLoad);
             }
 
@@ -528,7 +528,8 @@ namespace Taiwu_Godot.Scripts.UI
             btnConfirm.Pressed += () =>
             {
                 CloseMenu();
-                GameEventManager.TriggerReturnToTitle();
+                _stateProvider?.Replace(WorldFactory.CreateDefault());
+                WorldSignals.EmitTopics(DirtyTopic.All);
             };
             btnsRow.AddChild(btnConfirm);
 

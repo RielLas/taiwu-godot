@@ -2,88 +2,80 @@ import os
 import re
 
 PROJECT_DIR = r"D:\Wonderland Discord\Projects\Taiwu Path of the Gu\Taiwu_Godot"
-SCRIPTS_DIR = os.path.join(PROJECT_DIR, "Scripts")
 CORE_LOGIC_DIR = os.path.join(PROJECT_DIR, "Core.Logic")
 PROJECT_GODOT = os.path.join(PROJECT_DIR, "project.godot")
-EVENT_MANAGER_FILE = os.path.join(CORE_LOGIC_DIR, "Core", "GameEventManager.cs")
+WORLD_SIGNALS_FILE = os.path.join(CORE_LOGIC_DIR, "ECS", "WorldSignals.cs")
 
-def get_all_cs_files():
+def get_runtime_cs_files():
     cs_files = []
     for root, dirs, files in os.walk(PROJECT_DIR):
-        if any(skip in root for skip in [".godot", "bin", "obj", ".git"]):
+        if any(skip in root for skip in [".godot", "bin", "obj", ".git", "Core.Logic.Tests"]):
             continue
         for f in files:
             if f.endswith(".cs"):
                 cs_files.append(os.path.join(root, f))
     return cs_files
 
-def audit_event_manager(cs_files):
-    if not os.path.exists(EVENT_MANAGER_FILE):
-        return [], []
-    
-    with open(EVENT_MANAGER_FILE, "r", encoding="utf-8", errors="ignore") as f:
-        em_content = f.read()
+def audit_world_signals(cs_files):
+    if not os.path.exists(WORLD_SIGNALS_FILE):
+        return []
 
-    # 1. Parse all event declarations
-    event_decl_pattern = re.compile(r"public\s+static\s+event\s+([A-Za-z0-9_<>,\s\?]+?)\s+([A-Za-z0-9_]+)\s*;")
-    events = event_decl_pattern.findall(em_content)
+    with open(WORLD_SIGNALS_FILE, "r", encoding="utf-8", errors="ignore") as f:
+        ws_content = f.read()
+
+    # 1. Parse all event declarations on WorldSignals
+    event_decl_pattern = re.compile(r"public\s+static\s+event\s+([A-Za-z0-9_<>,\s\.\?]+?)\s+([A-Za-z0-9_]+)\s*;")
+    events = event_decl_pattern.findall(ws_content)
     event_names = [e[1] for e in events]
 
-    # 2. Parse RaiseMethod -> EventName mapping
-    # e.g.: public static void RaiseRequestInitiateRefinement() => OnInitiateRefinementRequested?.Invoke();
-    raise_map_pattern = re.compile(r"public\s+static\s+void\s+([A-Za-z0-9_]+)\s*\([^)]*\)\s*=>\s*([A-Za-z0-9_]+)\?\.Invoke")
-    raise_mappings = raise_map_pattern.findall(em_content)
-    
-    # Event to its Raise methods
-    event_to_raise = {}
-    raise_to_event = {}
-    for r_method, evt in raise_mappings:
-        raise_to_event[r_method] = evt
-        event_to_raise.setdefault(evt, []).append(r_method)
+    # 2. Parse EmitMethod -> EventName mapping (arrow or block bodies)
+    emit_map_pattern = re.compile(
+        r"public\s+static\s+void\s+([A-Za-z0-9_]+)\s*\([^)]*\)\s*(?:=>|\{[^}]*?)\s*([A-Za-z0-9_]+)\?\.Invoke",
+        re.DOTALL
+    )
+    emit_mappings = emit_map_pattern.findall(ws_content)
 
-    # Read all CS files content
+    event_to_emit = {}
+    for e_method, evt in emit_mappings:
+        event_to_emit.setdefault(evt, []).append(e_method)
+
     file_contents = {}
     for path in cs_files:
         try:
             with open(path, "r", encoding="utf-8", errors="ignore") as f:
                 file_contents[path] = f.read()
-        except:
+        except Exception:
             pass
 
     audit_results = []
     for evt in event_names:
         subscribers = []
+        unsubscribers = []
         publishers = []
-        raise_methods = event_to_raise.get(evt, [])
+        emit_methods = event_to_emit.get(evt, [])
 
         for path, code in file_contents.items():
             rel_path = os.path.relpath(path, PROJECT_DIR)
-            
-            # Check subscriptions (+= evt or .evt +=)
+
             if re.search(rf"\b{evt}\s*\+\=", code):
                 subscribers.append(rel_path)
-            
-            # Check if event invoked directly outside GameEventManager
-            if path != EVENT_MANAGER_FILE:
-                if f"GameEventManager.{evt}" in code and (f"{evt}?.Invoke" in code or f"{evt}(" in code):
+            if re.search(rf"\b{evt}\s*\-\=", code):
+                unsubscribers.append(rel_path)
+
+            if os.path.normpath(path) != os.path.normpath(WORLD_SIGNALS_FILE):
+                if f"WorldSignals.{evt}" in code and (f"{evt}?.Invoke" in code or f"{evt}(" in code):
                     publishers.append(f"{rel_path} (direct invoke)")
 
-                # Check if Trigger method for this event is called
-                # e.g.: TriggerEscape() invokes OnEscapeRequested
-                trigger_name = "Trigger" + evt.replace("On", "").replace("Requested", "")
-                if f"GameEventManager.{trigger_name}" in code or f"{trigger_name}(" in code:
-                    publishers.append(f"{rel_path} ({trigger_name})")
-
-                # Check if any Raise method for this event is called
-                for r_m in raise_methods:
-                    if f"{r_m}(" in code or f"GameEventManager.{r_m}" in code:
-                        publishers.append(f"{rel_path} ({r_m})")
+                for e_m in emit_methods:
+                    if re.search(rf"\bWorldSignals\.{e_m}\s*\(", code) or re.search(rf"\b{e_m}\s*\(", code):
+                        publishers.append(f"{rel_path} ({e_m})")
 
         audit_results.append({
             "event": evt,
-            "raise_methods": raise_methods,
-            "subscribers": list(set(subscribers)),
-            "publishers": list(set(publishers))
+            "emit_methods": emit_methods,
+            "subscribers": sorted(set(subscribers)),
+            "unsubscribers": sorted(set(unsubscribers)),
+            "publishers": sorted(set(publishers)),
         })
 
     return audit_results
@@ -98,15 +90,15 @@ def audit_input_actions(cs_files):
     input_section = re.search(r"\[input\](.*?)(?=\n\[|$)", godot_content, re.DOTALL)
     if not input_section:
         return []
-    
+
     actions = re.findall(r"^([a-zA-Z0-9_]+)\=\{", input_section.group(1), re.MULTILINE)
-    
+
     file_contents = {}
     for path in cs_files:
         try:
             with open(path, "r", encoding="utf-8", errors="ignore") as f:
                 file_contents[path] = f.read()
-        except:
+        except Exception:
             pass
 
     action_results = []
@@ -118,35 +110,41 @@ def audit_input_actions(cs_files):
                 references.append(rel_path)
         action_results.append({
             "action": act,
-            "references": list(set(references))
+            "references": sorted(set(references)),
         })
     return action_results
 
 def run_audit():
-    cs_files = get_all_cs_files()
-    event_results = audit_event_manager(cs_files)
-    
-    # 1. Categorize events
+    cs_files = get_runtime_cs_files()
+    event_results = audit_world_signals(cs_files)
+
     dangling_events = [r for r in event_results if len(r["publishers"]) > 0 and len(r["subscribers"]) == 0]
     unfired_events = [r for r in event_results if len(r["subscribers"]) > 0 and len(r["publishers"]) == 0]
     connected_events = [r for r in event_results if len(r["publishers"]) > 0 and len(r["subscribers"]) > 0]
     dead_events = [r for r in event_results if len(r["publishers"]) == 0 and len(r["subscribers"]) == 0]
+    asymmetrical = [r for r in event_results if set(r["subscribers"]) != set(r["unsubscribers"])]
 
     print("\n" + "="*70)
-    print("DANGLING EVENTS (Triggered by UI / Input / Code, but 0 Listeners!)")
+    print("DANGLING SIGNALS (Published in runtime code, but 0 Listeners!)")
     print("="*70)
     for d in dangling_events:
-        print(f"  [X] Event: {d['event']}")
+        print(f"  [X] Signal: {d['event']}")
         print(f"      Publishers: {', '.join(d['publishers'])}")
-        print(f"      Subscribers: NONE (Silent Dead-End!)")
 
     print("\n" + "="*70)
-    print("ORPHANED LISTENERS (Subscribed in code, but NEVER fired anywhere!)")
+    print("ORPHANED LISTENERS (Subscribed in runtime code, but NEVER emitted!)")
     print("="*70)
     for u in unfired_events:
-        print(f"  [?] Event: {u['event']}")
+        print(f"  [?] Signal: {u['event']}")
         print(f"      Subscribers: {', '.join(u['subscribers'])}")
-        print(f"      Publishers: NONE (Dead Ear!)")
+
+    print("\n" + "="*70)
+    print("SUBSCRIPTION SYMMETRY CHECK (+= vs -=)")
+    print("="*70)
+    for s in asymmetrical:
+        missing = sorted(set(s["subscribers"]) - set(s["unsubscribers"]))
+        extra = sorted(set(s["unsubscribers"]) - set(s["subscribers"]))
+        print(f"  [!] Signal: {s['event']} | Missing -=: {missing} | Extra -=: {extra}")
 
     print("\n" + "="*70)
     print("GHOST INPUT ACTIONS (Configured in project.godot, but 0 C# queries!)")
@@ -163,12 +161,13 @@ def run_audit():
     print("\n" + "="*70)
     print("AUDIT SUMMARY:")
     print("="*70)
-    print(f"  Total Event Bus Definitions: {len(event_results)}")
-    print(f"  Connected (Healthy) Events:  {len(connected_events)}")
-    print(f"  Dangling (Dead-End) Events:  {len(dangling_events)}")
-    print(f"  Orphaned (Dead Ear) Events:  {len(unfired_events)}")
-    print(f"  Unused / Stub Events:        {len(dead_events)}")
-    print(f"  Ghost Input Actions:         {len(ghost_actions)}")
+    print(f"  Total WorldSignals Definitions: {len(event_results)}")
+    print(f"  Connected (Healthy) Signals:    {len(connected_events)}")
+    print(f"  Dangling (Dead-End) Signals:    {len(dangling_events)}")
+    print(f"  Orphaned (Dead Ear) Signals:    {len(unfired_events)}")
+    print(f"  Unused / Stub Signals:          {len(dead_events)}")
+    print(f"  Asymmetrical Subscriptions:     {len(asymmetrical)}")
+    print(f"  Ghost Input Actions:            {len(ghost_actions)}")
     print("="*70)
 
 if __name__ == "__main__":

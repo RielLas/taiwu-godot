@@ -1,130 +1,62 @@
-using System;
-using System.Collections.Generic;
+using System.Linq;
 using Xunit;
 using TaiwuGu.Core;
 using TaiwuGu.Entities;
 using TaiwuGu.Psychology;
+using TaiwuGu.Systems;
 
 namespace TaiwuGu.Tests
 {
     public class TileCultivatorInteractionTests
     {
         [Fact]
-        public void Test01_TileReInspectBroadcastsCultivators()
+        public void DirectSpatialQuery_FindsAliveNPCsAtTileDeterministically_AcrossRepeatedInspects()
         {
-            GameEventManager.ClearAllSubscriptions();
-            var ctx = GameStateContext.CreateDefault();
+            WorldSignals.ClearAllSubscriptions();
+            var world = WorldFactory.CreateDefault();
 
-            // Place an NPC at (15, 15)
-            var npc = new CultivatorEntityData(
-                "npc_elder_01",
-                "Gu Yue Bo (Clan Leader)",
-                "GuYue",
-                4,
-                3,
-                TaiwuDisposition.Righteous,
-                new Vector2Int(15, 15)
-            );
-            ctx.LivingNPCs = new List<CultivatorEntityData> { npc };
-
-            using var explorationService = new ExplorationService();
-            explorationService.Initialize(ctx);
-
-            List<CultivatorEntityData>? receivedCultivators = null;
-            Vector2Int? receivedPos = null;
-
-            GameEventManager.OnTileCultivatorsUpdated += (pos, cultivators) =>
+            var npcId = world.CreateEntity("npc_elder_01");
+            world.Set(npcId, new PositionComponent(15, 15, world.CurrentSectorKey));
+            world.Set(npcId, new CultivatorComponent
             {
-                receivedPos = pos;
-                receivedCultivators = cultivators;
-            };
+                ExternalId = "npc_elder_01",
+                Name = "Gu Yue Bo (Clan Leader)",
+                Clan = "GuYue",
+                Disposition = TaiwuDisposition.Righteous
+            });
+            world.Set(npcId, new ApertureComponent { Rank = 4, Substage = 3 });
 
-            // Act: Inspect tile (15, 15)
-            GameEventManager.RaiseRequestInspectTile(new GridCoord(15, 15));
+            // Repeated direct-read lookups always return the exact same resident NPCs without state caches
+            var firstRead = SocialVendettaSystem.GetAliveNPCsAt(world, new GridCoord(15, 15));
+            Assert.Contains(firstRead, n => n.Cult.Name == "Gu Yue Bo (Clan Leader)");
 
-            // Assert: Event was triggered and contains the NPC
-            Assert.NotNull(receivedCultivators);
-            Assert.Single(receivedCultivators);
-            Assert.Equal("Gu Yue Bo (Clan Leader)", receivedCultivators[0].Name);
-            Assert.Equal(new Vector2Int(15, 15), receivedPos);
-
-            // Re-inspecting same tile again must fire again with the same cultivator
-            receivedCultivators = null;
-            receivedPos = null;
-
-            GameEventManager.RaiseRequestInspectTile(new GridCoord(15, 15));
-
-            Assert.NotNull(receivedCultivators);
-            Assert.Single(receivedCultivators);
-            Assert.Equal("Gu Yue Bo (Clan Leader)", receivedCultivators[0].Name);
+            var secondRead = SocialVendettaSystem.GetAliveNPCsAt(world, new GridCoord(15, 15));
+            Assert.Contains(secondRead, n => n.Cult.Name == "Gu Yue Bo (Clan Leader)");
+            Assert.Equal(firstRead.Count, secondRead.Count);
         }
 
         [Fact]
-        public void Test02_ProceduralNPCWorldManagerSyncsToEntityStore()
+        public void DeadOrMovedNPCs_AreImmediatelyReflectedBySpatialQueries()
         {
-            GameEventManager.ClearAllSubscriptions();
-            var ctx = GameStateContext.CreateDefault();
-            var provider = new GameStateProvider(ctx);
+            var world = WorldFactory.CreateDefault();
+            EntityId npcId = world.FindByExternalId("npc_chi_disciple");
+            Assert.True(npcId.IsValid);
 
-            using var npcManager = new ProceduralNPCWorldManager();
-            npcManager.Initialize(ctx, provider);
+            var pos = world.Get<PositionComponent>(npcId)!;
+            GridCoord originalCoord = pos.Coord;
 
-            // Verify NPCs are present in both LivingNPCs and EntityStore
-            Assert.NotEmpty(ctx.LivingNPCs);
-            Assert.NotNull(ctx.Entities);
+            Assert.Contains(SocialVendettaSystem.GetAliveNPCsAt(world, originalCoord), n => n.Id == npcId);
 
-            // Pick first NPC
-            var firstNpc = ctx.LivingNPCs[0];
-            ulong expectedNumericId = ulong.TryParse(firstNpc.EntityId, out ulong parsed)
-                ? parsed
-                : ProceduralNPCWorldManager.HashStringToUlong(firstNpc.EntityId);
+            // Moving updates _spatialIndex in O(1)
+            world.SetPosition(npcId, new GridCoord(20, 20), world.CurrentSectorKey);
+            Assert.DoesNotContain(SocialVendettaSystem.GetAliveNPCsAt(world, originalCoord), n => n.Id == npcId);
+            Assert.Contains(SocialVendettaSystem.GetAliveNPCsAt(world, new GridCoord(20, 20)), n => n.Id == npcId);
 
-            // Check EntityStore has it
-            var entityId = new EntityId(expectedNumericId);
-            Assert.True(ctx.Entities.Has<CultivatorEntityData>(entityId));
-            Assert.True(ctx.Entities.Has<PositionComponent>(entityId));
-
-            // Check spatial hash O(1) retrieval
-            var coord = new GridCoord(firstNpc.CurrentTilePos.x, firstNpc.CurrentTilePos.y);
-            var entitiesAtTile = ctx.Entities.GetEntitiesAt(coord);
-            Assert.Contains(entityId, entitiesAtTile);
-        }
-
-        [Fact]
-        public void Test03_ClosingDialogueReResolvesTileCultivators()
-        {
-            GameEventManager.ClearAllSubscriptions();
-            var ctx = GameStateContext.CreateDefault();
-            var provider = new GameStateProvider(ctx);
-
-            using var npcManager = new ProceduralNPCWorldManager();
-            npcManager.Initialize(ctx, provider);
-
-            // Position player at (15, 15)
-            ctx.WorldMap.PlayerGridPos = new Vector2Int(15, 15);
-
-            // Ensure an NPC is at (15, 15)
-            var targetNpc = ctx.LivingNPCs[0];
-            targetNpc.CurrentTilePos = new Vector2Int(15, 15);
-
-            List<CultivatorEntityData>? updatedCultivators = null;
-            GameEventManager.OnTileCultivatorsUpdated += (pos, list) =>
-            {
-                if (pos == new Vector2Int(15, 15))
-                {
-                    updatedCultivators = list;
-                }
-            };
-
-            // First open dialogue with this NPC
-            GameEventManager.RaiseRequestInteractWithNPC(targetNpc.EntityId);
-
-            // Then close dialogue
-            GameEventManager.RaiseRequestCloseNPCDialogue();
-
-            // Assert that closing dialogue re-resolved tile cultivators
-            Assert.NotNull(updatedCultivators);
-            Assert.Contains(updatedCultivators, n => n.EntityId == targetNpc.EntityId);
+            // Reaching mortal lifespan removes NPC from GetAliveNPCsAt
+            var cult = world.Get<CultivatorComponent>(npcId)!;
+            cult.Age = cult.LifespanYears;
+            Assert.False(cult.IsAlive);
+            Assert.DoesNotContain(SocialVendettaSystem.GetAliveNPCsAt(world, new GridCoord(20, 20)), n => n.Id == npcId);
         }
     }
 }

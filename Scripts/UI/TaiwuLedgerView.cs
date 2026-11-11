@@ -2,16 +2,16 @@ using System.Collections.Generic;
 using Godot;
 using Color = Godot.Color;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
+using TaiwuGu.Systems;
 
 namespace Taiwu_Godot.Scripts.UI
 {
     /// <summary>
     /// Character Ledger & Cultivator Inspection Modal View (Godot 2D).
-    /// Pure Presentation Layer Observer under Constitutional Laws 1, 4 & 6.
-    /// Strictly decoupled from Domain Services & GameStateContext.
+    /// Direct-read presentation observer wired to WorldStore via IWorldStateProvider & WorldSignals.
     /// Chrome and the tab strip come from TabbedModal.tscn; each page is a Control bound to an
-    /// immutable snapshot (CultivationTab, GuWormsTab, DaoMarksTab, FactionsTab). This view owns
-    /// only the cached event state, open/close and the cauldron round-trip.
+    /// immutable snapshot (CultivationTab, GuWormsTab, DaoMarksTab, FactionsTab).
     /// </summary>
     public partial class TaiwuLedgerView : Control, IModalView
     {
@@ -19,44 +19,21 @@ namespace Taiwu_Godot.Scripts.UI
 
         private bool _isOpen = false;
         private TaiwuModalStack? _modalStack;
+        private IWorldStateProvider? _stateProvider;
         public bool IsOpen => _isOpen;
 
-        public void InitializeModalStack(TaiwuModalStack modalStack)
+        public void Initialize(TaiwuModalStack modalStack, IWorldStateProvider stateProvider)
         {
             _modalStack = modalStack;
+            _stateProvider = stateProvider;
             _scaffold?.BindModalStack(modalStack);
+            UpdateAllDisplays();
         }
 
         public void Dismiss() => CloseLedger();
 
         private int _activeTabIndex = 0; // 0: Cultivation, 1: Gu Worms, 2: Dao Marks, 3: Factions
         private bool _returnToLedgerOnCauldronClose = false;
-
-        // --- Cached event state (never seeded; the four pages render from these) ---
-        private string _cultivatorName = string.Empty;
-        private int _rank;
-        private int _substage;
-        private string _substageName = string.Empty;
-        private float _currentEssenceSea;
-        private float _maxEssenceCapacity;
-        private int _primevalStones;
-        private float _aptitudePercent;
-
-        // Aperture Chamber & Wall fields
-        private float _wallWashingProgress;
-        private float _apertureWallDurability;
-        private float _maxWallDurability;
-        private string _membraneName = string.Empty;
-        private int _humanPathDaoMarks;
-
-        // Inviolate Lifespan Law & 24 Solar Terms Resonance
-        private int _age;
-        private int _lifespanYears;
-        private int _remainingLifespanYears;
-        private string _seasonalAffinityText = string.Empty;
-
-        private readonly List<GuWormData> _equippedGu = new();
-        private readonly List<GuWormData> _reserveGu = new();
 
         // UI references (chrome, tab strip and tab body live in Scenes/UI/TabbedModal.tscn)
         private TabbedModal? _tabs;
@@ -77,49 +54,43 @@ namespace Taiwu_Godot.Scripts.UI
 
             BuildUIHierarchy();
 
-            // Strict Event Subscription Symmetry
-            GameEventManager.OnLedgerToggleRequested        += HandleLedgerToggleRequested;
-            GameEventManager.OnPOIModalToggled              += HandlePOIModalToggled;
-            GameEventManager.OnCauldronOpened               += HandleCauldronOpened;
-            GameEventManager.OnCauldronClosed               += HandleCauldronClosed;
-            GameEventManager.OnCultivatorIdentityChanged    += HandleCultivatorIdentityChanged;
-            GameEventManager.OnCultivatorCultivationChanged += HandleCultivatorCultivationChanged;
-            GameEventManager.OnPrimevalSeaChanged           += HandlePrimevalSeaChanged;
-            GameEventManager.OnPrimevalStonesChanged        += HandlePrimevalStonesChanged;
-            GameEventManager.OnApertureWallStateChanged     += HandleApertureWallStateChanged;
-            GameEventManager.OnHumanPathDaoMarksChanged     += HandleHumanPathDaoMarksChanged;
-            GameEventManager.OnLifespanChanged             += HandleLifespanChanged;
-            GameEventManager.OnSolarTermAdvanced            += HandleSolarTermAdvanced;
-            GameEventManager.OnGuInventoryUpdated           += HandleGuInventoryUpdated;
-            GameEventManager.OnGuFed                        += HandleGuFed;
-            GameEventManager.OnGuStarvationChanged          += HandleGuStarvationChanged;
-            GameEventManager.OnFactionReputationChanged     += HandleFactionReputationChanged;
+            WorldSignals.OnTopicsChanged        += HandleTopicsChanged;
+            WorldSignals.OnToggleLedgerRequested += HandleLedgerToggleRequested;
+            WorldSignals.OnPOIModalToggled      += HandlePOIModalToggled;
+            WorldSignals.OnCauldronModalToggled += HandleCauldronModalToggled;
+
+            UpdateAllDisplays();
         }
 
         public override void _ExitTree()
         {
-            GameEventManager.OnLedgerToggleRequested        -= HandleLedgerToggleRequested;
-            GameEventManager.OnPOIModalToggled              -= HandlePOIModalToggled;
-            GameEventManager.OnCauldronOpened               -= HandleCauldronOpened;
-            GameEventManager.OnCauldronClosed               -= HandleCauldronClosed;
-            GameEventManager.OnCultivatorIdentityChanged    -= HandleCultivatorIdentityChanged;
-            GameEventManager.OnCultivatorCultivationChanged -= HandleCultivatorCultivationChanged;
-            GameEventManager.OnPrimevalSeaChanged           -= HandlePrimevalSeaChanged;
-            GameEventManager.OnPrimevalStonesChanged        -= HandlePrimevalStonesChanged;
-            GameEventManager.OnApertureWallStateChanged     -= HandleApertureWallStateChanged;
-            GameEventManager.OnHumanPathDaoMarksChanged     -= HandleHumanPathDaoMarksChanged;
-            GameEventManager.OnLifespanChanged             -= HandleLifespanChanged;
-            GameEventManager.OnSolarTermAdvanced            -= HandleSolarTermAdvanced;
-            GameEventManager.OnGuInventoryUpdated           -= HandleGuInventoryUpdated;
-            GameEventManager.OnGuFed                        -= HandleGuFed;
-            GameEventManager.OnGuStarvationChanged          -= HandleGuStarvationChanged;
-            GameEventManager.OnFactionReputationChanged     -= HandleFactionReputationChanged;
+            WorldSignals.OnTopicsChanged        -= HandleTopicsChanged;
+            WorldSignals.OnToggleLedgerRequested -= HandleLedgerToggleRequested;
+            WorldSignals.OnPOIModalToggled      -= HandlePOIModalToggled;
+            WorldSignals.OnCauldronModalToggled -= HandleCauldronModalToggled;
+
+            if (_cultivationTab != null)
+            {
+                _cultivationTab.MeditateRequested -= HandleMeditateRequested;
+                _cultivationTab.ConsumeStoneRequested -= HandleConsumeStoneRequested;
+                _cultivationTab.WashWallRequested -= HandleWashWallRequested;
+                _cultivationTab.BreakthroughRequested -= HandleBreakthroughRequested;
+            }
+            if (_guWormsTab != null)
+            {
+                _guWormsTab.OpenCauldronRequested -= OpenCauldronFromLedger;
+                _guWormsTab.FeedGuRequested -= HandleFeedGuRequested;
+            }
+            if (_tabs != null)
+            {
+                _tabs.TabSelected -= HandleStripTabSelected;
+            }
 
             if (_isOpen)
             {
                 _isOpen = false;
                 _scaffold?.Close();
-                GameEventManager.TriggerLedgerToggled(false);
+                WorldSignals.EmitLedgerToggled(false);
             }
         }
 
@@ -132,7 +103,7 @@ namespace Taiwu_Godot.Scripts.UI
             _isOpen = true;
             Visible = true;
             _scaffold?.Open(this, LedgerTitle);
-            GameEventManager.TriggerLedgerToggled(true);
+            WorldSignals.EmitLedgerToggled(true);
             UpdateAllDisplays();
         }
 
@@ -143,7 +114,7 @@ namespace Taiwu_Godot.Scripts.UI
             _isOpen = false;
             Visible = false;
             _scaffold?.Close();
-            GameEventManager.TriggerLedgerToggled(false);
+            WorldSignals.EmitLedgerToggled(false);
         }
 
         private void HandleLedgerToggleRequested()
@@ -160,28 +131,27 @@ namespace Taiwu_Godot.Scripts.UI
             }
         }
 
-        private void HandleCauldronOpened(CauldronRefinementState state)
+        private void HandleCauldronModalToggled(bool isOpen)
         {
-            if (_isOpen)
+            if (isOpen)
             {
-                _returnToLedgerOnCauldronClose = true;
-                _isOpen = false;
-                Visible = false;
-                _scaffold?.Close();
-                GameEventManager.TriggerLedgerToggled(false);
+                if (_isOpen)
+                {
+                    _returnToLedgerOnCauldronClose = true;
+                    _isOpen = false;
+                    Visible = false;
+                    _scaffold?.Close();
+                    WorldSignals.EmitLedgerToggled(false);
+                }
             }
-        }
-
-        private void HandleCauldronClosed()
-        {
-            if (_returnToLedgerOnCauldronClose)
+            else if (_returnToLedgerOnCauldronClose)
             {
                 _returnToLedgerOnCauldronClose = false;
                 _isOpen = true;
                 Visible = true;
                 _activeTabIndex = 1; // Return to Gu Worms loadout
                 _scaffold?.Open(this, LedgerTitle);
-                GameEventManager.TriggerLedgerToggled(true);
+                WorldSignals.EmitLedgerToggled(true);
                 SwitchTab(1);
                 UpdateAllDisplays();
             }
@@ -189,127 +159,61 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void OpenCauldronFromLedger()
         {
+            var world = _stateProvider?.Current;
+            if (world == null) return;
+
             _returnToLedgerOnCauldronClose = true;
             _isOpen = false;
             Visible = false;
             _scaffold?.Close();
-            GameEventManager.TriggerLedgerToggled(false);
-            GameEventManager.RaiseRequestOpenCauldron();
+            WorldSignals.EmitLedgerToggled(false);
+            RefinementSystem.OpenCauldron(world);
+        }
+
+        private void HandleMeditateRequested()
+        {
+            if (_stateProvider?.Current is WorldStore world) CultivationSystem.Meditate(world);
+        }
+
+        private void HandleConsumeStoneRequested()
+        {
+            if (_stateProvider?.Current is WorldStore world) CultivationSystem.ConsumeStone(world);
+        }
+
+        private void HandleWashWallRequested()
+        {
+            if (_stateProvider?.Current is WorldStore world) CultivationSystem.WashApertureWall(world);
+        }
+
+        private void HandleFeedGuRequested(string guId, GuDietType diet, int quantity)
+        {
+            if (_stateProvider?.Current is WorldStore world)
+                GuEcologySystem.FeedGuByCatalogId(world, guId, diet, quantity);
         }
 
         private void HandleBreakthroughRequested()
         {
             CloseLedger();
-            GameEventManager.RaiseRequestOpenBreakthroughMinigame();
+            if (_stateProvider?.Current is WorldStore world)
+                BreakthroughSystem.OpenSession(world);
         }
 
-        private void HandleCultivatorIdentityChanged(string cultivatorName)
+        private void HandleTopicsChanged(DirtyTopic topics)
         {
-            _cultivatorName = cultivatorName;
-            RefreshCultivation();
-        }
-
-        private void HandleCultivatorCultivationChanged(int rank, int substage, string name)
-        {
-            _rank = rank;
-            _substage = substage;
-            _substageName = name;
-            RefreshCultivation();
-        }
-
-        private void HandlePrimevalSeaChanged(float currentSea, float maxCapacity)
-        {
-            _currentEssenceSea = currentSea;
-            // The service broadcasts the aperture's ceiling, which is the innate aptitude: it is
-            // the only event that carries that number, and no view may seed it.
-            _maxEssenceCapacity = maxCapacity;
-            _aptitudePercent = maxCapacity;
-            RefreshCultivation();
-        }
-
-        private void HandlePrimevalStonesChanged(int stones)
-        {
-            _primevalStones = stones;
-            RefreshCultivation();
-        }
-
-        private void HandleApertureWallStateChanged(float washingProgress, float durability, float maxDurability, string membraneName)
-        {
-            _wallWashingProgress = washingProgress;
-            _apertureWallDurability = durability;
-            _maxWallDurability = maxDurability;
-            _membraneName = membraneName;
-            RefreshCultivation();
-        }
-
-        private void HandleHumanPathDaoMarksChanged(int marks)
-        {
-            _humanPathDaoMarks = marks;
-            RefreshCultivation();
-            RefreshDaoMarks();
-        }
-
-        private void HandleLifespanChanged(int age, int lifespanYears, int remainingYears)
-        {
-            _age = age;
-            _lifespanYears = lifespanYears;
-            _remainingLifespanYears = remainingYears;
-            RefreshCultivation();
-        }
-
-        private void HandleSolarTermAdvanced(int year, SolarTerm term, string termName)
-        {
-            int index = (int)term;
-            if (index >= 1 && index <= 6) _seasonalAffinityText = "Spring: Enslavement Path +15%";
-            else if (index >= 7 && index <= 12) _seasonalAffinityText = "Summer: Refinement Path +15%";
-            else if (index >= 13 && index <= 18) _seasonalAffinityText = "Autumn: Moon Path +15%";
-            else _seasonalAffinityText = "Winter: Blood Path +15%";
-            RefreshCultivation();
-            RefreshDaoMarks();
-        }
-
-        private void HandleGuInventoryUpdated(List<GuWormData> equipped, List<GuWormData> reserve)
-        {
-            _equippedGu.Clear();
-            if (equipped != null) _equippedGu.AddRange(equipped);
-
-            _reserveGu.Clear();
-            if (reserve != null) _reserveGu.AddRange(reserve);
-
-            RefreshGuWorms();
-            UpdateTabHeaders();
-        }
-
-        private void HandleGuFed(string guId, bool wasFed, float newSatiety)
-        {
-            for (int i = 0; i < _equippedGu.Count; i++)
+            if ((topics & (DirtyTopic.Cultivator | DirtyTopic.Aperture | DirtyTopic.Calendar)) != 0)
             {
-                if (_equippedGu[i].GuID == guId)
-                {
-                    _equippedGu[i].Satiety = newSatiety;
-                    RefreshGuWorms();
-                    return;
-                }
+                RefreshCultivation();
+                RefreshDaoMarks();
             }
-            for (int i = 0; i < _reserveGu.Count; i++)
+            if ((topics & DirtyTopic.Inventory) != 0)
             {
-                if (_reserveGu[i].GuID == guId)
-                {
-                    _reserveGu[i].Satiety = newSatiety;
-                    RefreshGuWorms();
-                    return;
-                }
+                RefreshGuWorms();
+                UpdateTabHeaders();
             }
-        }
-
-        private void HandleGuStarvationChanged(string guId, GuStarvationStage st)
-        {
-            RefreshGuWorms();
-        }
-
-        private void HandleFactionReputationChanged(FactionID faction, int newScore, int delta)
-        {
-            RefreshFactions();
+            if ((topics & DirtyTopic.Factions) != 0)
+            {
+                RefreshFactions();
+            }
         }
 
         // =========================================================================
@@ -369,7 +273,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             _lblSubtitle = new Label
             {
-                Text = $"Gu Yue Clan Heir: {_cultivatorName} | Rank {_rank} {_substageName}",
+                Text = string.Empty,
                 Modulate = new Color(0.984f, 0.749f, 0.141f, 1f) // #FBBF24
             };
             _lblSubtitle.AddThemeFontSizeOverride("font_size", 11);
@@ -379,11 +283,15 @@ namespace Taiwu_Godot.Scripts.UI
             float tabWidth = (840f - 36f - 18f) / 4f;
 
             _cultivationTab = new CultivationTab();
+            _cultivationTab.MeditateRequested += HandleMeditateRequested;
+            _cultivationTab.ConsumeStoneRequested += HandleConsumeStoneRequested;
+            _cultivationTab.WashWallRequested += HandleWashWallRequested;
             _cultivationTab.BreakthroughRequested += HandleBreakthroughRequested;
             tabs.AddTab("1. Cultivation (修持)", _cultivationTab, tabWidth);
 
             _guWormsTab = new GuWormsTab();
             _guWormsTab.OpenCauldronRequested += OpenCauldronFromLedger;
+            _guWormsTab.FeedGuRequested += HandleFeedGuRequested;
             tabs.AddTab("2. Gu Worms (0)", _guWormsTab, tabWidth);
 
             _daoMarksTab = new DaoMarksTab();
@@ -430,50 +338,85 @@ namespace Taiwu_Godot.Scripts.UI
         private void RefreshCultivation()
         {
             _scaffold?.SetTitle(LedgerTitle);
+            var world = _stateProvider?.Current;
+            if (world == null) return;
 
+            var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+            var ap = world.Get<ApertureComponent>(world.PlayerEntity);
+            var marks = world.Get<DaoMarksComponent>(world.PlayerEntity);
+            var clock = world.GetSingleton<WorldClockComponent>();
+            if (cult == null || ap == null) return;
+
+            string substageName = ap.GetSubstageName();
             if (_lblSubtitle != null)
-                _lblSubtitle.Text = $"Gu Yue Clan Heir: {_cultivatorName} | Rank {_rank} {_substageName}";
+                _lblSubtitle.Text = $"Gu Yue Clan Heir: {cult.Name} | Rank {ap.Rank} {substageName}";
+
+            int humanMarks = marks?.Ledger.HumanPathMarks ?? ApertureComponent.DeriveInnateHumanPathMarks(cult.AptitudePercent);
+            int termIdx = clock?.CurrentSolarTermIndex ?? 4;
+            string seasonalAffinity = termIdx switch
+            {
+                >= 1 and <= 6 => "Spring: Enslavement Path +15%",
+                >= 7 and <= 12 => "Summer: Refinement Path +15%",
+                >= 13 and <= 18 => "Autumn: Moon Path +15%",
+                _ => "Winter: Blood Path +15%"
+            };
 
             _cultivationTab?.Bind(new CultivationSnapshot(
-                _cultivatorName,
-                _rank,
-                _substage,
-                _substageName,
-                _membraneName,
-                _aptitudePercent,
-                _primevalStones,
-                _humanPathDaoMarks,
-                _age,
-                _lifespanYears,
-                _remainingLifespanYears,
-                _seasonalAffinityText,
-                _currentEssenceSea,
-                _maxEssenceCapacity,
-                _wallWashingProgress,
-                _apertureWallDurability,
-                _maxWallDurability));
+                cult.Name,
+                ap.Rank,
+                ap.Substage,
+                substageName,
+                ap.GetMembraneTypeName(),
+                cult.AptitudePercent,
+                cult.PrimevalStones,
+                humanMarks,
+                cult.Age,
+                cult.LifespanYears,
+                cult.RemainingLifespanYears,
+                seasonalAffinity,
+                ap.CurrentEssenceSea,
+                cult.AptitudePercent,
+                ap.WallWashingProgress,
+                ap.ApertureWallDurability,
+                ap.MaxWallDurability));
         }
 
         private void RefreshGuWorms()
         {
-            _guWormsTab?.Bind(new GuWormsSnapshot(_equippedGu, _reserveGu));
+            var world = _stateProvider?.Current;
+            if (world == null) return;
+
+            var (equipped, reserve) = GuEcologySystem.GetLoadout(world);
+            _guWormsTab?.Bind(new GuWormsSnapshot(equipped, reserve));
         }
 
         private void RefreshDaoMarks()
         {
-            _daoMarksTab?.Bind(new DaoMarksSnapshot(_humanPathDaoMarks, _aptitudePercent));
+            var world = _stateProvider?.Current;
+            if (world == null) return;
+
+            var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+            var marks = world.Get<DaoMarksComponent>(world.PlayerEntity);
+            float aptitude = cult?.AptitudePercent ?? 44f;
+            int humanMarks = marks?.Ledger.HumanPathMarks ?? ApertureComponent.DeriveInnateHumanPathMarks(aptitude);
+
+            _daoMarksTab?.Bind(new DaoMarksSnapshot(humanMarks, aptitude));
         }
 
         private void RefreshFactions()
         {
-            var factionState = FactionContextProvider.FactionResolver?.Invoke();
-            if (factionState == null || factionState.Factions == null || factionState.Factions.Count == 0)
+            var world = _stateProvider?.Current;
+            var factions = new List<FactionData>();
+            if (world != null)
             {
-                factionState = new WorldFactionState();
-                factionState.InitializeDefaultFactions();
+                foreach (var (_, fc) in world.GetAll<FactionComponent>())
+                {
+                    factions.Add(fc.ToFactionData());
+                }
+                factions.Sort((a, b) => a.ID.CompareTo(b.ID));
             }
 
-            _factionsTab?.Bind(new FactionsSnapshot(factionState.Factions));
+            _factionsTab?.Bind(new FactionsSnapshot(factions));
         }
 
         // =========================================================================
@@ -501,7 +444,13 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void UpdateTabHeaders()
         {
-            int totalGu = _equippedGu.Count + _reserveGu.Count;
+            var world = _stateProvider?.Current;
+            int totalGu = 0;
+            if (world != null)
+            {
+                var (equipped, reserve) = GuEcologySystem.GetLoadout(world);
+                totalGu = equipped.Count + reserve.Count;
+            }
             _tabs?.SetTabLabel(1, $"2. Gu Worms ({totalGu})");
         }
     }

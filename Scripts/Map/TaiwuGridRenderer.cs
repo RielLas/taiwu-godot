@@ -4,6 +4,7 @@ using Godot;
 using Color = Godot.Color;
 using TaiwuGu.Core;
 using TaiwuGu.Map;
+using TaiwuGu.Systems;
 
 namespace Taiwu_Godot.Scripts.Map
 {
@@ -82,7 +83,7 @@ namespace Taiwu_Godot.Scripts.Map
 
                     Vector2 center = _tileManager != null 
                         ? _tileManager.GridToWorld(new Vector2I(x, y)) 
-                        : ExplorationService.GridToWorld(new GridCoord(x, y)).ToGodot();
+                        : ExplorationSystem.GridToWorld(new GridCoord(x, y)).ToGodot();
 
                     int startV = vIdx;
 

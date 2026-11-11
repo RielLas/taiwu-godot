@@ -1,5 +1,6 @@
 using Godot;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 
 namespace Taiwu_Godot.Scripts.UI
 {
@@ -53,12 +54,12 @@ namespace Taiwu_Godot.Scripts.UI
                 Backdrop.GuiInput += HandleBackdropInput;
             }
 
-            GameEventManager.OnEscapeRequested += HandleEscapeRequested;
+            WorldSignals.OnEscapeRequested += HandleEscapeRequested;
         }
 
         public override void _ExitTree()
         {
-            GameEventManager.OnEscapeRequested -= HandleEscapeRequested;
+            WorldSignals.OnEscapeRequested -= HandleEscapeRequested;
 
             if (CloseButton != null)
             {
@@ -85,7 +86,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             if (IsOpen) return;
             IsOpen = true;
-            GameEventManager.RaiseModalOpened(owner);
+            WorldSignals.EmitModalOpened(owner);
         }
 
         /// <summary>
@@ -100,7 +101,7 @@ namespace Taiwu_Godot.Scripts.UI
             IsOpen = false;
             if (_owner != null)
             {
-                GameEventManager.RaiseModalClosed(_owner);
+                WorldSignals.EmitModalClosed(_owner);
             }
         }
 
@@ -127,14 +128,12 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void HandleEscapeRequested()
         {
-            if (!IsOpen || _owner == null || GameEventManager.EscapeHandled) return;
+            if (!IsOpen || _owner == null || WorldSignals.EscapeHandled) return;
 
-            // Strict LIFO: only the modal on top of the stack answers Escape, which
-            // replaces the per-view priority checks the views used to duplicate.
             if (ModalStack != null && !ReferenceEquals(ModalStack.TopModal, _owner)) return;
 
             _owner.Dismiss();
-            GameEventManager.EscapeHandled = true;
+            WorldSignals.EscapeHandled = true;
         }
     }
 }

@@ -13,11 +13,6 @@ namespace TaiwuGu.Serialization
 
         /// <summary>One file per slot: metadata and state travel together so they cannot disagree.</summary>
         public const string SAVE_FILE_NAME = "save.json";
-
-        // Legacy two-file layout (before the single-file commit). Read-only compatibility.
-        public const string METADATA_FILE_NAME = "metadata.json";
-        public const string PAYLOAD_FILE_NAME = "payload.json";
-
         public const string TEMP_SUFFIX = ".tmp";
         public const string BACKUP_SUFFIX = ".bak";
 
@@ -110,18 +105,5 @@ namespace TaiwuGu.Serialization
                 Directory.CreateDirectory(path);
             }
         }
-    }
-
-    public static partial class SaveLoadEngine
-    {
-        public static string RootSaveDirectory
-        {
-            get => SavePaths.RootSaveDirectory;
-            set => SavePaths.RootSaveDirectory = value;
-        }
-
-        public static void Initialize(string? customRootPath = null) => SavePaths.Initialize(customRootPath);
-        public static string GetSlotPath(string slotID) => SavePaths.GetSlotPath(slotID);
-        public static void EnsureDirectoryExists(string path) => SavePaths.EnsureDirectoryExists(path);
     }
 }

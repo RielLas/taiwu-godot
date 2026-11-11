@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using Godot;
 using Color = Godot.Color;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using TaiwuGu.Map;
+using TaiwuGu.Systems;
 
 namespace Taiwu_Godot.Scripts.Map
 {
@@ -43,8 +45,8 @@ namespace Taiwu_Godot.Scripts.Map
 
         public override void _Ready()
         {
-            GameEventManager.OnFogOfWarUpdated += HandleFogOfWarUpdated;
-            GameEventManager.OnTargetTileSelected += HandleTargetTileSelected;
+            WorldSignals.OnTopicsChanged += HandleTopicsChanged;
+            WorldSignals.OnTargetTileSelected += HandleTargetTileSelected;
 
             if (GenerateMeshVisuals)
             {
@@ -54,8 +56,8 @@ namespace Taiwu_Godot.Scripts.Map
 
         public override void _ExitTree()
         {
-            GameEventManager.OnFogOfWarUpdated -= HandleFogOfWarUpdated;
-            GameEventManager.OnTargetTileSelected -= HandleTargetTileSelected;
+            WorldSignals.OnTopicsChanged -= HandleTopicsChanged;
+            WorldSignals.OnTargetTileSelected -= HandleTargetTileSelected;
 
             if (combinedMesh != null)
             {
@@ -64,9 +66,12 @@ namespace Taiwu_Godot.Scripts.Map
             }
         }
 
-        protected virtual void HandleFogOfWarUpdated(GridCoord center, int radius)
+        private void HandleTopicsChanged(DirtyTopic topics)
         {
-            UpdateFogMeshColors();
+            if ((topics & DirtyTopic.Fog) != 0)
+            {
+                UpdateFogMeshColors();
+            }
         }
 
         protected virtual void HandleTargetTileSelected(GridCoord? targetPos, List<GridCoord>? path)
@@ -429,12 +434,12 @@ namespace Taiwu_Godot.Scripts.Map
 
         public Vector2 GridToWorld(Vector2I gridPos)
         {
-            return ExplorationService.GridToWorld(gridPos.ToGridCoord()).ToGodot();
+            return ExplorationSystem.GridToWorld(gridPos.ToGridCoord()).ToGodot();
         }
 
         public Vector2I WorldToGrid(Vector2 worldPos)
         {
-            return ExplorationService.WorldToGrid(worldPos.ToWorldVec2()).ToGodot();
+            return ExplorationSystem.WorldToGrid(worldPos.ToWorldVec2()).ToGodot();
         }
 
         public bool IsWithinBounds(Vector2I pos)

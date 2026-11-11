@@ -1,16 +1,14 @@
 using System;
 using System.IO;
+using System.Linq;
 using Xunit;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using TaiwuGu.Map;
 using TaiwuGu.Serialization;
 
 namespace TaiwuGu.Tests
 {
-    /// <summary>
-    /// Guards the save pipeline the headless verification harness relies on.
-    /// If this fails, <c>--verify</c> will fail too, and the cause is serialization, not the scene.
-    /// </summary>
     public class SaveRoundTripTests : IDisposable
     {
         private readonly string _originalRoot;
@@ -30,57 +28,61 @@ namespace TaiwuGu.Tests
             {
                 if (Directory.Exists(_testRoot)) Directory.Delete(_testRoot, true);
             }
-            catch
-            {
-                // Temp cleanup is best effort; a locked file must not fail the suite.
-            }
+            catch { }
         }
 
         [Fact]
-        public void SaveThenLoad_PreservesCultivatorCalendarInventoryAndEveryTile()
+        public void SaveThenLoad_PreservesWorldComponentsOwnedEntitiesAndEveryTile()
         {
-            var ctx = GameStateContext.CreateDefault();
-            ctx.Cultivator.Rank = 2;
-            ctx.Cultivator.Substage = 3;
-            ctx.Cultivator.PrimevalStones = 777;
-            ctx.Cultivator.CurrentEssenceSea = 61.5f;
-            ctx.Calendar.CurrentYear = 4;
-            ctx.Calendar.CurrentSolarTermIndex = 11;
-            ctx.Calendar.ActionPointsRemaining = 17;
-            ctx.RunSeed = 424242;
-            ctx.WorldMap.SetExplored(3, 4, true);
-            ctx.WorldMap.SetVisible(3, 4, true);
+            var world = WorldFactory.CreateDefault(runSeed: 424242);
+            var cult = world.Get<CultivatorComponent>(world.PlayerEntity)!;
+            var ap = world.Get<ApertureComponent>(world.PlayerEntity)!;
+            var clock = world.GetSingleton<WorldClockComponent>()!;
+            var sector = world.GetCurrentSector()!;
 
-            Assert.NotNull(ctx.WorldMap.Tiles);
+            ap.Rank = 2;
+            ap.Substage = 3;
+            cult.PrimevalStones = 777;
+            ap.CurrentEssenceSea = 61.5f;
+            clock.CurrentYear = 4;
+            clock.CurrentSolarTermIndex = 11;
+            clock.ActionPointsRemaining = 17;
 
-            // A struct field that only survives if TileNode serializes field-by-field.
-            ctx.WorldMap.Tiles![0].CustomLandmarkId = "custom_landmark_probe";
+            var tiles = sector.EnsureHydrated();
+            tiles[4 * sector.GridWidth + 3].IsExplored = true;
+            tiles[4 * sector.GridWidth + 3].IsVisible = true;
+            tiles[0].CustomLandmarkId = "custom_landmark_probe";
 
-            Assert.True(SaveLoadEngine.SaveContext("round_trip", ctx));
+            Assert.True(SaveDiskIO.SaveWorld("round_trip", world));
 
-            var loaded = SaveLoadEngine.LoadContext("round_trip");
+            var loaded = SaveDiskIO.LoadWorld("round_trip");
             Assert.NotNull(loaded);
 
-            Assert.Equal("Gu Yue Fang Yuan", loaded!.Cultivator.Name);
-            Assert.Equal(2, loaded.Cultivator.Rank);
-            Assert.Equal(3, loaded.Cultivator.Substage);
-            Assert.Equal(777, loaded.Cultivator.PrimevalStones);
-            Assert.Equal(61.5f, loaded.Cultivator.CurrentEssenceSea, 3);
-            Assert.Equal(4, loaded.Calendar.CurrentYear);
-            Assert.Equal(11, loaded.Calendar.CurrentSolarTermIndex);
-            Assert.Equal(17, loaded.Calendar.ActionPointsRemaining);
+            var cultB = loaded!.Get<CultivatorComponent>(loaded.PlayerEntity)!;
+            var apB = loaded.Get<ApertureComponent>(loaded.PlayerEntity)!;
+            var clockB = loaded.GetSingleton<WorldClockComponent>()!;
+            var sectorB = loaded.GetCurrentSector()!;
+
+            Assert.Equal("Gu Yue Fang Yuan", cultB.Name);
+            Assert.Equal(2, apB.Rank);
+            Assert.Equal(3, apB.Substage);
+            Assert.Equal(777, cultB.PrimevalStones);
+            Assert.Equal(61.5f, apB.CurrentEssenceSea, 3);
+            Assert.Equal(4, clockB.CurrentYear);
+            Assert.Equal(11, clockB.CurrentSolarTermIndex);
+            Assert.Equal(17, clockB.ActionPointsRemaining);
             Assert.Equal(424242, loaded.RunSeed);
-            Assert.Equal(ctx.GuInventory.EquippedGu.Count, loaded.GuInventory.EquippedGu.Count);
+            Assert.Equal(world.GetOwned<GuWormComponent>(world.PlayerEntity).Count(),
+                         loaded.GetOwned<GuWormComponent>(loaded.PlayerEntity).Count());
 
-            Assert.NotNull(loaded.WorldMap.Tiles);
-            Assert.Equal(ctx.WorldMap.Tiles.Length, loaded.WorldMap.Tiles!.Length);
-            Assert.Equal("custom_landmark_probe", loaded.WorldMap.Tiles[0].CustomLandmarkId);
+            var tilesB = sectorB.EnsureHydrated();
+            Assert.Equal(tiles.Length, tilesB.Length);
+            Assert.Equal("custom_landmark_probe", tilesB[0].CustomLandmarkId);
 
-            for (int i = 0; i < ctx.WorldMap.Tiles.Length; i++)
+            for (int i = 0; i < tiles.Length; i++)
             {
-                TileNode before = ctx.WorldMap.Tiles[i];
-                TileNode after = loaded.WorldMap.Tiles[i];
-
+                TileNode before = tiles[i];
+                TileNode after = tilesB[i];
                 Assert.Equal(before.POI, after.POI);
                 Assert.Equal(before.Biome, after.Biome);
                 Assert.Equal(before.DangerRank, after.DangerRank);
@@ -94,23 +96,22 @@ namespace TaiwuGu.Tests
         }
 
         [Fact]
-        public void SaveThenLoad_TwiceIsStableAndWritesRecoverableSlot()
+        public void SaveThenLoad_TwiceIsStable()
         {
-            var ctx = GameStateContext.CreateDefault();
+            var world = WorldFactory.CreateDefault();
+            Assert.True(SaveDiskIO.SaveWorld("stable_slot", world));
+            Assert.True(SaveDiskIO.SaveWorld("stable_slot", world));
+            Assert.True(SaveDiskIO.SlotExists("stable_slot"));
 
-            Assert.True(SaveLoadEngine.SaveContext("stable_slot", ctx));
-            Assert.True(SaveLoadEngine.SaveContext("stable_slot", ctx));
-
-            Assert.True(SaveLoadEngine.SlotExists("stable_slot"));
-
-            var first = SaveLoadEngine.LoadContext("stable_slot");
-            var second = SaveLoadEngine.LoadContext("stable_slot");
+            var first = SaveDiskIO.LoadWorld("stable_slot");
+            var second = SaveDiskIO.LoadWorld("stable_slot");
 
             Assert.NotNull(first);
             Assert.NotNull(second);
-            Assert.Equal(first!.Cultivator.Name, second!.Cultivator.Name);
-            Assert.Equal(first.WorldMap.Tiles!.Length, second.WorldMap.Tiles!.Length);
-            Assert.Equal(first.WorldMap.PlayerGridPos, second.WorldMap.PlayerGridPos);
+            Assert.Equal(first!.Get<CultivatorComponent>(first.PlayerEntity)!.Name,
+                         second!.Get<CultivatorComponent>(second.PlayerEntity)!.Name);
+            Assert.Equal(first.GetCurrentSector()!.EnsureHydrated().Length,
+                         second.GetCurrentSector()!.EnsureHydrated().Length);
         }
     }
 }

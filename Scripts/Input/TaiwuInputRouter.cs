@@ -1,31 +1,32 @@
 using System;
 using Godot;
-using TaiwuGu.Core;
+using TaiwuGu.Entities;
+using TaiwuGu.Systems;
 using Taiwu_Godot.Scripts.Map;
 using Taiwu_Godot.Scripts.UI;
 
 namespace Taiwu_Godot.Scripts.Input
 {
     /// <summary>
-    /// The single place the game reads keyboard intent.
-    ///
-    /// Bindings live in <c>project.godot</c>'s <c>[input]</c> map, so remapping a key is a project
-    /// setting rather than a code change. Pointer input (drag, wheel, click) stays in
-    /// <see cref="StandaloneInputProvider"/> because it is not an action. The bootstrapper no longer
-    /// inspects keycodes at all.
+    /// Single entry point for keyboard action bindings defined in project.godot.
+    /// Routes directly to modal controllers and static ECS Systems.
     /// </summary>
     public partial class TaiwuInputRouter : Node
     {
         [Export] public StandaloneInputProvider? StandaloneProvider { get; set; }
 
-        // Routed-to handlers, assigned by the bootstrapper (no scene searching).
+        public IWorldStateProvider? WorldProvider { get; set; }
         public PlayerCultivatorController? PlayerController { get; set; }
         public TaiwuSystemMenuView? SystemMenuView { get; set; }
         public ApertureBreakthroughModalView? BreakthroughView { get; set; }
 
         private TaiwuModalStack? _modalStack;
 
-        public void InitializeModalStack(TaiwuModalStack modalStack) => _modalStack = modalStack;
+        public void Initialize(TaiwuModalStack modalStack, IWorldStateProvider provider)
+        {
+            _modalStack = modalStack;
+            WorldProvider = provider;
+        }
 
         public bool IsModalActive { get; private set; } = false;
 
@@ -37,12 +38,12 @@ namespace Taiwu_Godot.Scripts.Input
             else
                 StandaloneProvider.ProcessMode = ProcessModeEnum.Always;
 
-            GameEventManager.OnUIModalActive += HandleUIModalActive;
+            WorldSignals.OnUIModalActive += HandleUIModalActive;
         }
 
         public override void _ExitTree()
         {
-            GameEventManager.OnUIModalActive -= HandleUIModalActive;
+            WorldSignals.OnUIModalActive -= HandleUIModalActive;
         }
 
         private void HandleUIModalActive(bool isActive)
@@ -64,8 +65,6 @@ namespace Taiwu_Godot.Scripts.Input
         {
             if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
 
-            // Order matters: ui_cancel owns the LIFO chain, so a second action bound to the same
-            // key (toggle_system_menu defaults to Escape) never double-fires.
             if (key.IsActionPressed("ui_cancel"))
             {
                 ConsumeEscape();
@@ -77,35 +76,35 @@ namespace Taiwu_Godot.Scripts.Input
             {
                 if (!IsModalActive || _modalStack?.IsModalOpen<TaiwuLedgerView>() == true)
                 {
-                    GameEventManager.TriggerLedgerToggle();
+                    WorldSignals.EmitToggleLedger();
                 }
                 GetViewport().SetInputAsHandled();
                 return;
             }
 
-            if (key.IsActionPressed("open_cauldron"))
+            if (key.IsActionPressed("open_cauldron") && WorldProvider != null)
             {
                 if (_modalStack?.IsModalOpen<RefinementCauldronView>() == true)
                 {
-                    GameEventManager.RaiseRequestCloseCauldron();
+                    RefinementSystem.CloseCauldron(WorldProvider.Current);
                 }
                 else if (!IsModalActive || _modalStack?.IsModalOpen<TaiwuLedgerView>() == true)
                 {
-                    GameEventManager.RaiseRequestOpenCauldron();
+                    RefinementSystem.OpenCauldron(WorldProvider.Current);
                 }
                 GetViewport().SetInputAsHandled();
                 return;
             }
 
-            if (key.IsActionPressed("open_breakthrough"))
+            if (key.IsActionPressed("open_breakthrough") && WorldProvider != null)
             {
                 if (BreakthroughView?.IsOpen == true)
                 {
-                    GameEventManager.RaiseRequestCloseBreakthrough();
+                    BreakthroughSystem.CloseSession(WorldProvider.Current);
                 }
                 else
                 {
-                    GameEventManager.RaiseRequestOpenBreakthroughMinigame();
+                    BreakthroughSystem.OpenSession(WorldProvider.Current);
                 }
                 GetViewport().SetInputAsHandled();
                 return;
@@ -120,12 +119,11 @@ namespace Taiwu_Godot.Scripts.Input
 
             if (key.IsActionPressed("recenter_camera"))
             {
-                GameEventManager.TriggerRecenterCamera();
+                WorldSignals.EmitRecenterCamera();
                 GetViewport().SetInputAsHandled();
             }
         }
 
-        /// <summary>Escape order: dismiss the top modal, then a pending move, then the system menu.</summary>
         private void ConsumeEscape()
         {
             if (_modalStack != null && _modalStack.TryPop()) return;
@@ -136,7 +134,7 @@ namespace Taiwu_Godot.Scripts.Input
                 return;
             }
 
-            GameEventManager.TriggerEscape();
+            WorldSignals.EmitEscape();
         }
     }
 }

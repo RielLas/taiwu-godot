@@ -1,18 +1,18 @@
 using System;
 using System.Collections.Generic;
 using Godot;
-using Color = Godot.Color;
+using TaiwuGu.Combat;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using TaiwuGu.Map;
+using TaiwuGu.Systems;
 using Taiwu_Godot.Scripts.UI;
 
 namespace Taiwu_Godot.Scripts.Map
 {
     /// <summary>
-    /// Phase 2: Player Cultivator Controller (Godot 2D).
-    /// Halal-compliant jade medallion token with authentic seal calligraphy 【道】.
-    /// Supports Scroll of Taiwu two-step movement confirmation (Route Preview -> Confirm Walk).
-    /// Strictly obeys Constitutional Law 1 (Observer Mandate) and Law 6 (CQRS-Lite).
+    /// Overworld Player Cultivator Controller.
+    /// Reads Action Points & coordinates directly from WorldStore and invokes ExplorationSystem directly.
     /// </summary>
     public partial class PlayerCultivatorController : Node2D
     {
@@ -20,24 +20,19 @@ namespace Taiwu_Godot.Scripts.Map
         [Export] public float MoveSpeed { get; set; } = 4.0f;
         [Export] public float JumpArcHeight { get; set; } = 0.45f;
         [Export] public IsometricTileManager? TileManager { get; set; }
+
+        private IWorldStateProvider? _worldProvider;
         private TaiwuModalStack? _modalStack;
         private TileLandmarkVisualManager.EllipticalInkGroundShadow? _shadow;
         private TileLandmarkVisualManager.TalismanMedallionToken? _medallion;
 
-        public void InitializeModalStack(TaiwuModalStack modalStack) => _modalStack = modalStack;
-
-        private Sprite2D? _tokenSprite;
-        private Label? _sealLabel;
-
         private bool _isMoving = false;
         private bool _isPauseLocked = false;
         private bool _isUIModalLocked = false;
-        private int _currentAP = 30;
 
         private Vector2I? _selectedTargetTile = null;
         private List<Vector2I>? _cachedPath = null;
 
-        // Path following state
         private List<Vector2I>? _activePath = null;
         private int _currentPathIndex = 0;
         private Vector2 _stepStartPos;
@@ -49,6 +44,19 @@ namespace Taiwu_Godot.Scripts.Map
         public bool HasTargetSelection => _selectedTargetTile.HasValue;
         public Vector2I? SelectedTargetTile => _selectedTargetTile;
 
+        private int CurrentAP => _worldProvider?.Current.GetSingleton<WorldClockComponent>()?.ActionPointsRemaining ?? 0;
+
+        public void Initialize(IsometricTileManager manager, Vector2I startPos, IWorldStateProvider? provider = null)
+        {
+            TileManager = manager;
+            _worldProvider = provider;
+            CurrentGridPos = startPos;
+            Position = TileManager.GridToWorld(startPos);
+            EnsureVisuals();
+        }
+
+        public void InitializeModalStack(TaiwuModalStack modalStack) => _modalStack = modalStack;
+
         public override void _Ready()
         {
             YSortEnabled = true;
@@ -56,15 +64,13 @@ namespace Taiwu_Godot.Scripts.Map
 
             EnsureVisuals();
 
-            GameEventManager.OnWorldClickRequested += HandleWorldClick;
-            GameEventManager.OnMoveRequested += HandleMoveRequested;
-            GameEventManager.OnEscapeRequested += HandleEscapeRequested;
-            GameEventManager.OnActionPointsChanged += HandleActionPointsChanged;
-            GameEventManager.OnPauseToggled += HandlePauseToggled;
-            GameEventManager.OnUIModalActive += HandleUIModalActive;
-            GameEventManager.OnWildGuEncounterOpened += HandleHaltMovement;
-            GameEventManager.OnWildBeastAmbushed += HandleHaltMovementAmbush;
-            GameEventManager.OnEnterCombatRequested += HandleHaltMovementCombat;
+            WorldSignals.OnWorldClickRequested += HandleWorldClick;
+            WorldSignals.OnEscapeRequested += HandleEscapeRequested;
+            WorldSignals.OnPauseToggled += HandlePauseToggled;
+            WorldSignals.OnUIModalActive += HandleUIModalActive;
+            WorldSignals.OnTopicsChanged += HandleTopicsChanged;
+            WorldSignals.OnWildBeastAmbushed += HandleHaltMovementAmbush;
+            WorldSignals.OnCombatRequested += HandleHaltMovementCombat;
 
             if (TileManager != null)
             {
@@ -72,26 +78,44 @@ namespace Taiwu_Godot.Scripts.Map
             }
             else
             {
-                Position = ExplorationService.GridToWorld(CurrentGridPos.ToGridCoord()).ToGodot();
+                Position = ExplorationSystem.GridToWorld(CurrentGridPos.ToGridCoord()).ToGodot();
             }
         }
 
         public override void _ExitTree()
         {
-            GameEventManager.OnWorldClickRequested -= HandleWorldClick;
-            GameEventManager.OnMoveRequested -= HandleMoveRequested;
-            GameEventManager.OnEscapeRequested -= HandleEscapeRequested;
-            GameEventManager.OnActionPointsChanged -= HandleActionPointsChanged;
-            GameEventManager.OnPauseToggled -= HandlePauseToggled;
-            GameEventManager.OnUIModalActive -= HandleUIModalActive;
-            GameEventManager.OnWildGuEncounterOpened -= HandleHaltMovement;
-            GameEventManager.OnWildBeastAmbushed -= HandleHaltMovementAmbush;
-            GameEventManager.OnEnterCombatRequested -= HandleHaltMovementCombat;
+            WorldSignals.OnWorldClickRequested -= HandleWorldClick;
+            WorldSignals.OnEscapeRequested -= HandleEscapeRequested;
+            WorldSignals.OnPauseToggled -= HandlePauseToggled;
+            WorldSignals.OnUIModalActive -= HandleUIModalActive;
+            WorldSignals.OnTopicsChanged -= HandleTopicsChanged;
+            WorldSignals.OnWildBeastAmbushed -= HandleHaltMovementAmbush;
+            WorldSignals.OnCombatRequested -= HandleHaltMovementCombat;
         }
 
-        private void HandleHaltMovement(SubjugationSessionSnapshot snapshot) => HaltMovement();
+        private void HandleTopicsChanged(DirtyTopic topics)
+        {
+            if ((topics & DirtyTopic.WildEncounter) != 0 && _worldProvider != null)
+            {
+                var wild = _worldProvider.Current.Get<WildEncounterSessionComponent>(_worldProvider.Current.PlayerEntity);
+                if (wild?.IsOpen == true) HaltMovement();
+            }
+
+            if ((topics & (DirtyTopic.PlayerPos | DirtyTopic.Map)) != 0 && !_isMoving && _worldProvider != null)
+            {
+                Vector2I domainPos = _worldProvider.Current.GetPlayerPosition().ToGodot();
+                if (domainPos != CurrentGridPos)
+                {
+                    CurrentGridPos = domainPos;
+                    Position = TileManager != null
+                        ? TileManager.GridToWorld(domainPos)
+                        : ExplorationSystem.GridToWorld(domainPos.ToGridCoord()).ToGodot();
+                }
+            }
+        }
+
         private void HandleHaltMovementAmbush(GridCoord pos, string beast) => HaltMovement();
-        private void HandleHaltMovementCombat(TaiwuGu.Combat.ArenaEncounterType enc, GridCoord pos) => HaltMovement();
+        private void HandleHaltMovementCombat(ArenaEncounterType enc, GridCoord pos) => HaltMovement();
 
         public void HaltMovement()
         {
@@ -102,7 +126,6 @@ namespace Taiwu_Godot.Scripts.Map
 
         private void EnsureVisuals()
         {
-            // 1. Soft Elliptical Ink Grounding Shadow beneath player token (2:1 isometric ratio)
             if (_shadow == null)
             {
                 _shadow = new TileLandmarkVisualManager.EllipticalInkGroundShadow(0.48f, 0.24f, 0.50f)
@@ -112,7 +135,6 @@ namespace Taiwu_Godot.Scripts.Map
                 AddChild(_shadow);
             }
 
-            // 2. Halal-compliant Carved Imperial Jade Medallion (~0.75 units) with Radiant Gold Seal Calligraphy 【道】
             if (_medallion == null)
             {
                 var jadeTex = ResourceLoader.Load<Texture2D>("res://Resources/Tokens/token_player_jade.png");
@@ -124,17 +146,8 @@ namespace Taiwu_Godot.Scripts.Map
             }
         }
 
-        public void Initialize(IsometricTileManager manager, Vector2I startPos)
-        {
-            TileManager = manager;
-            CurrentGridPos = startPos;
-            Position = TileManager.GridToWorld(startPos);
-            EnsureVisuals();
-        }
-
         private void HandlePauseToggled(bool isPaused) => _isPauseLocked = isPaused;
         private void HandleUIModalActive(bool isActive) => _isUIModalLocked = isActive;
-        private void HandleActionPointsChanged(int currentAP, int maxBudget) => _currentAP = currentAP;
 
         public void ClearTargetSelection()
         {
@@ -142,38 +155,31 @@ namespace Taiwu_Godot.Scripts.Map
             {
                 _selectedTargetTile = null;
                 _cachedPath = null;
-                GameEventManager.TriggerTargetTileSelected(null, new List<GridCoord>());
+                WorldSignals.EmitTargetTileSelected(null, new List<GridCoord>());
             }
         }
 
         private void HandleEscapeRequested()
         {
-            if (GameEventManager.EscapeHandled) return;
-
-            if (_modalStack?.IsModalOpen<TaiwuLedgerView>() == true ||
-                _modalStack?.IsModalOpen<RefinementCauldronView>() == true ||
-                _modalStack?.IsModalOpen<TilePOIModalView>() == true)
-            {
-                return;
-            }
+            if (WorldSignals.EscapeHandled) return;
+            if (_modalStack?.Count > 0) return;
 
             if (HasTargetSelection)
             {
                 ClearTargetSelection();
-                GameEventManager.EscapeHandled = true;
+                WorldSignals.EscapeHandled = true;
             }
         }
 
-        private void HandleMoveRequested(GridCoord targetGrid)
+        public void RequestMoveTo(GridCoord targetGrid)
         {
-            if (_isPauseLocked || _isUIModalLocked || _isMoving) return;
-            if (TileManager == null) return;
+            if (_isPauseLocked || _isUIModalLocked || _isMoving || TileManager == null) return;
 
             Vector2I target = targetGrid.ToGodot();
             if (!TileManager.IsWithinBounds(target) || target == CurrentGridPos) return;
 
             var path = TilePathfinder.FindPath(CurrentGridPos, target, TileManager);
-            if (path == null || path.Count == 0 || _currentAP <= 0) return;
+            if (path == null || path.Count == 0 || CurrentAP <= 0) return;
 
             ClearTargetSelection();
             StartPathMovement(path);
@@ -181,41 +187,37 @@ namespace Taiwu_Godot.Scripts.Map
 
         private void HandleWorldClick(WorldVec2 clickPos)
         {
-            if (_isPauseLocked || _isUIModalLocked || _isMoving) return;
-            if (TileManager == null) return;
+            if (_isPauseLocked || _isUIModalLocked || _isMoving || TileManager == null) return;
 
-            GridCoord clickedGrid = ExplorationService.WorldToGrid(clickPos);
+            GridCoord clickedGrid = ExplorationSystem.WorldToGrid(clickPos);
             Vector2I clicked = clickedGrid.ToGodot();
 
-            // Out of bounds check
             if (!TileManager.IsWithinBounds(clicked))
             {
                 ClearTargetSelection();
                 return;
             }
 
-            // Clicked on player's current tile: Direct Landmark Interaction / Inspect
             if (clicked == CurrentGridPos)
             {
                 ClearTargetSelection();
-                GameEventManager.RaiseRequestInspectTile(clickedGrid);
+                if (_worldProvider != null)
+                {
+                    ExplorationSystem.InspectTile(_worldProvider.Current, clickedGrid);
+                }
                 return;
             }
 
-            // Clicked on an impassable terrain obstacle: Cannot path there
             if (!TileManager.IsTileWalkable(clicked))
             {
                 ClearTargetSelection();
-                GD.Print($"[PlayerCultivator] Tile {clicked} is an impassable terrain obstacle.");
                 return;
             }
 
-            // --- STEP 1: First Click on New Target (Selection & Route Preview) ---
             if (!_selectedTargetTile.HasValue || _selectedTargetTile.Value != clicked)
             {
-                if (_currentAP <= 0)
+                if (CurrentAP <= 0)
                 {
-                    GD.Print("[PlayerCultivator] Cannot travel: Action Points exhausted (0 AP).");
                     ClearTargetSelection();
                     return;
                 }
@@ -230,19 +232,14 @@ namespace Taiwu_Godot.Scripts.Map
                 _selectedTargetTile = clicked;
                 _cachedPath = path;
 
-                List<GridCoord> gridCoordPath = new();
-                for (int i = 0; i < path.Count; i++)
-                {
-                    gridCoordPath.Add(path[i].ToGridCoord());
-                }
-
-                GameEventManager.TriggerTargetTileSelected(_selectedTargetTile.Value.ToGridCoord(), gridCoordPath);
+                var gridCoordPath = new List<GridCoord>(path.Count);
+                for (int i = 0; i < path.Count; i++) gridCoordPath.Add(path[i].ToGridCoord());
+                WorldSignals.EmitTargetTileSelected(_selectedTargetTile.Value.ToGridCoord(), gridCoordPath);
                 return;
             }
 
-            // --- STEP 2: Second Click on Highlighted Tile (Confirmation & Execution) ---
             var revalidatedPath = TilePathfinder.FindPath(CurrentGridPos, clicked, TileManager);
-            if (revalidatedPath == null || revalidatedPath.Count == 0 || _currentAP <= 0)
+            if (revalidatedPath == null || revalidatedPath.Count == 0 || CurrentAP <= 0)
             {
                 ClearTargetSelection();
                 return;
@@ -278,14 +275,12 @@ namespace Taiwu_Godot.Scripts.Map
 
         public override void _Process(double delta)
         {
-            if (!_isMoving || _activePath == null || TileManager == null) return;
-            if (_isPauseLocked) return;
+            if (!_isMoving || _activePath == null || TileManager == null || _isPauseLocked) return;
 
             _stepElapsed += (float)delta;
             float t = Math.Clamp(_stepElapsed / _stepDuration, 0f, 1f);
 
             Vector2 currentPos = _stepStartPos.Lerp(_stepTargetPos, t);
-            // In Godot 2D, jump arc moves UP towards -Y
             currentPos.Y -= MathF.Sin(t * MathF.PI) * JumpArcHeight;
             Position = currentPos;
 
@@ -295,21 +290,17 @@ namespace Taiwu_Godot.Scripts.Map
                 CurrentGridPos = stepTarget;
                 Position = _stepTargetPos;
 
-                TileNode node = TileManager.GetTile(stepTarget.X, stepTarget.Y);
-                GameEventManager.TriggerPlayerMoved(CurrentGridPos.ToGridCoord());
-                GameEventManager.TriggerTileStepped(node.Biome, node.POI);
+                bool isFinalStep = _currentPathIndex + 1 >= _activePath.Count;
+                if (_worldProvider != null)
+                {
+                    ExplorationSystem.MovePlayer(_worldProvider.Current, stepTarget.ToGridCoord(), openInteractivePOI: isFinalStep);
+                }
 
                 _currentPathIndex++;
-                if (_currentPathIndex >= _activePath.Count)
+                if (isFinalStep)
                 {
                     _isMoving = false;
                     _activePath = null;
-
-                    // Arrived at final path destination: If interactive landmark, trigger interaction
-                    if (LandmarkRegistry.IsInteractive(node.POI, node.CustomLandmarkId))
-                    {
-                        GameEventManager.RaiseRequestInspectTile(CurrentGridPos.ToGridCoord());
-                    }
                     return;
                 }
 

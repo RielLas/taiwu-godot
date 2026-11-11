@@ -1,6 +1,7 @@
 using System;
 using Godot;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using Color = Godot.Color;
 
 namespace Taiwu_Godot.Scripts.UI
@@ -28,14 +29,14 @@ namespace Taiwu_Godot.Scripts.UI
             LoadTextures();
             BuildViewTree();
 
-            GameEventManager.OnShowOnWorkNoticeRequested += HandleShowOnWorkNotice;
-            GameEventManager.OnEscapeRequested           += HandleEscapeRequested;
+            WorldSignals.OnOnWorkNoticeRequested += HandleShowOnWorkNotice;
+            WorldSignals.OnEscapeRequested       += HandleEscapeRequested;
         }
 
         public override void _ExitTree()
         {
-            GameEventManager.OnShowOnWorkNoticeRequested -= HandleShowOnWorkNotice;
-            GameEventManager.OnEscapeRequested           -= HandleEscapeRequested;
+            WorldSignals.OnOnWorkNoticeRequested -= HandleShowOnWorkNotice;
+            WorldSignals.OnEscapeRequested       -= HandleEscapeRequested;
         }
 
         private void LoadTextures()
@@ -210,15 +211,15 @@ namespace Taiwu_Godot.Scripts.UI
             Visible = true;
             if (_lblFeatureName != null) _lblFeatureName.Text = featureName;
             if (_lblDetail != null) _lblDetail.Text = $"Status: ON WORK\n{detail}";
-            GameEventManager.RaiseModalOpened(this);
-            GameEventManager.TriggerUIModalActive(true);
+            WorldSignals.EmitModalOpened(this);
+            WorldSignals.EmitUIModalActive(true);
         }
 
         private void HandleEscapeRequested()
         {
             if (!_isOpen) return;
 
-            GameEventManager.EscapeHandled = true;
+            WorldSignals.EscapeHandled = true;
             CloseModal();
         }
 
@@ -227,8 +228,8 @@ namespace Taiwu_Godot.Scripts.UI
             if (!_isOpen) return;
             _isOpen = false;
             Visible = false;
-            GameEventManager.RaiseModalClosed(this);
-            GameEventManager.TriggerUIModalActive(false);
+            WorldSignals.EmitModalClosed(this);
+            WorldSignals.EmitUIModalActive(false);
         }
     }
 }

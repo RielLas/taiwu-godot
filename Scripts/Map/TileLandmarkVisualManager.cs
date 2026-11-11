@@ -3,21 +3,18 @@ using System.Collections.Generic;
 using Godot;
 using Color = Godot.Color;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using TaiwuGu.Map;
+using TaiwuGu.Systems;
 
 namespace Taiwu_Godot.Scripts.Map
 {
-    /// <summary>
-    /// Phase 2: Spawns 2.5D Chinese ink-wash landmark dioramas and cultivator tokens in Godot 2D.
-    /// Strictly 2D Sprite2D pipeline (Zero 3D primitives, 100% Halal compliant).
-    /// Uses Godot Y-sorting for depth resolution.
-    /// Grounding shadows root structures and tokens into the diamond terrain.
-    /// </summary>
     public partial class TileLandmarkVisualManager : Node2D
     {
         [Export] public IsometricTileManager? TileManager { get; set; }
         [Export] public TileVisualDatabase? VisualDatabase { get; set; }
 
+        private IWorldStateProvider? _worldProvider;
         private readonly List<Node2D> activeLandmarks = new();
         private readonly Dictionary<Node2D, (Vector2I pos, Sprite2D sprite)> landmarkDataMap = new();
         private readonly List<Node2D> activeCultivatorTokens = new();
@@ -35,8 +32,7 @@ namespace Taiwu_Godot.Scripts.Map
             YSortEnabled = true;
 
             LoadTextures();
-            GameEventManager.OnFogOfWarUpdated += HandleFogOfWarUpdated;
-            GameEventManager.OnCultivatorMapTokensUpdated += HandleCultivatorTokensUpdated;
+            WorldSignals.OnTopicsChanged += HandleTopicsChanged;
 
             if (TileManager != null)
             {
@@ -46,8 +42,7 @@ namespace Taiwu_Godot.Scripts.Map
 
         public override void _ExitTree()
         {
-            GameEventManager.OnFogOfWarUpdated -= HandleFogOfWarUpdated;
-            GameEventManager.OnCultivatorMapTokensUpdated -= HandleCultivatorTokensUpdated;
+            WorldSignals.OnTopicsChanged -= HandleTopicsChanged;
             ClearLandmarks();
             ClearCultivatorTokens();
         }
@@ -63,9 +58,10 @@ namespace Taiwu_Godot.Scripts.Map
             caravanBrassTex = ResourceLoader.Load<Texture2D>("res://Resources/Tokens/token_caravan_brass.png");
         }
 
-        public void Initialize(IsometricTileManager manager)
+        public void Initialize(IsometricTileManager manager, IWorldStateProvider? provider = null)
         {
             TileManager = manager;
+            _worldProvider = provider;
             if (VisualDatabase == null)
             {
                 VisualDatabase = TileVisualDatabase.CreateDefaultDatabase();
@@ -74,20 +70,32 @@ namespace Taiwu_Godot.Scripts.Map
             SpawnRegionLandmarks();
         }
 
-        private void HandleFogOfWarUpdated(GridCoord center, int radius)
+        private void HandleTopicsChanged(DirtyTopic topics)
         {
-            UpdateLandmarkFogVisibility();
+            if ((topics & DirtyTopic.Map) != 0)
+            {
+                SpawnRegionLandmarks();
+                return;
+            }
+            if ((topics & DirtyTopic.Fog) != 0)
+            {
+                UpdateLandmarkFogVisibility();
+            }
+            if ((topics & DirtyTopic.NPCs) != 0)
+            {
+                RefreshCultivatorTokens();
+            }
         }
 
-        private void HandleCultivatorTokensUpdated(List<GridCoord> occupiedTiles)
+        private void RefreshCultivatorTokens()
         {
             ClearCultivatorTokens();
-            if (TileManager == null || occupiedTiles == null) return;
+            if (TileManager == null || _worldProvider == null) return;
 
+            var occupiedTiles = SocialVendettaSystem.GetOccupiedNPCTiles(_worldProvider.Current);
             for (int i = 0; i < occupiedTiles.Count; i++)
             {
-                GridCoord gridCoord = occupiedTiles[i];
-                Vector2I pos = gridCoord.ToGodot();
+                Vector2I pos = occupiedTiles[i].ToGodot();
                 Vector2 worldPos = TileManager.GridToWorld(pos);
                 Node2D? token = CreateCultivatorTokenObject(worldPos, pos);
                 if (token != null)
@@ -130,20 +138,7 @@ namespace Taiwu_Godot.Scripts.Map
             }
 
             UpdateLandmarkFogVisibility();
-            RefreshInitialTokens();
-        }
-
-        public void RefreshInitialTokens()
-        {
-            var tokens = new List<GridCoord>
-            {
-                new GridCoord(15, 13),
-                new GridCoord(15, 16),
-                new GridCoord(16, 16),
-                new GridCoord(15, 17),
-                new GridCoord(16, 17)
-            };
-            HandleCultivatorTokensUpdated(tokens);
+            RefreshCultivatorTokens();
         }
 
         private void ClearLandmarks()

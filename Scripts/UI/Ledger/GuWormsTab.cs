@@ -3,17 +3,19 @@ using Godot;
 using Color = Godot.Color;
 using Mathf = Godot.Mathf;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 
 namespace Taiwu_Godot.Scripts.UI
 {
     /// <summary>
     /// Page 2 of the ledger: the active aperture loadout, the reserve inventory and the
     /// cauldron jump. It rebuilds its cards from a <see cref="GuWormsSnapshot"/> and keeps no
-    /// state; feeding is dispatched straight to the domain.
+    /// state; feeding and cauldron intents are raised via events to the parent ledger.
     /// </summary>
     public partial class GuWormsTab : MarginContainer
     {
         public event Action? OpenCauldronRequested;
+        public event Action<string, GuDietType, int>? FeedGuRequested;
 
         private VBoxContainer? _equippedContainer;
         private VBoxContainer? _reserveContainer;
@@ -132,7 +134,7 @@ namespace Taiwu_Godot.Scripts.UI
             return lblEmpty;
         }
 
-        private PanelContainer CreateGuCard(GuWormData gu, bool isEquipped)
+        private PanelContainer CreateGuCard(GuWormComponent gu, bool isEquipped)
         {
             var card = new PanelContainer { CustomMinimumSize = new Vector2(0f, 68f) };
             var style = new StyleBoxFlat
@@ -234,7 +236,7 @@ namespace Taiwu_Godot.Scripts.UI
                 CustomMinimumSize = new Vector2(110f, 34f),
                 MouseFilter = MouseFilterEnum.Stop
             };
-            btnFeed.Pressed += () => GameEventManager.RaiseRequestFeedGu(gu.GuID, gu.Diet, 1);
+            btnFeed.Pressed += () => FeedGuRequested?.Invoke(gu.GuID, gu.Diet, 1);
             hBox.AddChild(btnFeed);
 
             return card;

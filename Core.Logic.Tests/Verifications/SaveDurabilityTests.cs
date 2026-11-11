@@ -1,18 +1,15 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
-using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using TaiwuGu.Serialization;
+using TaiwuGu.Systems;
 
 namespace TaiwuGu.Tests
 {
-    /// <summary>
-    /// Phase 3b: a save is either the previous state or the new one — never neither, never a
-    /// half-written mixture. These tests recreate every intermediate state a crash can leave on
-    /// disk and assert the loader always recovers.
-    /// </summary>
     public class SaveDurabilityTests : IDisposable
     {
         private const string SlotA = "durability_a";
@@ -28,26 +25,25 @@ namespace TaiwuGu.Tests
             _originalRoot = SavePaths.RootSaveDirectory;
             _testRoot = Path.Combine(Path.GetTempPath(), "taiwu_durability_" + Guid.NewGuid().ToString("N"));
             SavePaths.RootSaveDirectory = _testRoot;
-            SaveLoadEngine.Initialize();
+            SavePaths.Initialize(_testRoot);
+            WorldSignals.ClearAllSubscriptions();
         }
 
         public void Dispose()
         {
+            WorldSignals.ClearAllSubscriptions();
             SavePaths.RootSaveDirectory = _originalRoot;
             try
             {
                 if (Directory.Exists(_testRoot)) Directory.Delete(_testRoot, true);
             }
-            catch
-            {
-                // Best-effort temp cleanup.
-            }
+            catch { }
         }
 
         [Fact]
         public void Save_WritesOneFileAndLeavesNoTempBehind()
         {
-            Assert.True(SaveContext(SlotA, 100));
+            Assert.True(SaveWorldWithStones(SlotA, 100));
 
             string slotDir = SavePaths.GetSlotPath(SlotA);
             string[] files = Directory.GetFiles(slotDir);
@@ -55,147 +51,109 @@ namespace TaiwuGu.Tests
             Assert.Single(files);
             Assert.Equal(SavePaths.SAVE_FILE_NAME, Path.GetFileName(files[0]));
             Assert.False(File.Exists(SavePaths.GetSavePath(SlotA) + SavePaths.TEMP_SUFFIX));
-            Assert.DoesNotContain(files, f => f.EndsWith(SavePaths.METADATA_FILE_NAME, StringComparison.Ordinal));
         }
 
         [Fact]
         public void CrashBeforeReplace_LeavesPreviousSaveReadable()
         {
-            Assert.True(SaveContext(SlotA, 100));
-            Assert.True(SaveContext(SlotA, 200));
+            Assert.True(SaveWorldWithStones(SlotA, 100));
+            Assert.True(SaveWorldWithStones(SlotA, 200));
 
-            // A crash while writing the next save: the temp file exists, the install never happened.
             File.WriteAllText(SavePaths.GetSavePath(SlotA) + SavePaths.TEMP_SUFFIX, "HALF_WRITTEN_CHUNK");
 
-            GameStateContext loaded = SaveLoadEngine.LoadContext(SlotA);
-
+            var loaded = SaveDiskIO.LoadWorld(SlotA);
             Assert.NotNull(loaded);
-            Assert.Equal(200, loaded!.Cultivator.PrimevalStones);
+            Assert.Equal(200, loaded!.Get<CultivatorComponent>(loaded.PlayerEntity)!.PrimevalStones);
         }
 
         [Fact]
-        public void MissingPrimary_RecoversThePreviousSaveFromBackup()
+        public void MissingPrimary_And_CorruptPrimary_RecoverFromBackup()
         {
-            Assert.True(SaveContext(SlotA, 100));
-            Assert.True(SaveContext(SlotA, 200));
+            Assert.True(SaveWorldWithStones(SlotA, 100));
+            Assert.True(SaveWorldWithStones(SlotA, 200));
 
-            // The replace removed the old file and the process died before installing the new one.
             File.Delete(SavePaths.GetSavePath(SlotA));
+            var fromBackup = SaveDiskIO.LoadWorld(SlotA);
+            Assert.NotNull(fromBackup);
+            Assert.Equal(100, fromBackup!.Get<CultivatorComponent>(fromBackup.PlayerEntity)!.PrimevalStones);
 
-            GameStateContext loaded = SaveLoadEngine.LoadContext(SlotA);
-
-            Assert.NotNull(loaded);
-            Assert.Equal(100, loaded!.Cultivator.PrimevalStones);
-        }
-
-        [Fact]
-        public void CorruptPrimary_RecoversFromBackup()
-        {
-            Assert.True(SaveContext(SlotA, 100));
-            Assert.True(SaveContext(SlotA, 200));
-
-            File.WriteAllText(SavePaths.GetSavePath(SlotA), "{\"SaveVersion\":\"2.1.0\",\"Context\":null}");
-
-            GameStateContext loaded = SaveLoadEngine.LoadContext(SlotA);
-
-            Assert.NotNull(loaded);
-            Assert.Equal(100, loaded!.Cultivator.PrimevalStones);
-        }
-
-        [Fact]
-        public void FirstEverSave_IsImmediatelyReadable()
-        {
-            Assert.False(File.Exists(SavePaths.GetSavePath(SlotA)));
-
-            Assert.True(SaveContext(SlotA, 333));
-
-            GameStateContext loaded = SaveLoadEngine.LoadContext(SlotA);
-            Assert.NotNull(loaded);
-            Assert.Equal(333, loaded!.Cultivator.PrimevalStones);
+            File.WriteAllText(SavePaths.GetSavePath(SlotA), "CORRUPTED_GARBAGE{{{");
+            var recoveredCorrupt = SaveDiskIO.LoadWorld(SlotA);
+            Assert.NotNull(recoveredCorrupt);
+            Assert.Equal(100, recoveredCorrupt!.Get<CultivatorComponent>(recoveredCorrupt.PlayerEntity)!.PrimevalStones);
         }
 
         [Fact]
         public void TwoSlots_AreIndependentAndKeepTheirOwnBackups()
         {
-            Assert.True(SaveContext(SlotA, 111));
-            Assert.True(SaveContext(SlotB, 222));
-            Assert.True(SaveContext(SlotA, 112));
+            Assert.True(SaveWorldWithStones(SlotA, 111));
+            Assert.True(SaveWorldWithStones(SlotB, 222));
+            Assert.True(SaveWorldWithStones(SlotA, 112));
 
-            Assert.Equal(112, SaveLoadEngine.LoadContext(SlotA)!.Cultivator.PrimevalStones);
-            Assert.Equal(222, SaveLoadEngine.LoadContext(SlotB)!.Cultivator.PrimevalStones);
-            AssertBackupHoldsStones(SlotA, 111);
+            Assert.Equal(112, SaveDiskIO.LoadWorld(SlotA)!.Get<CultivatorComponent>(SaveDiskIO.LoadWorld(SlotA)!.PlayerEntity)!.PrimevalStones);
+            Assert.Equal(222, SaveDiskIO.LoadWorld(SlotB)!.Get<CultivatorComponent>(SaveDiskIO.LoadWorld(SlotB)!.PlayerEntity)!.PrimevalStones);
+
+            string backupPath = SavePaths.GetSavePath(SlotA) + SavePaths.BACKUP_SUFFIX;
+            Assert.True(File.Exists(backupPath));
+            Assert.Contains("\"PrimevalStones\": 111", File.ReadAllText(backupPath));
             Assert.False(File.Exists(SavePaths.GetSavePath(SlotB) + SavePaths.BACKUP_SUFFIX));
         }
 
         [Fact]
         public void InvalidSlotIds_AreRejectedEverywhere()
         {
-            var ctx = GameStateContext.CreateDefault();
-
+            var world = WorldFactory.CreateDefault();
             foreach (string invalid in new[] { "../evil", "..", "a/b", "a\\b", "", "   ", "name with space", new string('x', 33) })
             {
-                Assert.False(SavePaths.IsValidSlotID(invalid), $"'{invalid}' must not be a valid slot id.");
-                Assert.False(SaveLoadEngine.SaveContext(invalid, ctx), $"Saving to '{invalid}' must be rejected.");
-                Assert.False(SaveLoadEngine.SlotExists(invalid));
-                Assert.False(SaveLoadEngine.DeleteSlot(invalid));
-                Assert.Null(SaveLoadEngine.LoadContext(invalid));
+                Assert.False(SavePaths.IsValidSlotID(invalid));
+                Assert.False(SaveDiskIO.SaveWorld(invalid, world));
+                Assert.False(SaveDiskIO.SlotExists(invalid));
+                Assert.False(SaveDiskIO.DeleteSlot(invalid));
+                Assert.Null(SaveDiskIO.LoadWorld(invalid));
             }
-
             Assert.Throws<ArgumentException>(() => SavePaths.GetSlotPath("../evil"));
             Assert.True(SavePaths.IsValidSlotID("auto_save-1"));
         }
 
         [Fact]
-        public void Load_ReturnsAFreshContextAndLeavesTheLiveOneUntouched()
+        public async Task SaveSystem_AsyncSaveAndAtomicProviderSwap_WorksCleanly()
         {
-            Assert.True(SaveContext(SlotA, 500));
+            var world = WorldFactory.CreateDefault();
+            world.Get<CultivatorComponent>(world.PlayerEntity)!.PrimevalStones = 450;
 
-            var live = GameStateContext.CreateDefault();
-            var provider = new GameStateProvider(live);
+            bool savedEvent = false;
+            WorldSignals.OnGameSaved += (slot, ok) => { if (slot == SlotB && ok) savedEvent = true; };
 
-            GameStateContext loaded = SaveLoadEngine.LoadContext(SlotA);
-            Assert.NotNull(loaded);
-            Assert.NotSame(provider.Current, loaded);
+            Assert.True(await SaveSystem.SaveAsync(SlotB, world));
+            Assert.True(savedEvent);
 
-            provider.Replace(loaded!);
+            var provider = new WorldStateProvider(WorldFactory.CreateDefault());
+            var originalLive = provider.Current;
+            originalLive.Get<CultivatorComponent>(originalLive.PlayerEntity)!.PrimevalStones = 99999;
 
-            Assert.Same(loaded, provider.Current);
-            Assert.Equal(500, provider.Current.Cultivator.PrimevalStones);
-            Assert.Equal(250, live.Cultivator.PrimevalStones);
+            Assert.True(SaveSystem.LoadAndSwap(SlotB, provider));
+            Assert.NotSame(originalLive, provider.Current);
+            Assert.Equal(450, provider.Current.Get<CultivatorComponent>(provider.Current.PlayerEntity)!.PrimevalStones);
+            Assert.Equal(99999, originalLive.Get<CultivatorComponent>(originalLive.PlayerEntity)!.PrimevalStones);
         }
 
         [Fact]
-        public void Save_StaysWithinAPlayableBudget()
+        public void Save_StaysWithinPlayableBudget()
         {
-            var ctx = GameStateContext.CreateDefault();
-
             var stopwatch = Stopwatch.StartNew();
-            for (int i = 0; i < 5; i++)
-            {
-                Assert.True(SaveContext(SlotA, 400 + i));
-            }
+            for (int i = 0; i < 5; i++) Assert.True(SaveWorldWithStones(SlotA, 400 + i));
             stopwatch.Stop();
 
             double perSaveMs = stopwatch.Elapsed.TotalMilliseconds / 5.0;
-            _output.WriteLine($"Synchronous save (serialize + atomic replace) averaged {perSaveMs:F1} ms over 5 runs of a 30x30 sector.");
-
-            Assert.True(perSaveMs < 2000, $"A save took {perSaveMs:F0} ms, which is far outside the expected range.");
+            _output.WriteLine($"Synchronous ECS save averaged {perSaveMs:F1} ms.");
+            Assert.True(perSaveMs < 2000);
         }
 
-        private static bool SaveContext(string slot, int stones)
+        private static bool SaveWorldWithStones(string slot, int stones)
         {
-            var ctx = GameStateContext.CreateDefault();
-            ctx.Cultivator.PrimevalStones = stones;
-            return SaveLoadEngine.SaveContext(slot, ctx);
-        }
-
-        private static void AssertBackupHoldsStones(string slot, int expectedStones)
-        {
-            string backupPath = SavePaths.GetSavePath(slot) + SavePaths.BACKUP_SUFFIX;
-            Assert.True(File.Exists(backupPath), $"Expected a backup at '{backupPath}'.");
-
-            // The backup is the superseded file, not the one the loader prefers.
-            Assert.Contains($"\"PrimevalStones\": {expectedStones}", File.ReadAllText(backupPath));
+            var world = WorldFactory.CreateDefault();
+            world.Get<CultivatorComponent>(world.PlayerEntity)!.PrimevalStones = stones;
+            return SaveDiskIO.SaveWorld(slot, world);
         }
     }
 }

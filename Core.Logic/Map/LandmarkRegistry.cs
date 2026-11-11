@@ -1,15 +1,17 @@
 using System;
 using System.Collections.Generic;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
+using TaiwuGu.Systems;
 
 namespace TaiwuGu.Map
 {
     public enum LandmarkCategory
     {
-        Interactive = 0,    // Interactive POI (caravan barter, primeval spring, beast tracking, etc.)
-        Scenic = 1,         // Atmospheric non-interactive landmark (ancient pine, shattered stele); inspect flavor only
-        Hazard = 2,         // Passive terrain hazard (poison spores, craggy rockfall); rolls damage when stepped
-        Obstacle = 3        // Impassable terrain obstacle (boulder precipice, deep chasm); unwalkable in pathfinder
+        Interactive = 0,
+        Scenic = 1,
+        Hazard = 2,
+        Obstacle = 3
     }
 
     public record LandmarkActionDefinition(
@@ -34,17 +36,12 @@ namespace TaiwuGu.Map
         public string BadgeColorHex { get; init; } = "#FFFFFF";
         public IReadOnlyList<LandmarkActionDefinition> AvailableActions { get; init; } = Array.Empty<LandmarkActionDefinition>();
 
-        // Functional Recall: Invoked when player triggers an action button
-        public Action<GameStateContext, string, Vector2Int>? ExecuteAction { get; init; }
-
-        // Functional Recall: Invoked when player clicks directly to interact with landmark
-        public Action<GameStateContext, Vector2Int>? DirectInteraction { get; init; }
+        public Action<WorldStore, string, GridCoord>? ExecuteAction { get; init; }
+        public Action<WorldStore, GridCoord>? DirectInteraction { get; init; }
     }
 
     /// <summary>
-    /// Pure C# Domain Functional Registry for all overworld Landmarks.
-    /// Provides data-driven recall for interactions, scenic lore, and pathfinding constraints.
-    /// Eliminates hardcoded switch cases in UI views and domain services.
+    /// Pure C# Domain Functional Registry for all overworld Landmarks operating directly over WorldStore.
     /// </summary>
     public static class LandmarkRegistry
     {
@@ -127,25 +124,22 @@ namespace TaiwuGu.Map
                 IsTraversable = true,
                 MovementAPCost = 2,
                 TextureResourcePath = "res://Resources/Landmarks/poi_primeval_spring.png",
-                BadgeColorHex = "#38BDF8", // Cyan
+                BadgeColorHex = "#38BDF8",
                 AvailableActions = new[]
                 {
                     new LandmarkActionDefinition("spirit_vein_absorb", "Absorb Primeval Essence (+15% Sea Capacity)", "Meditate to draw bedrock primeval essence into the aperture sea.", 1, 0)
                 },
-                ExecuteAction = (context, actionId, pos) =>
+                ExecuteAction = (world, actionId, pos) =>
                 {
-                    if (actionId == "spirit_vein_absorb")
+                    if (actionId == "spirit_vein_absorb" &&
+                        world.TryGet<CultivatorComponent>(world.PlayerEntity, out var cult) &&
+                        world.TryGet<ApertureComponent>(world.PlayerEntity, out var ap))
                     {
-                        float currentSea = context.Cultivator.CurrentEssenceSea;
-                        float capacity = context.Cultivator.AptitudePercent;
-                        context.Cultivator.CurrentEssenceSea = MathF.Min(capacity, currentSea + 15.0f);
-                        GameEventManager.TriggerPrimevalSeaChanged(context.Cultivator.CurrentEssenceSea, capacity);
+                        ap.CurrentEssenceSea = MathF.Min(cult.AptitudePercent, ap.CurrentEssenceSea + 15.0f);
+                        WorldSignals.EmitTopics(DirtyTopic.Aperture);
                     }
                 },
-                DirectInteraction = (context, pos) =>
-                {
-                    GameEventManager.TriggerPOIArrived(TilePOIType.SpiritVein, pos, "Natural Primeval Spring (天然元泉)", "A subterranean vein where pure primeval essence wells up from the bedrock.", 1);
-                }
+                DirectInteraction = (world, pos) => WorldSignals.EmitOpenTilePOI(pos)
             });
 
             // 2. Jia Family Caravan Merchant Inn (贾家商队驿站)
@@ -160,43 +154,44 @@ namespace TaiwuGu.Map
                 IsTraversable = true,
                 MovementAPCost = 2,
                 TextureResourcePath = "res://Resources/Landmarks/poi_merchant_inn.png",
-                BadgeColorHex = "#FBBF24", // Brass Amber
+                BadgeColorHex = "#FBBF24",
                 AvailableActions = new[]
                 {
                     new LandmarkActionDefinition("waystation_buy_orchid", "Buy Moon Orchid Petals (10 Stones)", "Purchase fresh moon orchid petals for Moonlight Gu sustenance.", 0, 10),
                     new LandmarkActionDefinition("waystation_buy_boar", "Buy Fresh Boar Meat (10 Stones)", "Purchase raw wild boar meat for Boar Gu sustenance.", 0, 10),
                     new LandmarkActionDefinition("waystation_regional_transit", "Caravan Regional Wall Crossing (商队界壁跨域)", "Hire the caravan to traverse regional boundary walls.", 0, 50)
                 },
-                ExecuteAction = (context, actionId, pos) =>
+                ExecuteAction = (world, actionId, pos) =>
                 {
+                    var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+                    var inv = world.Get<InventoryComponent>(world.PlayerEntity);
+                    if (cult == null || inv == null) return;
+
                     switch (actionId)
                     {
                         case "waystation_buy_orchid":
-                            if (context.Cultivator.PrimevalStones >= 10)
+                            if (cult.PrimevalStones >= 10)
                             {
-                                context.Cultivator.PrimevalStones -= 10;
-                                context.GuInventory.AddFood(GuDietType.MoonOrchidPetals, 5);
-                                GameEventManager.TriggerPrimevalStonesChanged(context.Cultivator.PrimevalStones);
+                                cult.PrimevalStones -= 10;
+                                inv.AddFood(GuDietType.MoonOrchidPetals, 5);
+                                WorldSignals.EmitTopics(DirtyTopic.Cultivator | DirtyTopic.Inventory);
                             }
                             break;
                         case "waystation_buy_boar":
-                            if (context.Cultivator.PrimevalStones >= 10)
+                            if (cult.PrimevalStones >= 10)
                             {
-                                context.Cultivator.PrimevalStones -= 10;
-                                context.GuInventory.AddFood(GuDietType.FreshBoarFlesh, 5);
-                                GameEventManager.TriggerPrimevalStonesChanged(context.Cultivator.PrimevalStones);
+                                cult.PrimevalStones -= 10;
+                                inv.AddFood(GuDietType.FreshBoarFlesh, 5);
+                                WorldSignals.EmitTopics(DirtyTopic.Cultivator | DirtyTopic.Inventory);
                             }
                             break;
                         case "waystation_regional_transit":
-                            GameEventManager.TriggerPOIModalToggled(false);
-                            GameEventManager.RaiseRequestOpenTransitModal(true);
+                            WorldSignals.EmitCloseTilePOI();
+                            TransitSystem.OpenTransitModal(world, regionalMode: true);
                             break;
                     }
                 },
-                DirectInteraction = (context, pos) =>
-                {
-                    GameEventManager.TriggerPOIArrived(TilePOIType.WayStation, pos, "Jia Family Caravan Inn (贾家商队驿站)", "A bustling seasonal caravan encampment operated by the Jia Family merchants.", 1);
-                }
+                DirectInteraction = (world, pos) => WorldSignals.EmitOpenTilePOI(pos)
             });
 
             // 3. Gu Yue Clan Stronghold (古月山寨)
@@ -211,25 +206,24 @@ namespace TaiwuGu.Map
                 IsTraversable = true,
                 MovementAPCost = 1,
                 TextureResourcePath = "res://Resources/Landmarks/poi_clan_village.png",
-                BadgeColorHex = "#34D399", // Emerald Viridian
+                BadgeColorHex = "#34D399",
                 AvailableActions = new[]
                 {
                     new LandmarkActionDefinition("clan_post_rest", "Rest at Clan Pavilion (+5 AP Restored)", "Rest peacefully within the clan boundaries to recuperate action stamina.", 0, 0)
                 },
-                ExecuteAction = (context, actionId, pos) =>
+                ExecuteAction = (world, actionId, pos) =>
                 {
                     if (actionId == "clan_post_rest")
                     {
-                        int currentAP = context.Calendar.ActionPointsRemaining;
-                        int budget = context.Calendar.MonthlyAPBudget;
-                        context.Calendar.ActionPointsRemaining = Math.Min(budget, currentAP + 5);
-                        GameEventManager.TriggerActionPointsChanged(context.Calendar.ActionPointsRemaining, budget);
+                        var clock = world.GetSingleton<WorldClockComponent>();
+                        if (clock != null)
+                        {
+                            clock.ActionPointsRemaining = Math.Min(clock.MonthlyAPBudget, clock.ActionPointsRemaining + 5);
+                            WorldSignals.EmitTopics(DirtyTopic.Calendar);
+                        }
                     }
                 },
-                DirectInteraction = (context, pos) =>
-                {
-                    GameEventManager.TriggerPOIArrived(TilePOIType.ClanPost, pos, "Gu Yue Clan Stronghold (古月山寨)", "The ancestral stronghold of the Gu Yue clan.", 1);
-                }
+                DirectInteraction = (world, pos) => WorldSignals.EmitOpenTilePOI(pos)
             });
 
             // 4. Savage Beast Lair (凶兽巢穴)
@@ -244,27 +238,24 @@ namespace TaiwuGu.Map
                 IsTraversable = true,
                 MovementAPCost = 2,
                 TextureResourcePath = "res://Resources/Landmarks/tile_bamboo_mountain.png",
-                BadgeColorHex = "#F87171", // Crimson
+                BadgeColorHex = "#F87171",
                 AvailableActions = new[]
                 {
                     new LandmarkActionDefinition("beast_den_subjugate", "Track Wild Beasts in Lair (Combat Arena)", "Track ferocious beasts lurking inside the lair to harvest strength Gu or food.", 2, 0)
                 },
-                ExecuteAction = (context, actionId, pos) =>
+                ExecuteAction = (world, actionId, pos) =>
                 {
                     if (actionId == "beast_den_subjugate")
                     {
-                        GameEventManager.TriggerPOIModalToggled(false);
+                        WorldSignals.EmitCloseTilePOI();
                         var boarWild = WildOrganismData.CreateWildOrganism(
                             Random.Shared.NextDouble() < 0.5 ? "gu_white_boar_r1" : "gu_black_boar_r1",
                             WildOrganismTemperament.Ferocious
                         );
-                        GameEventManager.RaiseRequestOpenWildGuEncounter(boarWild);
+                        WildEncounterSystem.OpenEncounter(world, boarWild);
                     }
                 },
-                DirectInteraction = (context, pos) =>
-                {
-                    GameEventManager.TriggerPOIArrived(TilePOIType.WildBeastDen, pos, "Savage Beast Lair (凶兽巢穴)", "A shadowed hollow strewn with splintered bones and wild boar footprints.", 2);
-                }
+                DirectInteraction = (world, pos) => WorldSignals.EmitOpenTilePOI(pos)
             });
 
             // 5. Ancient Cultivator Ruins (上古蛊师遗迹)
@@ -279,26 +270,23 @@ namespace TaiwuGu.Map
                 IsTraversable = true,
                 MovementAPCost = 2,
                 TextureResourcePath = "res://Resources/Tokens/landmark_stone_stele.png",
-                BadgeColorHex = "#C084FC", // Purple Daoist
+                BadgeColorHex = "#C084FC",
                 AvailableActions = new[]
                 {
                     new LandmarkActionDefinition("cave_subjugate", "Explore Subterranean Ruins (Demonic Cultivator Trial)", "Descend into the sealed underground cavern in search of ancient legacy Gu.", 2, 0)
                 },
-                ExecuteAction = (context, actionId, pos) =>
+                ExecuteAction = (world, actionId, pos) =>
                 {
                     if (actionId == "cave_subjugate")
                     {
-                        GameEventManager.TriggerPOIModalToggled(false);
-                        string[] cavePool = new[] { "gu_liquor_worm_r1", "gu_little_light_r1", "gu_bronze_skin_r1", "gu_white_jade_r1" };
+                        WorldSignals.EmitCloseTilePOI();
+                        string[] cavePool = { "gu_liquor_worm_r1", "gu_little_light_r1", "gu_bronze_skin_r1", "gu_white_jade_r1" };
                         string pickedCaveGu = cavePool[Random.Shared.Next(0, cavePool.Length)];
                         var caveWild = WildOrganismData.CreateWildOrganism(pickedCaveGu, WildOrganismTemperament.Cunning);
-                        GameEventManager.RaiseRequestOpenWildGuEncounter(caveWild);
+                        WildEncounterSystem.OpenEncounter(world, caveWild);
                     }
                 },
-                DirectInteraction = (context, pos) =>
-                {
-                    GameEventManager.TriggerPOIArrived(TilePOIType.AncientGuCave, pos, "Ancient Cultivator Ruins (上古蛊师遗迹)", "Weathered megaliths inscribed with pre-antiquity dao formations.", 2);
-                }
+                DirectInteraction = (world, pos) => WorldSignals.EmitOpenTilePOI(pos)
             });
 
             // 6. Mountain Pass Trailhead (青矛山道隘口)
@@ -313,23 +301,23 @@ namespace TaiwuGu.Map
                 IsTraversable = true,
                 MovementAPCost = 2,
                 TextureResourcePath = "res://Resources/Landmarks/tile_bamboo_mountain.png",
-                BadgeColorHex = "#94A3B8", // Slate
+                BadgeColorHex = "#94A3B8",
                 AvailableActions = new[]
                 {
                     new LandmarkActionDefinition("mountain_sector_transit", "Qing Mao Mountain Transit Station (十里凉亭行驿)", "Cross mountain sectors between Gu Yue, Bai Clan, and Xiong Ridge.", 1, 0)
                 },
-                ExecuteAction = (context, actionId, pos) =>
+                ExecuteAction = (world, actionId, pos) =>
                 {
                     if (actionId == "mountain_sector_transit")
                     {
-                        GameEventManager.TriggerPOIModalToggled(false);
-                        GameEventManager.RaiseRequestOpenTransitModal(false);
+                        WorldSignals.EmitCloseTilePOI();
+                        TransitSystem.OpenTransitModal(world, regionalMode: false);
                     }
                 },
-                DirectInteraction = (context, pos) =>
+                DirectInteraction = (world, pos) =>
                 {
-                    GameEventManager.TriggerPOIModalToggled(false);
-                    GameEventManager.RaiseRequestOpenTransitModal(false);
+                    WorldSignals.EmitCloseTilePOI();
+                    TransitSystem.OpenTransitModal(world, regionalMode: false);
                 }
             });
 
@@ -345,10 +333,10 @@ namespace TaiwuGu.Map
                 IsTraversable = true,
                 MovementAPCost = 2,
                 TextureResourcePath = "res://Resources/Landmarks/tile_bamboo_mountain.png",
-                BadgeColorHex = "#16A34A", // Pine Green
-                DirectInteraction = (context, pos) =>
+                BadgeColorHex = "#16A34A",
+                DirectInteraction = (world, pos) =>
                 {
-                    GameEventManager.TriggerTileInspected("Thousand-Year Withered Pine (千年古松)", "松", "An ancient gnarled pine clinging stubbornly to karst rock. Its jade needles whisper in the mountain wind.", pos);
+                    WorldSignals.EmitScenicToast("Thousand-Year Withered Pine (千年古松)", "松", "An ancient gnarled pine clinging stubbornly to karst rock. Its jade needles whisper in the mountain wind.", pos);
                 }
             });
 
@@ -364,10 +352,10 @@ namespace TaiwuGu.Map
                 IsTraversable = true,
                 MovementAPCost = 2,
                 TextureResourcePath = "res://Resources/Tokens/landmark_stone_stele.png",
-                BadgeColorHex = "#78716C", // Stone Grey
-                DirectInteraction = (context, pos) =>
+                BadgeColorHex = "#78716C",
+                DirectInteraction = (world, pos) =>
                 {
-                    GameEventManager.TriggerTileInspected("Shattered Daoist Stele (残破仙碑)", "碑", "A weathered megalithic stele fractured by an ancient Gu battle. Pre-antiquity seal calligraphy remains faintly etched.", pos);
+                    WorldSignals.EmitScenicToast("Shattered Daoist Stele (残破仙碑)", "碑", "A weathered megalithic stele fractured by an ancient Gu battle. Pre-antiquity seal calligraphy remains faintly etched.", pos);
                 }
             });
 
@@ -383,7 +371,7 @@ namespace TaiwuGu.Map
                 IsTraversable = false,
                 MovementAPCost = 999,
                 TextureResourcePath = "res://Resources/Tokens/landmark_stone_stele.png",
-                BadgeColorHex = "#475569" // Dark Slate
+                BadgeColorHex = "#475569"
             });
         }
     }

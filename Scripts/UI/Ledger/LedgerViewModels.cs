@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 
 namespace Taiwu_Godot.Scripts.UI
 {
@@ -25,8 +26,8 @@ namespace Taiwu_Godot.Scripts.UI
 
     /// <summary>Read-only projection of the aperture's loadout and reserve.</summary>
     public readonly record struct GuWormsSnapshot(
-        IReadOnlyList<GuWormData> Equipped,
-        IReadOnlyList<GuWormData> Reserve);
+        IReadOnlyList<GuWormComponent> Equipped,
+        IReadOnlyList<GuWormComponent> Reserve);
 
     /// <summary>Read-only projection of the innate Human Path dao marks.</summary>
     public readonly record struct DaoMarksSnapshot(

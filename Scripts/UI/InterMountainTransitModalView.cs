@@ -2,25 +2,21 @@ using System;
 using System.Collections.Generic;
 using Godot;
 using TaiwuGu.Core;
+using TaiwuGu.Entities;
 using TaiwuGu.Map;
+using TaiwuGu.Systems;
 using Color = Godot.Color;
 
 namespace Taiwu_Godot.Scripts.UI
 {
     /// <summary>
     /// Phase 2 / Milestone 2.6: Inter-Mountain & Regional Transit Modal (十里凉亭行驿 / 五域界壁).
-    /// Halal-compliant presentation:
-    /// - Dual-mode view: Qing Mao Mountain sectors vs Five Regions regional wall crossing.
-    /// - Restraint Gu Aperture Sealing toggle to prevent high-rank Dao mark backlash.
-    /// - Clean loop helper `CreateDestinationCard` to eliminate layout duplication.
-    /// - Strict CQRS-Lite event symmetry and LIFO Escape priority.
+    /// Direct-read presentation observer wired to WorldStore & TransitSystem.
     /// </summary>
     public partial class InterMountainTransitModalView : CanvasLayer, IModalView
     {
-        private InterMountainTransitService? _transitService;
-        private GameStateContext? _stateContext;
+        private IWorldStateProvider? _stateProvider;
         private bool _isOpen = false;
-        public void Dismiss() => GameEventManager.RaiseRequestCloseTransitModal();
         private bool _isRegionalMode = false;
         private bool _sealAperture = false;
 
@@ -38,10 +34,15 @@ namespace Taiwu_Godot.Scripts.UI
 
         public bool IsOpen => _isOpen;
 
-        public void InitializeTransit(InterMountainTransitService? transitService, GameStateContext? stateContext)
+        public void Initialize(IWorldStateProvider? stateProvider)
         {
-            _transitService = transitService;
-            _stateContext = stateContext;
+            _stateProvider = stateProvider;
+        }
+
+        public void Dismiss()
+        {
+            if (_stateProvider?.Current is { } world)
+                TransitSystem.CloseTransitModal(world);
         }
 
         public override void _EnterTree()
@@ -55,14 +56,16 @@ namespace Taiwu_Godot.Scripts.UI
             _texBannerMountains = ResourceLoader.Load<Texture2D>("res://Resources/UI/banner_ink_mountains.png");
             BuildUI();
 
-            GameEventManager.OnTransitModalToggled += HandleTransitModalToggled;
-            GameEventManager.OnEscapeRequested += HandleEscapeRequested;
+            WorldSignals.OnTransitModalToggled += HandleTransitModalToggled;
+            WorldSignals.OnTopicsChanged += HandleTopicsChanged;
+            WorldSignals.OnEscapeRequested += HandleEscapeRequested;
         }
 
         public override void _ExitTree()
         {
-            GameEventManager.OnTransitModalToggled -= HandleTransitModalToggled;
-            GameEventManager.OnEscapeRequested -= HandleEscapeRequested;
+            WorldSignals.OnTransitModalToggled -= HandleTransitModalToggled;
+            WorldSignals.OnTopicsChanged -= HandleTopicsChanged;
+            WorldSignals.OnEscapeRequested -= HandleEscapeRequested;
         }
 
         private void BuildUI()
@@ -224,7 +227,7 @@ namespace Taiwu_Godot.Scripts.UI
                 CustomMinimumSize = new Vector2(200f, 32f),
                 SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter
             };
-            btnClose.Pressed += () => GameEventManager.RaiseRequestCloseTransitModal();
+            btnClose.Pressed += Dismiss;
             rootVBox.AddChild(btnClose);
         }
 
@@ -234,34 +237,47 @@ namespace Taiwu_Godot.Scripts.UI
             RefreshUI();
         }
 
-        private void HandleTransitModalToggled(bool isOpen, bool isRegionalMode)
+        private void HandleTransitModalToggled(bool isOpen)
         {
             _isOpen = isOpen;
-            _isRegionalMode = isRegionalMode;
+            if (isOpen && _stateProvider?.Current is { } world)
+            {
+                _isRegionalMode = TransitSystem.GetOrCreateSession(world).IsRegionalMode;
+            }
             Visible = isOpen;
 
             if (isOpen)
             {
-                GameEventManager.RaiseModalOpened(this);
+                WorldSignals.EmitModalOpened(this);
                 RefreshUI();
             }
             else
             {
-                GameEventManager.RaiseModalClosed(this);
+                WorldSignals.EmitModalClosed(this);
+            }
+        }
+
+        private void HandleTopicsChanged(DirtyTopic topics)
+        {
+            if (_isOpen && (topics & (DirtyTopic.Transit | DirtyTopic.Cultivator | DirtyTopic.Aperture | DirtyTopic.Calendar | DirtyTopic.Map)) != 0)
+            {
+                RefreshUI();
             }
         }
 
         private void HandleEscapeRequested()
         {
-            if (!_isOpen || GameEventManager.EscapeHandled) return;
+            if (!_isOpen || WorldSignals.EscapeHandled) return;
 
-            GameEventManager.RaiseRequestCloseTransitModal();
-            GameEventManager.EscapeHandled = true;
+            Dismiss();
+            WorldSignals.EscapeHandled = true;
         }
 
         private void UpdateRankWarning()
         {
-            int rank = _stateContext?.Cultivator?.Rank ?? 1;
+            int rank = _stateProvider?.Current is { } world
+                ? (world.Get<ApertureComponent>(world.PlayerEntity)?.Rank ?? 1)
+                : 1;
 
             if (_isRegionalMode && rank >= 4 && !_sealAperture)
             {
@@ -278,10 +294,12 @@ namespace Taiwu_Godot.Scripts.UI
 
         public void RefreshUI()
         {
-            var transit = _transitService;
-            var ctx = _stateContext;
+            var world = _stateProvider?.Current;
+            if (world == null) return;
 
-            if (transit == null || ctx == null) return;
+            var sector = world.GetCurrentSector();
+            WorldRegionID curRegion = sector?.Region ?? WorldRegionID.SouthernBorder;
+            SouthernMountainID curMountain = sector?.MountainId ?? SouthernMountainID.GuYueVillage;
 
             if (_chkSealAperture != null) _chkSealAperture.Visible = _isRegionalMode;
             UpdateRankWarning();
@@ -290,36 +308,36 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 _lblTitle!.Text = "◆ MOUNTAIN TRANSIT WAY STATION (十里凉亭行驿) ◆";
                 _lblTitle.Modulate = new Color(0.22f, 0.74f, 0.97f, 1f);
-                string mName = transit.MountainDatabase.TryGetValue(transit.CurrentMountain, out var curM) ? curM.MountainName : "Gu Yue Mountain";
-                _lblLocationInfo!.Text = $"Current Location: {mName} | {RegionalWallLaw.GetRegionName(transit.CurrentRegion)}";
-                _lblCostInfo!.Text = $"Transit Toll: {InterMountainTransitService.TRAVEL_STONE_COST} Stones + {InterMountainTransitService.TRAVEL_AP_COST} Days (AP) | Ambush Risk: 25%";
+                string mName = TransitSystem.MountainDatabase.TryGetValue(curMountain, out var curM) ? curM.MountainName : "Gu Yue Mountain";
+                _lblLocationInfo!.Text = $"Current Location: {mName} | {RegionalWallLaw.GetRegionName(curRegion)}";
+                _lblCostInfo!.Text = $"Transit Toll: {TransitSystem.TRAVEL_STONE_COST} Stones + {TransitSystem.TRAVEL_AP_COST} Days (AP) | Ambush Risk: 25%";
 
-                PopulateMountainDestinations(transit, ctx);
+                PopulateMountainDestinations(world, curMountain, curRegion);
             }
             else
             {
                 _lblTitle!.Text = "◆ FIVE REGIONS REGIONAL WALL CROSSING (五域界壁跨域大阵) ◆";
                 _lblTitle.Modulate = new Color(0.76f, 0.48f, 0.98f, 1f);
-                _lblLocationInfo!.Text = $"Current Active Region: {RegionalWallLaw.GetRegionName(transit.CurrentRegion)}";
-                _lblCostInfo!.Text = $"Caravan Toll: {InterMountainTransitService.REGIONAL_TRANSIT_STONE_COST} Stones + {InterMountainTransitService.REGIONAL_TRANSIT_AP_COST} Days (AP)";
+                _lblLocationInfo!.Text = $"Current Active Region: {RegionalWallLaw.GetRegionName(curRegion)}";
+                _lblCostInfo!.Text = $"Caravan Toll: {TransitSystem.REGIONAL_TRANSIT_STONE_COST} Stones + {TransitSystem.REGIONAL_TRANSIT_AP_COST} Days (AP)";
 
-                PopulateRegionalDestinations(transit, ctx);
+                PopulateRegionalDestinations(world, curRegion);
             }
         }
 
-        private void PopulateMountainDestinations(InterMountainTransitService transit, GameStateContext ctx)
+        private void PopulateMountainDestinations(WorldStore world, SouthernMountainID currentMountain, WorldRegionID currentRegion)
         {
             if (_destinationsContainer == null) return;
             foreach (Node child in _destinationsContainer.GetChildren()) child.QueueFree();
 
-            foreach (var kvp in transit.MountainDatabase)
+            foreach (var kvp in TransitSystem.MountainDatabase)
             {
                 var mountain = kvp.Value;
-                bool isCurrent = mountain.MountainID == transit.CurrentMountain;
-                bool canTravel = transit.CanTravelToMountain(mountain.MountainID, out string failReason);
+                bool isCurrent = mountain.MountainID == currentMountain && currentRegion == WorldRegionID.SouthernBorder;
+                bool canTravel = TransitSystem.CanTravelToMountain(world, mountain.MountainID, out string failReason);
 
                 string costText = canTravel
-                    ? $"Travel (-{InterMountainTransitService.TRAVEL_STONE_COST} Stones, -{InterMountainTransitService.TRAVEL_AP_COST} AP)"
+                    ? $"Travel (-{TransitSystem.TRAVEL_STONE_COST} Stones, -{TransitSystem.TRAVEL_AP_COST} AP)"
                     : $"Blocked [{failReason}]";
 
                 var card = CreateDestinationCard(
@@ -330,23 +348,23 @@ namespace Taiwu_Godot.Scripts.UI
                     canTravel,
                     costText,
                     new Color(0.05f, 0.58f, 0.41f, 1f),
-                    () => GameEventManager.RaiseRequestMountainTransit(mountain.MountainID)
+                    () => TransitSystem.TravelToMountain(world, mountain.MountainID)
                 );
 
                 _destinationsContainer.AddChild(card);
             }
         }
 
-        private void PopulateRegionalDestinations(InterMountainTransitService transit, GameStateContext ctx)
+        private void PopulateRegionalDestinations(WorldStore world, WorldRegionID currentRegion)
         {
             if (_destinationsContainer == null) return;
             foreach (Node child in _destinationsContainer.GetChildren()) child.QueueFree();
 
-            foreach (var kvp in transit.RegionalDatabase)
+            foreach (var kvp in TransitSystem.RegionalDatabase)
             {
                 var reg = kvp.Value;
-                bool isCurrent = reg.RegionID == transit.CurrentRegion;
-                bool canTravel = transit.CanTravelToRegion(reg.RegionID, out string failReason);
+                bool isCurrent = reg.RegionID == currentRegion;
+                bool canTravel = TransitSystem.CanTravelToRegion(world, reg.RegionID, out string failReason);
 
                 string wallTitle = RegionalWallLaw.GetWallName(reg.WallType);
                 string costText = canTravel
@@ -361,7 +379,7 @@ namespace Taiwu_Godot.Scripts.UI
                     canTravel,
                     costText,
                     new Color(0.48f, 0.22f, 0.92f, 1f),
-                    () => GameEventManager.RaiseRequestRegionTransit(reg.RegionID, _sealAperture)
+                    () => TransitSystem.TravelToRegion(world, reg.RegionID, _sealAperture)
                 );
 
                 _destinationsContainer.AddChild(card);
