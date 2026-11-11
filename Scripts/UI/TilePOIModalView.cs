@@ -93,6 +93,17 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.EmitPOIModalToggled(false);
         }
 
+        /// <summary>
+        /// The Way Station's caravan button and the diagnostic smoke both enter the
+        /// bazaar through this single presentation-owned route.
+        /// </summary>
+        public bool TryOpenCaravanBazaar()
+        {
+            if (_worldProvider?.Current is not { } world) return false;
+            CaravanEconomySystem.OpenBazaar(world);
+            return true;
+        }
+
         private void HandleBattleStageChanged(bool inBattle)
         {
             if (inBattle && IsOpen) CloseModal();
@@ -249,10 +260,7 @@ namespace Taiwu_Godot.Scripts.UI
                     if (tile.POI == TilePOIType.WayStation)
                     {
                         var btnCaravan = new Button { Text = "◆ Enter Jia Family Caravan Grand Bazaar (贾家商队大集) ◆", CustomMinimumSize = new Vector2(0f, 34f) };
-                        btnCaravan.Pressed += () =>
-                            WorldSignals.EmitOnWorkNotice(
-                                "Jia Family Caravan Barter Economy (贾家商队)",
-                                "The grand trade pavilion is currently ON WORK.\nSeasonal arrivals (Bailu / Qiufen), Stone Gambling Den, and Gu auctions are underway.");
+                        btnCaravan.Pressed += () => TryOpenCaravanBazaar();
                         _actionsContainer.AddChild(btnCaravan);
                     }
 

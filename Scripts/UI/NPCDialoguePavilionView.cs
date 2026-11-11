@@ -188,7 +188,7 @@ namespace Taiwu_Godot.Scripts.UI
             actionsHBox.AddThemeConstantOverride("separation", 8);
             rightVBox.AddChild(actionsHBox);
 
-            _btnSpar = CreateActionButton("Spar (切磋)\n[+25 Favor]", new Color(0.20f, 0.83f, 0.60f, 1f), () =>
+            _btnSpar = CreateActionButton("Spar (切磋)\n[+15 Favor]", new Color(0.20f, 0.83f, 0.60f, 1f), () =>
             {
                 if (_stateProvider?.Current is { } world && _currentNpcId is { } npcId)
                     SocialVendettaSystem.ExecuteSpar(world, npcId);

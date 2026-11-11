@@ -22,7 +22,7 @@ namespace Taiwu_Godot.Scripts.Verification
 
         private bool _captureMapOnly = false;
         private bool _captureBreakthrough = false;
-        private bool _captureOnWork = false;
+        private bool _captureCaravan = false;
         private bool _captureNPC = false;
         private bool _captureTileNPC = false;
         private bool _captureEncounter = false;
@@ -31,6 +31,7 @@ namespace Taiwu_Godot.Scripts.Verification
         private bool _testAudio = false;
         private bool _testAll = false;
         private bool _testLandmark = false;
+        private bool _allCaravanOk = true;
         private bool _verify = false;
         private bool _strictPoi = false;
 
@@ -55,7 +56,7 @@ namespace Taiwu_Godot.Scripts.Verification
                 if (arg == "--strict-poi") _strictPoi = true;
                 if (arg == "--map" || arg == "--overworld") _captureMapOnly = true;
                 if (arg == "--breakthrough") _captureBreakthrough = true;
-                if (arg == "--onwork") _captureOnWork = true;
+                if (arg == "--caravan") _captureCaravan = true;
                 if (arg == "--npc") _captureNPC = true;
                 if (arg == "--tile-npc") _captureTileNPC = true;
                 if (arg == "--encounter") _captureEncounter = true;
@@ -211,10 +212,149 @@ namespace Taiwu_Godot.Scripts.Verification
                     Bootstrapper?.ModalStack?.TryPop();
                     CaptureFrame("test_grand_convergence_all.png");
                 }
-                else if (_frameCount >= 55)
+                else if (_frameCount == 55)
                 {
-                    GD.Print("[DiagnosticCapture] Grand Parity Convergence (--all) fully verified! Quitting.");
-                    GetTree().Quit();
+                    GD.Print("[DiagnosticCapture] (--all) Step 7: Testing Jia Caravan Bazaar & ModalStack...");
+                    bool routed = Bootstrapper?.POIModalView?.TryOpenCaravanBazaar() == true;
+                    bool open = Bootstrapper?.CaravanBazaarView?.IsOpen == true;
+                    GD.Print($"[DiagnosticCapture] (--all) Caravan route={routed} IsOpen={open}, ModalStack Count: {Bootstrapper?.ModalStack?.Count}");
+                    if (!routed || !open) _allCaravanOk = false;
+                }
+                else if (_frameCount == 60)
+                {
+                    var session = CaravanEconomySystem.EnsureStock(world);
+                    CaravanStockEntry? fodder = null;
+                    foreach (var entry in session.Stock)
+                    {
+                        if (entry.Kind == CaravanStockKind.Fodder && entry.Remaining > 0) { fodder = entry; break; }
+                    }
+                    var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+                    var inv = world.Get<InventoryComponent>(world.PlayerEntity);
+                    int foodBefore = fodder != null && inv != null ? inv.GetFoodQuantity(fodder.Diet) : -1;
+                    int stonesBefore = cult?.PrimevalStones ?? -1;
+                    bool bought = fodder != null && CaravanEconomySystem.TryBuyStock(world, fodder.Id, out string buyMessage);
+                    bool foodOk = fodder != null && inv != null && inv.GetFoodQuantity(fodder.Diet) == foodBefore + 5;
+                    bool stonesOk = cult != null && cult.PrimevalStones < stonesBefore;
+                    GD.Print($"[DiagnosticCapture] (--all) Caravan fodder buy={bought} foodOk={foodOk} stonesOk={stonesOk}");
+                    if (!bought || !foodOk || !stonesOk) _allCaravanOk = false;
+                }
+                else if (_frameCount == 65)
+                {
+                    var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+                    int before = cult?.PrimevalStones ?? -1;
+                    bool gambled = CaravanEconomySystem.TryGamble(world, CaravanOreTier.Low, out var result);
+                    int after = cult?.PrimevalStones ?? -1;
+                    bool exact = gambled && after == before - CaravanEconomySystem.GetOreCost(CaravanOreTier.Low) + result.StonesAwarded;
+                    GD.Print($"[DiagnosticCapture] (--all) Caravan gamble={gambled} outcome={result.Outcome} stonesExact={exact} message={result.Message}");
+                    if (!gambled || !exact) _allCaravanOk = false;
+                    CaptureFrame("test_caravan_capture.png");
+                }
+                else if (_frameCount == 70)
+                {
+                    bool popped = Bootstrapper?.ModalStack?.TryPop() == true;
+                    bool closed = Bootstrapper?.CaravanBazaarView?.IsOpen == false;
+                    GD.Print($"[DiagnosticCapture] (--all) Caravan pop={popped} closed={closed}, ModalStack Count: {Bootstrapper?.ModalStack?.Count}");
+                    if (!popped || !closed) _allCaravanOk = false;
+                }
+                else if (_frameCount >= 75)
+                {
+                    GD.Print($"[DiagnosticCapture] Grand Parity Convergence (--all) verified! caravanOk={_allCaravanOk}. Quitting.");
+                    GetTree().Quit(_allCaravanOk ? 0 : 1);
+                }
+                return;
+            }
+
+            if (_captureCaravan)
+            {
+                if (_frameCount == 5)
+                {
+                    GD.Print("[caravan] Step 1: Inspecting the Way Station POI...");
+                    var sector = world.GetCurrentSector();
+                    if (sector != null)
+                    {
+                        var tiles = sector.EnsureHydrated();
+                        tiles[15 * sector.GridWidth + 19].POI = TilePOIType.WayStation;
+                    }
+                    ExplorationSystem.InspectTile(world, new GridCoord(19, 15));
+                    bool poiOpen = Bootstrapper?.POIModalView?.IsOpen == true;
+                    GD.Print($"[caravan] WayStation POI IsOpen={poiOpen}");
+                    if (!poiOpen)
+                    {
+                        GD.PrintErr("[caravan] FAIL: Way Station POI did not open.");
+                        GetTree().Quit(1);
+                    }
+                }
+                else if (_frameCount == 10)
+                {
+                    bool routed = Bootstrapper?.POIModalView?.TryOpenCaravanBazaar() == true;
+                    bool poiClosed = Bootstrapper?.POIModalView?.IsOpen == false;
+                    bool open = Bootstrapper?.CaravanBazaarView?.IsOpen == true;
+                    int count = Bootstrapper?.ModalStack?.Count ?? -1;
+                    GD.Print($"[caravan] route={routed} poiClosed={poiClosed} bazaarOpen={open} stack={count}");
+                    if (!routed || !poiClosed || !open || count != 1)
+                    {
+                        GD.PrintErr("[caravan] FAIL: bazaar did not replace the POI on the modal stack.");
+                        GetTree().Quit(1);
+                    }
+                }
+                else if (_frameCount == 15)
+                {
+                    var session = CaravanEconomySystem.EnsureStock(world);
+                    CaravanStockEntry? fodder = null;
+                    foreach (var entry in session.Stock)
+                    {
+                        if (entry.Kind == CaravanStockKind.Fodder && entry.Remaining > 0) { fodder = entry; break; }
+                    }
+                    var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+                    var inv = world.Get<InventoryComponent>(world.PlayerEntity);
+                    if (fodder == null || cult == null || inv == null)
+                    {
+                        GD.PrintErr("[caravan] FAIL: no fodder lot or player inventory.");
+                        GetTree().Quit(1);
+                        return;
+                    }
+                    int foodBefore = inv.GetFoodQuantity(fodder.Diet);
+                    int stonesBefore = cult.PrimevalStones;
+                    bool bought = CaravanEconomySystem.TryBuyStock(world, fodder.Id, out string message);
+                    bool foodOk = inv.GetFoodQuantity(fodder.Diet) == foodBefore + 5;
+                    bool stonesOk = cult.PrimevalStones < stonesBefore;
+                    GD.Print($"[caravan] buy={bought} foodOk={foodOk} stonesOk={stonesOk} message={message}");
+                    if (!bought || !foodOk || !stonesOk)
+                    {
+                        GD.PrintErr("[caravan] FAIL: fodder purchase did not mutate stones and inventory.");
+                        GetTree().Quit(1);
+                    }
+                }
+                else if (_frameCount == 20)
+                {
+                    var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+                    int before = cult?.PrimevalStones ?? -1;
+                    bool gambled = CaravanEconomySystem.TryGamble(world, CaravanOreTier.Low, out var result);
+                    int after = cult?.PrimevalStones ?? -1;
+                    bool exact = gambled && after == before - CaravanEconomySystem.GetOreCost(CaravanOreTier.Low) + result.StonesAwarded;
+                    bool reduced = after < before;
+                    GD.Print($"[caravan] gamble={gambled} outcome={result.Outcome} stonesExact={exact} reduced={reduced} message={result.Message}");
+                    if (!gambled || !exact || !reduced)
+                    {
+                        GD.PrintErr("[caravan] FAIL: stone gamble did not resolve deterministically or deduct stones.");
+                        GetTree().Quit(1);
+                    }
+                }
+                else if (_frameCount == 25)
+                {
+                    bool popped = Bootstrapper?.ModalStack?.TryPop() == true;
+                    bool closed = Bootstrapper?.CaravanBazaarView?.IsOpen == false;
+                    GD.Print($"[caravan] pop={popped} closed={closed}, stack={Bootstrapper?.ModalStack?.Count}");
+                    if (!popped || !closed)
+                    {
+                        GD.PrintErr("[caravan] FAIL: ModalStack did not pop the bazaar.");
+                        GetTree().Quit(1);
+                    }
+                }
+                else if (_frameCount >= 30)
+                {
+                    GD.Print("[caravan] PASS: WayStation route, fodder purchase, stone gamble and modal pop verified.");
+                    GetTree().Quit(0);
                 }
                 return;
             }
@@ -394,28 +534,6 @@ namespace Taiwu_Godot.Scripts.Verification
                 else if (_frameCount >= 28)
                 {
                     GD.Print("[DiagnosticCapture] NPC Dialogue Pavilion capture complete. Quitting.");
-                    GetTree().Quit();
-                }
-                return;
-            }
-
-            if (_captureOnWork)
-            {
-                if (_frameCount == 5)
-                {
-                    WorldSignals.EmitOnWorkNotice(
-                        "Jia Family Caravan Barter Economy (贾家商队)",
-                        "The grand trade pavilion is currently ON WORK.\nSeasonal arrivals (Bailu / Qiufen), Stone Gambling Den, and Gu auctions are underway."
-                    );
-                    GD.Print("[DiagnosticCapture] Triggered On Work Modal.");
-                }
-                else if (_frameCount == 15)
-                {
-                    CaptureFrame("test_onwork_capture.png");
-                }
-                else if (_frameCount >= 25)
-                {
-                    GD.Print("[DiagnosticCapture] On Work capture complete. Quitting.");
                     GetTree().Quit();
                 }
                 return;

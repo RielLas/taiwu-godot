@@ -53,7 +53,7 @@ namespace TaiwuGu.Entities
         public static event Action<GridCoord, string, int, float>? OnTerrainHazardTriggered;
         public static event Action<GridCoord, string>? OnWildBeastAmbushed;
         public static event Action<ArenaEncounterType, GridCoord>? OnRoadAmbushOccurred;
-        public static event Action<string, string>? OnOnWorkNoticeRequested;
+        public static event Action? OnCaravanBazaarRequested;
         public static event Action<string, bool>? OnGameSaved;
         public static event Action<string, bool>? OnGameLoaded;
         public static event Action<string, bool>? OnSaveDeleted;
@@ -93,7 +93,7 @@ namespace TaiwuGu.Entities
         public static void EmitTerrainHazardTriggered(GridCoord pos, string hazardName, int hpDmg, float seaDmg) => OnTerrainHazardTriggered?.Invoke(pos, hazardName, hpDmg, seaDmg);
         public static void EmitWildBeastAmbushed(GridCoord pos, string beastName) => OnWildBeastAmbushed?.Invoke(pos, beastName);
         public static void EmitRoadAmbushOccurred(ArenaEncounterType enc, GridCoord pos) => OnRoadAmbushOccurred?.Invoke(enc, pos);
-        public static void EmitOnWorkNotice(string title, string desc) => OnOnWorkNoticeRequested?.Invoke(title, desc);
+        public static void EmitCaravanBazaarRequested() => OnCaravanBazaarRequested?.Invoke();
         public static void EmitGameSaved(string slot, bool ok) => OnGameSaved?.Invoke(slot, ok);
         public static void EmitGameLoaded(string slot, bool ok) => OnGameLoaded?.Invoke(slot, ok);
         public static void EmitSaveDeleted(string slot, bool ok) => OnSaveDeleted?.Invoke(slot, ok);
@@ -139,7 +139,7 @@ namespace TaiwuGu.Entities
             OnTerrainHazardTriggered = null;
             OnWildBeastAmbushed = null;
             OnRoadAmbushOccurred = null;
-            OnOnWorkNoticeRequested = null;
+            OnCaravanBazaarRequested = null;
             OnGameSaved = null;
             OnGameLoaded = null;
             OnSaveDeleted = null;

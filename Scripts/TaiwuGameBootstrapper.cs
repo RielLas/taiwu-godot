@@ -34,7 +34,7 @@ namespace Taiwu_Godot.Scripts
         [Export] public TilePOIModalView? POIModalView { get; set; }
         [Export] public TaiwuSystemMenuView? SystemMenuView { get; set; }
         [Export] public ApertureBreakthroughModalView? BreakthroughModalView { get; set; }
-        [Export] public FeatureOnWorkModalView? OnWorkModalView { get; set; }
+        [Export] public CaravanBazaarModalView? CaravanBazaarView { get; set; }
         [Export] public NPCDialoguePavilionView? NPCDialogueView { get; set; }
         [Export] public WildGuEncounterModalView? WildGuModalView { get; set; }
         [Export] public InterMountainTransitModalView? TransitModalView { get; set; }
@@ -117,12 +117,6 @@ namespace Taiwu_Godot.Scripts
                 AddChild(BreakthroughModalView);
             }
 
-            if (OnWorkModalView == null)
-            {
-                OnWorkModalView = new FeatureOnWorkModalView { Name = "FeatureOnWorkModalView" };
-                AddChild(OnWorkModalView);
-            }
-
             if (NPCDialogueView == null)
             {
                 NPCDialogueView = new NPCDialoguePavilionView { Name = "NPCDialoguePavilionView" };
@@ -154,6 +148,7 @@ namespace Taiwu_Godot.Scripts
             SystemMenuView?.Initialize(ModalStack, PlayerController, StateProvider);
             HUDView?.Initialize(ModalStack, StateProvider);
             BreakthroughModalView?.Initialize(StateProvider);
+            CaravanBazaarView?.Initialize(ModalStack, StateProvider);
             WildGuModalView?.Initialize(StateProvider);
             NPCDialogueView?.Initialize(StateProvider);
             TransitModalView?.Initialize(StateProvider);

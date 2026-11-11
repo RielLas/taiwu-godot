@@ -1,0 +1,69 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/CaravanStockCardView.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_caravan_card"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+bg_color = Color(0.06, 0.09, 0.09, 0.97)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.55, 0.39, 0.16, 0.75)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="CaravanStockCard" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 64)
+theme_override_styles/panel = SubResource("StyleBoxFlat_caravan_card")
+script = ExtResource("1_card")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Seal" type="Label" parent="Row"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 14
+text = "【贾】"
+vertical_alignment = 1
+
+[node name="Info" type="VBoxContainer" parent="Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="Row/Info"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.91, 0.82, 1)
+theme_override_font_sizes/font_size = 12
+text = "Caravan lot"
+
+[node name="Detail" type="Label" parent="Row/Info"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.64, 0.68, 1)
+theme_override_font_sizes/font_size = 10
+text = "Gu fodder • stock"
+autowrap_mode = 3
+
+[node name="Price" type="Label" parent="Row"]
+custom_minimum_size = Vector2(112, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.62, 0.14, 1)
+theme_override_font_sizes/font_size = 11
+text = "◆ 10 Stones"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="ActionButton" type="Button" parent="Row"]
+custom_minimum_size = Vector2(104, 30)
+layout_mode = 2
+focus_mode = 0
+text = "Buy"

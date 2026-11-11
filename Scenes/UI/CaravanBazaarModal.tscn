@@ -1,0 +1,141 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/CaravanBazaarModalView.cs" id="1_view"]
+[ext_resource type="PackedScene" path="res://Scenes/UI/TabbedModal.tscn" id="2_tabs"]
+[ext_resource type="PackedScene" path="res://Scenes/UI/CaravanStockCard.tscn" id="3_card"]
+
+[node name="CaravanBazaarModal" type="Control" node_paths=PackedStringArray("Tabs", "HeaderInfo", "BuyPage", "SellPage", "GamblePage")]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_view")
+Tabs = NodePath("TabbedModal")
+HeaderInfo = NodePath("Bindings/HeaderInfo")
+BuyPage = NodePath("Bindings/BuyPage")
+SellPage = NodePath("Bindings/SellPage")
+GamblePage = NodePath("Bindings/GamblePage")
+StockCardScene = ExtResource("3_card")
+
+[node name="TabbedModal" parent="." instance=ExtResource("2_tabs")]
+
+[node name="Bindings" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HeaderInfo" type="VBoxContainer" parent="Bindings"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Standing" type="Label" parent="Bindings/HeaderInfo"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 12
+text = "【贾】 Jia Standing: Neutral Passerby (萍水相逢)  [x1.00]"
+
+[node name="Stones" type="Label" parent="Bindings/HeaderInfo"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.91, 0.9, 1)
+theme_override_font_sizes/font_size = 11
+text = "Primeval Stones: 250 ◆"
+
+[node name="Restock" type="Label" parent="Bindings/HeaderInfo"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.64, 0.68, 1)
+theme_override_font_sizes/font_size = 10
+text = "Next autumn arrival: Bailu (白露) in 11 solar term(s)."
+autowrap_mode = 3
+
+[node name="Feedback" type="Label" parent="Bindings/HeaderInfo"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.204, 0.827, 0.6, 1)
+theme_override_font_sizes/font_size = 11
+text = "The caravan's ledgers are open."
+autowrap_mode = 3
+
+[node name="BuyPage" type="VBoxContainer" parent="Bindings"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Intro" type="Label" parent="Bindings/BuyPage"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.77, 0.8, 1)
+theme_override_font_sizes/font_size = 10
+text = "Fodder prevents Gu starvation. Reserve Gu are minted directly into your ownership. Autumn lots carry rank 2-3 Gu."
+autowrap_mode = 3
+
+[node name="Scroll" type="ScrollContainer" parent="Bindings/BuyPage"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="StockList" type="VBoxContainer" parent="Bindings/BuyPage/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="SellPage" type="VBoxContainer" parent="Bindings"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Intro" type="Label" parent="Bindings/SellPage"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.77, 0.8, 1)
+theme_override_font_sizes/font_size = 10
+text = "Liquidate surplus fodder or non-vital, unequipped reserve Gu. Vital Gu and equipped Gu are protected."
+autowrap_mode = 3
+
+[node name="Scroll" type="ScrollContainer" parent="Bindings/SellPage"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="StockList" type="VBoxContainer" parent="Bindings/SellPage/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="GamblePage" type="VBoxContainer" parent="Bindings"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Intro" type="Label" parent="Bindings/GamblePage"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.77, 0.8, 1)
+theme_override_font_sizes/font_size = 10
+text = "Stone Gambling (赌石). Transparent odds. Each cut advances the persisted sequence and resolves deterministically from the caravan seed."
+autowrap_mode = 3
+
+[node name="Scroll" type="ScrollContainer" parent="Bindings/GamblePage"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="StockList" type="VBoxContainer" parent="Bindings/GamblePage/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Result" type="Label" parent="Bindings/GamblePage"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 11
+text = "The stone saw waits."
+autowrap_mode = 3

@@ -59,7 +59,11 @@ namespace Taiwu_Godot.Scripts.UI
             if (page == null) return;
 
             _pages.Add(page);
-            Body?.AddChild(page);
+            if (Body != null && page.GetParent() != Body)
+            {
+                if (page.GetParent() != null) page.Reparent(Body);
+                else Body.AddChild(page);
+            }
             page.Visible = false;
 
             Button? button = null;
