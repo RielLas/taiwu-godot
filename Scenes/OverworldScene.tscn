@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://d3y1a2b3c4d5e"]
+[gd_scene load_steps=17 format=3 uid="uid://d3y1a2b3c4d5e"]
 
 [ext_resource type="Script" path="res://Scripts/TaiwuGameBootstrapper.cs" id="1_boot"]
 [ext_resource type="Script" path="res://Scripts/Input/TaiwuInputRouter.cs" id="2_input"]
@@ -14,10 +14,12 @@
 [ext_resource type="Script" path="res://Scripts/UI/TilePOIModalView.cs" id="12_poi"]
 [ext_resource type="Script" path="res://Scripts/UI/TaiwuSystemMenuView.cs" id="13_sysmenu"]
 [ext_resource type="Script" path="res://Scripts/Input/StandaloneInputProvider.cs" id="14_provider"]
+[ext_resource type="Script" path="res://Scripts/Combat/CombatArenaView.cs" id="15_arena"]
+[ext_resource type="Script" path="res://Scripts/UI/CombatHUDView.cs" id="16_combathud"]
 
 [node name="OverworldScene" type="Node2D"]
 
-[node name="[SYSTEM_BOOTSTRAPPER]" type="Node2D" parent="." node_paths=PackedStringArray("TileManager", "InputRouter", "LandmarkManager", "PlayerController", "CameraController", "HUDView", "LedgerView", "CauldronView", "POIModalView", "SystemMenuView")]
+[node name="[SYSTEM_BOOTSTRAPPER]" type="Node2D" parent="." node_paths=PackedStringArray("TileManager", "InputRouter", "LandmarkManager", "PlayerController", "CameraController", "HUDView", "LedgerView", "CauldronView", "POIModalView", "SystemMenuView", "CombatArenaView", "CombatHUDView")]
 script = ExtResource("1_boot")
 TileManager = NodePath("../World2D/IsometricTileManager")
 InputRouter = NodePath("../[SYSTEM_INPUT]")
@@ -29,6 +31,8 @@ LedgerView = NodePath("../[UI_SYSTEM]/TaiwuLedgerView")
 CauldronView = NodePath("../[UI_SYSTEM]/RefinementCauldronView")
 POIModalView = NodePath("../[UI_SYSTEM]/TilePOIModalView")
 SystemMenuView = NodePath("../[UI_SYSTEM]/TaiwuSystemMenuView")
+CombatArenaView = NodePath("../World2D/CombatArenaView")
+CombatHUDView = NodePath("../[UI_SYSTEM]/CombatHUDView")
 
 [node name="[SYSTEM_INPUT]" type="Node" parent="." node_paths=PackedStringArray("StandaloneProvider")]
 process_mode = 3
@@ -65,6 +69,10 @@ TileManager = NodePath("../IsometricTileManager")
 y_sort_enabled = true
 script = ExtResource("7_player")
 TileManager = NodePath("../IsometricTileManager")
+
+[node name="CombatArenaView" type="Node2D" parent="World2D"]
+position = Vector2(2000, 2000)
+script = ExtResource("15_arena")
 
 [node name="[UI_SYSTEM]" type="CanvasLayer" parent="."]
 process_mode = 3
@@ -122,3 +130,14 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("13_sysmenu")
+
+[node name="CombatHUDView" type="Control" parent="[UI_SYSTEM]"]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("16_combathud")

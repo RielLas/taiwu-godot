@@ -1,4 +1,6 @@
 using System;
+using Newtonsoft.Json;
+using TaiwuGu.Combat;
 using TaiwuGu.Core;
 using TaiwuGu.Map;
 
@@ -118,5 +120,21 @@ namespace TaiwuGu.Entities
         public bool IsModalOpen { get; set; } = false;
         public bool IsRegionalMode { get; set; } = false;
         public SouthernMountainID? PendingMountainDestination { get; set; }
+    }
+
+    /// <summary>
+    /// Attaches the live arena simulation to WorldStore.WorldEntity while persisting a lightweight
+    /// summary so a save never serializes the flat combat buffers.
+    /// </summary>
+    [Serializable]
+    public class CombatSessionComponent
+    {
+        [JsonIgnore] public CombatArenaSimulation Simulation { get; } = new();
+
+        public bool InBattle { get; set; } = false;
+        public ArenaEncounterType EncounterType { get; set; } = ArenaEncounterType.WildBoarHunt;
+        public GridCoord SourceTilePos { get; set; }
+        public string TargetNpcExternalId { get; set; } = string.Empty;
+        public bool IsLethal { get; set; } = true;
     }
 }

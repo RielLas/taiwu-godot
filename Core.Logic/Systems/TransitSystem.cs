@@ -219,7 +219,12 @@ namespace TaiwuGu.Systems
                 var s = GetOrCreateSession(world);
                 s.PendingMountainDestination = destination;
                 WorldSignals.EmitRoadAmbushOccurred(ArenaEncounterType.WildBoarHunt, world.GetPlayerPosition());
-                WorldSignals.EmitCombatRequested(ArenaEncounterType.WildBoarHunt, world.GetPlayerPosition());
+                CombatSystem.StartCombat(
+                    world,
+                    ArenaEncounterType.WildBoarHunt,
+                    world.GetPlayerPosition(),
+                    isLethal: true,
+                    enemyName: "Mountain Road Wild Boars");
                 WorldSignals.EmitTopics(DirtyTopic.Cultivator | DirtyTopic.Calendar | DirtyTopic.Transit);
                 return true;
             }

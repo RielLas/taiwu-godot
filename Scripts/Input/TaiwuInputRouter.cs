@@ -21,6 +21,7 @@ namespace Taiwu_Godot.Scripts.Input
         public ApertureBreakthroughModalView? BreakthroughView { get; set; }
 
         private TaiwuModalStack? _modalStack;
+        private bool _isBattleLocked = false;
 
         public void Initialize(TaiwuModalStack modalStack, IWorldStateProvider provider)
         {
@@ -39,11 +40,19 @@ namespace Taiwu_Godot.Scripts.Input
                 StandaloneProvider.ProcessMode = ProcessModeEnum.Always;
 
             WorldSignals.OnUIModalActive += HandleUIModalActive;
+            WorldSignals.OnBattleStageChanged += HandleBattleStageChanged;
         }
 
         public override void _ExitTree()
         {
             WorldSignals.OnUIModalActive -= HandleUIModalActive;
+            WorldSignals.OnBattleStageChanged -= HandleBattleStageChanged;
+        }
+
+        private void HandleBattleStageChanged(bool inBattle)
+        {
+            _isBattleLocked = inBattle;
+            StandaloneProvider?.SetBattleLocked(inBattle);
         }
 
         private void HandleUIModalActive(bool isActive)
@@ -68,6 +77,16 @@ namespace Taiwu_Godot.Scripts.Input
             if (key.IsActionPressed("ui_cancel"))
             {
                 ConsumeEscape();
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
+            if (_isBattleLocked &&
+                (key.IsActionPressed("toggle_ledger") ||
+                 key.IsActionPressed("open_cauldron") ||
+                 key.IsActionPressed("open_breakthrough") ||
+                 key.IsActionPressed("recenter_camera")))
+            {
                 GetViewport().SetInputAsHandled();
                 return;
             }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TaiwuGu.Combat;
 using TaiwuGu.Core;
 using TaiwuGu.Entities;
 using TaiwuGu.Systems;
@@ -241,7 +242,8 @@ namespace TaiwuGu.Map
                 BadgeColorHex = "#F87171",
                 AvailableActions = new[]
                 {
-                    new LandmarkActionDefinition("beast_den_subjugate", "Track Wild Beasts in Lair (Combat Arena)", "Track ferocious beasts lurking inside the lair to harvest strength Gu or food.", 2, 0)
+                    new LandmarkActionDefinition("beast_den_subjugate", "Track Wild Beasts in Lair (Combat Arena)", "Track ferocious beasts lurking inside the lair to harvest strength Gu or food.", 2, 0),
+                    new LandmarkActionDefinition("beast_den_combat", "Hunt the Beast Pack (Real-Time Arena)", "Descend into the lair and fight the beast pack in real time.", 1, 0)
                 },
                 ExecuteAction = (world, actionId, pos) =>
                 {
@@ -253,6 +255,16 @@ namespace TaiwuGu.Map
                             WildOrganismTemperament.Ferocious
                         );
                         WildEncounterSystem.OpenEncounter(world, boarWild);
+                    }
+                    else if (actionId == "beast_den_combat")
+                    {
+                        WorldSignals.EmitCloseTilePOI();
+                        CombatSystem.StartCombat(
+                            world,
+                            ArenaEncounterType.WildBoarHunt,
+                            pos,
+                            isLethal: true,
+                            enemyName: "Savage Beast Pack (凶兽群)");
                     }
                 },
                 DirectInteraction = (world, pos) => WorldSignals.EmitOpenTilePOI(pos)
@@ -273,7 +285,8 @@ namespace TaiwuGu.Map
                 BadgeColorHex = "#C084FC",
                 AvailableActions = new[]
                 {
-                    new LandmarkActionDefinition("cave_subjugate", "Explore Subterranean Ruins (Demonic Cultivator Trial)", "Descend into the sealed underground cavern in search of ancient legacy Gu.", 2, 0)
+                    new LandmarkActionDefinition("cave_subjugate", "Explore Subterranean Ruins (Demonic Cultivator Trial)", "Descend into the sealed underground cavern in search of ancient legacy Gu.", 2, 0),
+                    new LandmarkActionDefinition("cave_combat", "Confront the Cave Cultivator (Real-Time Arena)", "Face the sealed demonic cultivator in a lethal arena duel.", 1, 0)
                 },
                 ExecuteAction = (world, actionId, pos) =>
                 {
@@ -284,6 +297,16 @@ namespace TaiwuGu.Map
                         string pickedCaveGu = cavePool[Random.Shared.Next(0, cavePool.Length)];
                         var caveWild = WildOrganismData.CreateWildOrganism(pickedCaveGu, WildOrganismTemperament.Cunning);
                         WildEncounterSystem.OpenEncounter(world, caveWild);
+                    }
+                    else if (actionId == "cave_combat")
+                    {
+                        WorldSignals.EmitCloseTilePOI();
+                        CombatSystem.StartCombat(
+                            world,
+                            ArenaEncounterType.DemonicCultivator,
+                            pos,
+                            isLethal: true,
+                            enemyName: "Ancient Cave Demonic Cultivator (洞窟魔修)");
                     }
                 },
                 DirectInteraction = (world, pos) => WorldSignals.EmitOpenTilePOI(pos)

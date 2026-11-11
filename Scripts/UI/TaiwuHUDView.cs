@@ -38,6 +38,7 @@ namespace Taiwu_Godot.Scripts.UI
         private Label? _lblSeaText;
         private RichTextLabel? _lblCultivatorBadge;
         private Button? _btnPassMonth;
+        private MarginContainer? _topBarMargin;
         private PanelContainer? _scenicToastPanel;
         private Label? _lblScenicToast;
         private Tween? _toastTween;
@@ -53,6 +54,8 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.OnScenicToastRequested += HandleTileInspected;
             WorldSignals.OnTerrainHazardTriggered += HandleTerrainHazard;
             WorldSignals.OnRoadAmbushOccurred += HandleRoadAmbush;
+            WorldSignals.OnBattleStageChanged += HandleBattleStageChanged;
+            WorldSignals.OnCombatResolved += HandleCombatResolved;
 
             RefreshFromStore();
         }
@@ -63,6 +66,8 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.OnScenicToastRequested -= HandleTileInspected;
             WorldSignals.OnTerrainHazardTriggered -= HandleTerrainHazard;
             WorldSignals.OnRoadAmbushOccurred -= HandleRoadAmbush;
+            WorldSignals.OnBattleStageChanged -= HandleBattleStageChanged;
+            WorldSignals.OnCombatResolved -= HandleCombatResolved;
 
             _toastTween?.Kill();
         }
@@ -72,17 +77,17 @@ namespace Taiwu_Godot.Scripts.UI
             // =========================================================================
             // TOP BAR MARGIN CONTAINER (Full Width, Zero Overlap Guaranteed)
             // =========================================================================
-            var topBarMargin = new MarginContainer
+            _topBarMargin = new MarginContainer
             {
                 Name = "TopBarMargin",
                 MouseFilter = MouseFilterEnum.Ignore
             };
-            topBarMargin.SetAnchorsPreset(LayoutPreset.TopWide);
-            topBarMargin.OffsetTop = 8f;
-            topBarMargin.OffsetBottom = 68f;
-            topBarMargin.OffsetLeft = 14f;
-            topBarMargin.OffsetRight = -14f;
-            AddChild(topBarMargin);
+            _topBarMargin.SetAnchorsPreset(LayoutPreset.TopWide);
+            _topBarMargin.OffsetTop = 8f;
+            _topBarMargin.OffsetBottom = 68f;
+            _topBarMargin.OffsetLeft = 14f;
+            _topBarMargin.OffsetRight = -14f;
+            AddChild(_topBarMargin);
 
             var topBarHBox = new HBoxContainer
             {
@@ -90,7 +95,7 @@ namespace Taiwu_Godot.Scripts.UI
                 Alignment = BoxContainer.AlignmentMode.Begin,
                 MouseFilter = MouseFilterEnum.Ignore
             };
-            topBarMargin.AddChild(topBarHBox);
+            _topBarMargin.AddChild(topBarHBox);
 
             // =========================================================================
             // 1. TOP-LEFT: DIM HOTKEYS + AP & PRIMEVAL SEA GAUGES
@@ -570,6 +575,22 @@ namespace Taiwu_Godot.Scripts.UI
         private void HandleRoadAmbush(ArenaEncounterType encounter, GridCoord pos)
         {
             ShowToast($"【伏击】 Mountain Road Ambush ({encounter})\nTransit paused pending combat resolution at {pos}.");
+        }
+
+        private void HandleBattleStageChanged(bool inBattle)
+        {
+            if (_topBarMargin != null) _topBarMargin.Visible = !inBattle;
+        }
+
+        private void HandleCombatResolved(ArenaEncounterType encounter, CombatOutcome outcome, string message)
+        {
+            string seal = outcome switch
+            {
+                CombatOutcome.Victory => "胜",
+                CombatOutcome.Defeat => "败",
+                _ => "退"
+            };
+            ShowToast($"【{seal}】 {message}");
         }
 
         private void ShowToast(string text)

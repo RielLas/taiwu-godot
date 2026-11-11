@@ -1,9 +1,11 @@
 using System;
 using Godot;
+using TaiwuGu.Combat;
 using TaiwuGu.Core;
 using TaiwuGu.Entities;
 using TaiwuGu.Map;
 using TaiwuGu.Systems;
+using Taiwu_Godot.Scripts;
 
 namespace Taiwu_Godot.Scripts.Verification
 {
@@ -24,6 +26,7 @@ namespace Taiwu_Godot.Scripts.Verification
         private bool _captureNPC = false;
         private bool _captureTileNPC = false;
         private bool _captureEncounter = false;
+        private bool _captureCombat = false;
         private bool _captureTransit = false;
         private bool _testAudio = false;
         private bool _testAll = false;
@@ -56,6 +59,7 @@ namespace Taiwu_Godot.Scripts.Verification
                 if (arg == "--npc") _captureNPC = true;
                 if (arg == "--tile-npc") _captureTileNPC = true;
                 if (arg == "--encounter") _captureEncounter = true;
+                if (arg == "--combat") _captureCombat = true;
                 if (arg == "--transit") _captureTransit = true;
                 if (arg == "--audio") _testAudio = true;
                 if (arg == "--all") _testAll = true;
@@ -211,6 +215,71 @@ namespace Taiwu_Godot.Scripts.Verification
                 {
                     GD.Print("[DiagnosticCapture] Grand Parity Convergence (--all) fully verified! Quitting.");
                     GetTree().Quit();
+                }
+                return;
+            }
+
+            if (_captureCombat)
+            {
+                if (_frameCount == 5)
+                {
+                    bool started = CombatSystem.StartCombat(
+                        world,
+                        ArenaEncounterType.WildBoarHunt,
+                        new GridCoord(15, 15),
+                        isLethal: true,
+                        enemyName: "Smoke Test Boars",
+                        rng: new SeededRandom(7));
+                    GD.Print($"[combat] StartCombat={started}");
+                }
+                else if (_frameCount == 10)
+                {
+                    var arena = Bootstrapper?.CombatArenaView;
+                    var camera = Bootstrapper?.CameraController;
+                    bool visible = arena?.Visible == true;
+                    bool cameraMoved = camera != null && camera.Position.DistanceTo(new Vector2(2000f, 2000f)) < 0.5f;
+                    bool zoomed = camera != null && Math.Abs(camera.Zoom.X - 56f) < 0.5f;
+                    GD.Print($"[combat] arenaVisible={visible} camera={camera?.Position} zoom={camera?.Zoom.X} (expected 2000,2000 / 56)");
+
+                    var simulation = CombatSystem.GetOrCreateArena(world);
+                    bool cast = simulation.TryCastSkill(world, 0);
+                    bool crushed = simulation.TryCrushStone(world);
+                    GD.Print($"[combat] slot0Cast={cast} stoneCrush={crushed}");
+
+                    for (int i = 1; i < CombatArenaSimulation.MAX_ENTITIES; i++)
+                    {
+                        ref var enemy = ref simulation.EntityBuffer[i];
+                        if (enemy.Active && enemy.Team == CombatEntityTeam.Hostile)
+                        {
+                            enemy.Health = 0f;
+                            enemy.Active = false;
+                        }
+                    }
+
+                    CombatSystem.Tick(world, 0.016f);
+                    bool sessionOver = world.Get<CombatSessionComponent>(world.WorldEntity)?.InBattle != true;
+                    GD.Print($"[combat] resolved outcome={simulation.Outcome} sessionOver={sessionOver}");
+                }
+                else if (_frameCount == 15)
+                {
+                    var arena = Bootstrapper?.CombatArenaView;
+                    var camera = Bootstrapper?.CameraController;
+                    Vector2 expected = ExplorationSystem.GridToWorld(world.GetPlayerPosition()).ToGodot();
+                    bool hidden = arena?.Visible == false;
+                    bool cameraRestored = camera != null && camera.Position.DistanceTo(expected) < 2.0f;
+                    bool zoomRestored = camera != null && Math.Abs(camera.Zoom.X - 68f) < 0.5f;
+                    GD.Print($"[combat] hidden={hidden} camera={camera?.Position} expected={expected} zoom={camera?.Zoom.X} (expected 68)");
+
+                    if (hidden && cameraRestored && zoomRestored)
+                    {
+                        GD.Print("[combat] PASS: arena, camera handover, cast, stone crush and victory resolution verified.");
+                        GetTree().Quit(0);
+                    }
+                    else
+                    {
+                        GD.PrintErr("[combat] FAIL: combat smoke checks failed.");
+                        GetTree().Quit(1);
+                    }
                 }
                 return;
             }

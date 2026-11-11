@@ -16,6 +16,7 @@ namespace Taiwu_Godot.Scripts.Input
         private Vector2 _pointerDownPos;
         private bool _dragThresholdExceeded = false;
         private bool _isModalActive = false;
+        private bool _isBattleLocked = false;
         private const float DRAG_THRESHOLD = 12f;
 
         public override void _Ready()
@@ -26,19 +27,28 @@ namespace Taiwu_Godot.Scripts.Input
         public void SetModalActive(bool active)
         {
             _isModalActive = active;
-            if (active)
-            {
-                _isDragging = false;
-                _isPointerDown = false;
-                _dragThresholdExceeded = false;
-            }
+            if (active) ResetPointerState();
+        }
+
+        public void SetBattleLocked(bool locked)
+        {
+            _isBattleLocked = locked;
+            if (locked) ResetPointerState();
+        }
+
+        private void ResetPointerState()
+        {
+            _isDragging = false;
+            _isPointerDown = false;
+            _dragThresholdExceeded = false;
         }
 
         public override void _UnhandledInput(InputEvent @event)
         {
+            if (_isModalActive || _isBattleLocked) return;
+
             if (@event is InputEventMouseButton mb)
             {
-                if (_isModalActive) return;
 
                 if (mb.ButtonIndex == MouseButton.WheelUp && mb.Pressed)
                 {
@@ -84,8 +94,6 @@ namespace Taiwu_Godot.Scripts.Input
             }
             else if (@event is InputEventMouseMotion mm)
             {
-                if (_isModalActive) return;
-
                 if (_isPointerDown && !_dragThresholdExceeded &&
                     mm.Position.DistanceTo(_pointerDownPos) > DRAG_THRESHOLD)
                 {
@@ -102,7 +110,7 @@ namespace Taiwu_Godot.Scripts.Input
 
         public override void _Process(double delta)
         {
-            if (_isModalActive) return;
+            if (_isModalActive || _isBattleLocked) return;
 
             Vector2 kbMove = Vector2.Zero;
             if (Godot.Input.IsKeyPressed(Key.W) || Godot.Input.IsKeyPressed(Key.Up)) kbMove.Y -= 1f;

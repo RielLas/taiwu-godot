@@ -5,6 +5,7 @@ using TaiwuGu.Entities;
 using TaiwuGu.Serialization;
 using TaiwuGu.Systems;
 using Taiwu_Godot.Scripts.Map;
+using Taiwu_Godot.Scripts.Combat;
 using Taiwu_Godot.Scripts.Input;
 using Taiwu_Godot.Scripts.UI;
 using Taiwu_Godot.Scripts.Audio;
@@ -37,6 +38,8 @@ namespace Taiwu_Godot.Scripts
         [Export] public NPCDialoguePavilionView? NPCDialogueView { get; set; }
         [Export] public WildGuEncounterModalView? WildGuModalView { get; set; }
         [Export] public InterMountainTransitModalView? TransitModalView { get; set; }
+        [Export] public CombatArenaView? CombatArenaView { get; set; }
+        [Export] public CombatHUDView? CombatHUDView { get; set; }
 
         // --- Single Source of Truth ECS State Seam ---
         public WorldStateProvider StateProvider { get; private set; } = null!;
@@ -155,6 +158,8 @@ namespace Taiwu_Godot.Scripts
             NPCDialogueView?.Initialize(StateProvider);
             TransitModalView?.Initialize(StateProvider);
             PlayerController?.InitializeModalStack(ModalStack);
+            CombatArenaView?.Initialize(StateProvider, CameraController);
+            CombatHUDView?.Initialize(StateProvider);
 
             if (InputRouter != null)
             {

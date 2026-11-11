@@ -54,6 +54,7 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.OnDialogueFeedback        += HandleDialogueFeedback;
             WorldSignals.OnTopicsChanged           += HandleTopicsChanged;
             WorldSignals.OnEscapeRequested         += HandleEscapeRequested;
+            WorldSignals.OnBattleStageChanged       += HandleBattleStageChanged;
         }
 
         public override void _ExitTree()
@@ -62,6 +63,12 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.OnDialogueFeedback        -= HandleDialogueFeedback;
             WorldSignals.OnTopicsChanged           -= HandleTopicsChanged;
             WorldSignals.OnEscapeRequested         -= HandleEscapeRequested;
+            WorldSignals.OnBattleStageChanged       -= HandleBattleStageChanged;
+        }
+
+        private void HandleBattleStageChanged(bool inBattle)
+        {
+            if (inBattle && _isOpen) CloseDialogue();
         }
 
         private void BuildViewTree()

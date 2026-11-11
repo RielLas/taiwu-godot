@@ -49,6 +49,7 @@ namespace TaiwuGu.Entities
         public static event Action<BreakthroughState, int>? OnBreakthroughResolved;
         public static event Action<SubjugationState, GuWormComponent?, string>? OnWildEncounterResolved;
         public static event Action<ArenaEncounterType, GridCoord>? OnCombatRequested;
+        public static event Action<ArenaEncounterType, CombatOutcome, string>? OnCombatResolved;
         public static event Action<GridCoord, string, int, float>? OnTerrainHazardTriggered;
         public static event Action<GridCoord, string>? OnWildBeastAmbushed;
         public static event Action<ArenaEncounterType, GridCoord>? OnRoadAmbushOccurred;
@@ -88,6 +89,7 @@ namespace TaiwuGu.Entities
         public static void EmitBreakthroughResolved(BreakthroughState state, int newRank) => OnBreakthroughResolved?.Invoke(state, newRank);
         public static void EmitWildEncounterResolved(SubjugationState state, GuWormComponent? gu, string msg) => OnWildEncounterResolved?.Invoke(state, gu, msg);
         public static void EmitCombatRequested(ArenaEncounterType encounter, GridCoord pos) => OnCombatRequested?.Invoke(encounter, pos);
+        public static void EmitCombatResolved(ArenaEncounterType encounter, CombatOutcome outcome, string message) => OnCombatResolved?.Invoke(encounter, outcome, message);
         public static void EmitTerrainHazardTriggered(GridCoord pos, string hazardName, int hpDmg, float seaDmg) => OnTerrainHazardTriggered?.Invoke(pos, hazardName, hpDmg, seaDmg);
         public static void EmitWildBeastAmbushed(GridCoord pos, string beastName) => OnWildBeastAmbushed?.Invoke(pos, beastName);
         public static void EmitRoadAmbushOccurred(ArenaEncounterType enc, GridCoord pos) => OnRoadAmbushOccurred?.Invoke(enc, pos);
@@ -133,6 +135,7 @@ namespace TaiwuGu.Entities
             OnBreakthroughResolved = null;
             OnWildEncounterResolved = null;
             OnCombatRequested = null;
+            OnCombatResolved = null;
             OnTerrainHazardTriggered = null;
             OnWildBeastAmbushed = null;
             OnRoadAmbushOccurred = null;

@@ -20,6 +20,7 @@ namespace TaiwuGu.Systems
             RefinementSystem.Tick(world, dt, rngOverride);
             BreakthroughSystem.Tick(world, dt);
             WildEncounterSystem.Tick(world, dt);
+            CombatSystem.Tick(world, dt);
         }
     }
 }

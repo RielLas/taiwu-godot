@@ -158,7 +158,7 @@ namespace TaiwuGu.Systems
             {
                 string beastName = "Frenzied Razor Boar (狂躁獠牙野猪)";
                 WorldSignals.EmitWildBeastAmbushed(pos, beastName);
-                WorldSignals.EmitCombatRequested(ArenaEncounterType.WildBoarHunt, pos);
+                CombatSystem.StartCombat(world, ArenaEncounterType.WildBoarHunt, pos, isLethal: true, enemyName: beastName);
                 return;
             }
 

@@ -62,14 +62,15 @@ namespace TaiwuGu.Systems
         {
             if (!world.TryGet<CultivatorComponent>(npcId, out var npc)) return;
 
-            npc.Favorability = Math.Min(300, npc.Favorability + 25);
-            npc.AddMemory("Sparred amicably with player (+25 Favor).");
-
-            WorldSignals.EmitDialogueFeedback($"[Spar Commenced] You cross blades with {npc.Name}. Mutual martial respect formed (+25 Favor)!");
-            WorldSignals.EmitTopics(DirtyTopic.NPCs);
-
             GridCoord pos = world.Get<PositionComponent>(npcId)?.Coord ?? world.GetPlayerPosition();
-            WorldSignals.EmitCombatRequested(ArenaEncounterType.ClanPatrolDuel, pos);
+            WorldSignals.EmitDialogueFeedback($"[Spar Commenced] You cross stances with {npc.Name}. A fair duel begins!");
+            CombatSystem.StartCombat(
+                world,
+                ArenaEncounterType.ClanPatrolDuel,
+                pos,
+                targetNpcId: npcId,
+                isLethal: false,
+                enemyName: npc.Name);
         }
 
         public static void ExecuteBarter(WorldStore world, EntityId npcId)
@@ -149,8 +150,16 @@ namespace TaiwuGu.Systems
 
         public static void ExecuteAmbush(WorldStore world, EntityId npcId)
         {
+            if (!world.TryGet<CultivatorComponent>(npcId, out var npc)) return;
+
             GridCoord pos = world.Get<PositionComponent>(npcId)?.Coord ?? world.GetPlayerPosition();
-            WorldSignals.EmitCombatRequested(ArenaEncounterType.DemonicCultivator, pos);
+            CombatSystem.StartCombat(
+                world,
+                ArenaEncounterType.DemonicCultivator,
+                pos,
+                targetNpcId: npcId,
+                isLethal: true,
+                enemyName: npc.Name);
         }
 
         public static void ProcessVictimExecution(WorldStore world, string victimNameOrExternalId, GridCoord deathPos, CrimeSignature sig = CrimeSignature.CleanIncisions, bool didDetonate = false)
