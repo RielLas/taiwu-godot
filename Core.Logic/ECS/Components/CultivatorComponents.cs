@@ -14,6 +14,7 @@ namespace TaiwuGu.Entities
         public string ExternalId { get; set; } = string.Empty;
         public string Name { get; set; } = "Unknown Cultivator";
         public string Clan { get; set; } = string.Empty;
+        public string HomeSectorKey { get; set; } = string.Empty;
         public TaiwuDisposition Disposition { get; set; } = TaiwuDisposition.Pragmatic;
         public AptitudeGrade Aptitude { get; set; } = AptitudeGrade.C_Grade;
         public float AptitudePercent { get; set; } = 44.0f;

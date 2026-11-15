@@ -27,6 +27,7 @@ namespace TaiwuGu.Entities
         public int Seed { get; set; } = 17881588;
         public WorldRegionID Region { get; set; } = WorldRegionID.SouthernBorder;
         public SouthernMountainID MountainId { get; set; } = SouthernMountainID.GuYueVillage;
+        public BiomeType Biome { get; set; } = BiomeType.BambooMountain;
         public string DisplayName { get; set; } = "Gu Yue Mountain (古月山寨)";
         public int GridWidth { get; set; } = 30;
         public int GridHeight { get; set; } = 30;
@@ -49,7 +50,14 @@ namespace TaiwuGu.Entities
 
         public void HydrateTiles()
         {
-            Tiles = SectorGenerator.Generate(Seed, GridWidth, GridHeight, RegionalWallLaw.GetRegionBiome(Region));
+            if (WorldAtlasRegistry.TryGet(SectorKey, out var bp) && bp != null)
+            {
+                Tiles = SectorGenerator.Generate(bp, Seed);
+            }
+            else
+            {
+                Tiles = SectorGenerator.Generate(Seed, GridWidth, GridHeight, Biome);
+            }
 
             if (Patches != null)
             {
@@ -90,7 +98,9 @@ namespace TaiwuGu.Entities
         {
             if (Tiles == null) return;
 
-            TileNode[] baseline = SectorGenerator.Generate(Seed, GridWidth, GridHeight, RegionalWallLaw.GetRegionBiome(Region));
+            TileNode[] baseline = (WorldAtlasRegistry.TryGet(SectorKey, out var bp) && bp != null)
+                ? SectorGenerator.Generate(bp, Seed)
+                : SectorGenerator.Generate(Seed, GridWidth, GridHeight, Biome);
             var explored = new List<int>();
             var visible = new List<int>();
             var patches = new List<TilePatch>();

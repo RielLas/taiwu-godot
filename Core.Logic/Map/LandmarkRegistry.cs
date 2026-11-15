@@ -250,8 +250,10 @@ namespace TaiwuGu.Map
                     if (actionId == "beast_den_subjugate")
                     {
                         WorldSignals.EmitCloseTilePOI();
+                        int denSeed = unchecked(world.RunSeed ^ (pos.X * 73856093) ^ (pos.Y * 19349663) ^ ((world.GetSingleton<WorldClockComponent>()?.CurrentSolarTermIndex ?? 1) * 83492791));
+                        var denRng = new SeededRandom(denSeed);
                         var boarWild = WildOrganismData.CreateWildOrganism(
-                            Random.Shared.NextDouble() < 0.5 ? "gu_white_boar_r1" : "gu_black_boar_r1",
+                            denRng.NextDouble() < 0.5 ? "gu_white_boar_r1" : "gu_black_boar_r1",
                             WildOrganismTemperament.Ferocious
                         );
                         WildEncounterSystem.OpenEncounter(world, boarWild);
@@ -293,8 +295,10 @@ namespace TaiwuGu.Map
                     if (actionId == "cave_subjugate")
                     {
                         WorldSignals.EmitCloseTilePOI();
+                        int caveSeed = unchecked(world.RunSeed ^ (pos.X * 39712847) ^ (pos.Y * 61849201) ^ ((world.GetSingleton<WorldClockComponent>()?.CurrentSolarTermIndex ?? 1) * 48618773));
+                        var caveRng = new SeededRandom(caveSeed);
                         string[] cavePool = { "gu_liquor_worm_r1", "gu_little_light_r1", "gu_bronze_skin_r1", "gu_white_jade_r1" };
-                        string pickedCaveGu = cavePool[Random.Shared.Next(0, cavePool.Length)];
+                        string pickedCaveGu = cavePool[caveRng.Next(0, cavePool.Length)];
                         var caveWild = WildOrganismData.CreateWildOrganism(pickedCaveGu, WildOrganismTemperament.Cunning);
                         WildEncounterSystem.OpenEncounter(world, caveWild);
                     }

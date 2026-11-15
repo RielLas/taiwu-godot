@@ -35,16 +35,18 @@ namespace TaiwuGu.Entities
             store.Set(worldId, kinship);
 
             // 2. Starting Sector Map Entity
+            var startBp = WorldAtlasRegistry.Get(DefaultSectorKey);
             EntityId sectorEntity = store.CreateEntity(DefaultSectorKey);
             var sector = new SectorGridComponent
             {
-                SectorKey = DefaultSectorKey,
-                Seed = 17881588,
-                Region = WorldRegionID.SouthernBorder,
+                SectorKey = startBp.SectorKey,
+                Seed = startBp.Seed,
+                Region = startBp.Region,
                 MountainId = SouthernMountainID.GuYueVillage,
-                DisplayName = "Gu Yue Mountain (古月山寨)",
-                GridWidth = 30,
-                GridHeight = 30
+                Biome = startBp.Biome,
+                DisplayName = startBp.DisplayName,
+                GridWidth = startBp.Width,
+                GridHeight = startBp.Height
             };
             sector.HydrateTiles();
             store.Set(sectorEntity, sector);
@@ -181,46 +183,39 @@ namespace TaiwuGu.Entities
 
         private static void SeedNPCs(WorldStore store)
         {
-            void AddNpc(string extId, string name, string clan, int rank, int sub, TaiwuDisposition disp, int x, int y,
-                int age, int lifespan, int stones, bool soulTablet, int favor, string trait = "Gangzheng")
+            foreach (var bp in WorldAtlasRegistry.GetAll())
             {
-                EntityId id = store.CreateEntity(extId);
-                store.Set(id, new PositionComponent(x, y, DefaultSectorKey));
-                store.Set(id, new CultivatorComponent
+                foreach (var npc in bp.InitialResidents)
                 {
-                    ExternalId = extId,
-                    Name = name,
-                    Clan = clan,
-                    Disposition = disp,
-                    Aptitude = AptitudeGrade.C_Grade,
-                    AptitudePercent = 45f,
-                    Age = age,
-                    LifespanYears = lifespan,
-                    PrimevalStones = stones,
-                    SoulTabletBound = soulTablet,
-                    Favorability = favor,
-                    PersonalityTrait = trait
-                });
-                store.Set(id, new ApertureComponent
-                {
-                    Rank = rank,
-                    Substage = sub,
-                    CurrentEssenceSea = 45f,
-                    MaxWallDurability = ApertureComponent.GetMaxWallDurabilityForRank(rank),
-                    ApertureWallDurability = ApertureComponent.GetMaxWallDurabilityForRank(rank)
-                });
-                store.Set(id, new InventoryComponent());
+                    EntityId id = store.CreateEntity(npc.ExternalId);
+                    store.Set(id, new PositionComponent(npc.X, npc.Y, bp.SectorKey));
+                    store.Set(id, new CultivatorComponent
+                    {
+                        ExternalId = npc.ExternalId,
+                        Name = npc.Name,
+                        Clan = npc.Clan,
+                        HomeSectorKey = bp.SectorKey,
+                        Disposition = npc.Disposition,
+                        Aptitude = AptitudeGrade.C_Grade,
+                        AptitudePercent = 45f,
+                        Age = npc.Age,
+                        LifespanYears = npc.LifespanYears,
+                        PrimevalStones = npc.PrimevalStones,
+                        SoulTabletBound = npc.SoulTabletBound,
+                        Favorability = npc.Favorability,
+                        PersonalityTrait = npc.PersonalityTrait
+                    });
+                    store.Set(id, new ApertureComponent
+                    {
+                        Rank = npc.Rank,
+                        Substage = npc.Substage,
+                        CurrentEssenceSea = 45f,
+                        MaxWallDurability = ApertureComponent.GetMaxWallDurabilityForRank(npc.Rank),
+                        ApertureWallDurability = ApertureComponent.GetMaxWallDurabilityForRank(npc.Rank)
+                    });
+                    store.Set(id, new InventoryComponent());
+                }
             }
-
-            AddNpc("npc_chi_disciple", "Gu Yue Chi Cheng (古月赤成)", "Gu Yue Clan (古月氏)", 1, 2, TaiwuDisposition.Rebellious, 15, 14, 16, 100, 85, true, 10);
-            AddNpc("npc_mo_elder", "Gu Yue Mo Chen (古月漠尘)", "Gu Yue Clan (古月氏)", 3, 1, TaiwuDisposition.Pragmatic, 14, 15, 48, 120, 420, true, 0, "Huduan");
-            AddNpc("npc_elder_yan", "Elder Gu Yue Yan (古月阎长老)", "Gu Yue Clan (古月氏)", 2, 2, TaiwuDisposition.Righteous, 15, 15, 42, 110, 260, true, 15, "Huduan");
-            AddNpc("npc_enforcer_01", "Gu Yue Clan Enforcer (古月刑堂修士)", "Gu Yue Clan (古月氏)", 1, 4, TaiwuDisposition.Righteous, 15, 17, 24, 100, 110, true, 0);
-            AddNpc("npc_bai_scout", "Bai Ning Bing (白凝冰)", "Bai Clan (白家寨)", 2, 3, TaiwuDisposition.Rebellious, 14, 16, 16, 100, 310, true, -20);
-            AddNpc("npc_xiong_warrior", "Xiong Li (熊力)", "Xiong Clan (熊家寨)", 2, 2, TaiwuDisposition.Righteous, 14, 17, 22, 105, 190, true, -10);
-            AddNpc("npc_rogue_demon", "Scarred Vulture (苍疤鹫)", "Demonic Rogues (散修魔修)", 2, 1, TaiwuDisposition.Egoist, 18, 14, 35, 95, 160, false, -50);
-            AddNpc("npc_tie_detective", "Tie Ruo Nan (铁若男)", "Tie Clan (铁家)", 2, 1, TaiwuDisposition.Righteous, 13, 14, 17, 110, 240, true, 20);
-            AddNpc("npc_jia_steward", "Jia Fu (贾富)", "Jia Consortium (贾家商会)", 2, 4, TaiwuDisposition.Benevolent, 13, 15, 38, 100, 950, false, 30);
         }
     }
 }

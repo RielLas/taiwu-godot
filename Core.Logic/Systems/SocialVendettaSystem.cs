@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TaiwuGu.Combat;
 using TaiwuGu.Core;
 using TaiwuGu.Entities;
+using TaiwuGu.Map;
 using TaiwuGu.Psychology;
 
 namespace TaiwuGu.Systems
@@ -231,11 +232,8 @@ namespace TaiwuGu.Systems
         public static void TickMonthlyNPCs(WorldStore world, IRandomSource? rng = null)
         {
             IRandomSource random = rng ?? new SeededRandom(world.RunSeed + (world.GetSingleton<WorldClockComponent>()?.CurrentSolarTermIndex ?? 1));
-            var sector = world.GetCurrentSector();
-            int maxX = (sector?.GridWidth ?? 30) - 2;
-            int maxY = (sector?.GridHeight ?? 30) - 2;
 
-            var moves = new List<(EntityId Id, GridCoord Next)>();
+            var moves = new List<(EntityId Id, GridCoord Next, string SectorKey)>();
             foreach (var (eid, cult) in world.GetAll<CultivatorComponent>())
             {
                 if (world.Has<PlayerTagComponent>(eid) || !cult.IsAlive) continue;
@@ -244,22 +242,38 @@ namespace TaiwuGu.Systems
 
                 if (random.NextDouble() < 0.65 && world.TryGet<PositionComponent>(eid, out var pos))
                 {
+                    string npcSecKey = string.IsNullOrEmpty(pos.SectorKey) ? world.CurrentSectorKey : pos.SectorKey;
+                    var npcSector = world.GetSector(npcSecKey);
+
+                    int secWidth = 30;
+                    int secHeight = 30;
+                    if (npcSector != null)
+                    {
+                        secWidth = npcSector.GridWidth;
+                        secHeight = npcSector.GridHeight;
+                    }
+                    else if (WorldAtlasRegistry.TryGet(npcSecKey, out var bp) && bp != null)
+                    {
+                        secWidth = bp.Width;
+                        secHeight = bp.Height;
+                    }
+
                     int dx = random.Next(-1, 2);
                     int dy = random.Next(-1, 2);
                     GridCoord next = new GridCoord(
-                        Math.Clamp(pos.Coord.X + dx, 2, Math.Max(2, maxX)),
-                        Math.Clamp(pos.Coord.Y + dy, 2, Math.Max(2, maxY)));
+                        Math.Clamp(pos.Coord.X + dx, 2, Math.Max(2, secWidth - 2)),
+                        Math.Clamp(pos.Coord.Y + dy, 2, Math.Max(2, secHeight - 2)));
 
-                    if (sector == null || sector.IsWalkable(next))
+                    if (npcSector == null || npcSector.IsWalkable(next))
                     {
-                        moves.Add((eid, next));
+                        moves.Add((eid, next, npcSecKey));
                     }
                 }
             }
 
-            foreach (var (eid, next) in moves)
+            foreach (var (eid, next, secKey) in moves)
             {
-                world.SetPosition(eid, next);
+                world.SetPosition(eid, next, secKey);
             }
 
             WorldSignals.EmitTopics(DirtyTopic.NPCs);

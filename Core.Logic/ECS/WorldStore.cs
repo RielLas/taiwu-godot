@@ -55,7 +55,7 @@ namespace TaiwuGu.Entities
         public Dictionary<string, ulong> EntitiesByExternalId { get; set; } = new(StringComparer.Ordinal);
 
         [JsonIgnore]
-        private readonly Dictionary<GridCoord, HashSet<ulong>> _spatialIndex = new();
+        private readonly Dictionary<(string SectorKey, GridCoord Coord), HashSet<ulong>> _spatialIndex = new();
 
         [JsonIgnore]
         private readonly Dictionary<ulong, HashSet<ulong>> _ownerIndex = new();
@@ -106,7 +106,11 @@ namespace TaiwuGu.Entities
             if (!id.IsValid || !ActiveEntities.Remove(id.Value)) return;
 
             var pos = Get<PositionComponent>(id);
-            if (pos != null) RemoveSpatialIndex(id.Value, pos.Coord);
+            if (pos != null)
+            {
+                string sKey = string.IsNullOrEmpty(pos.SectorKey) ? CurrentSectorKey : pos.SectorKey;
+                RemoveSpatialIndex(id.Value, sKey, pos.Coord);
+            }
 
             var owner = Get<OwnerComponent>(id);
             if (owner != null) RemoveOwnerIndex(owner.OwnerEntityId, id.Value);
@@ -142,9 +146,11 @@ namespace TaiwuGu.Entities
             {
                 if (table.TryGetValue(id.Value, out var oldObj) && oldObj is PositionComponent oldPos)
                 {
-                    RemoveSpatialIndex(id.Value, oldPos.Coord);
+                    string oldSector = string.IsNullOrEmpty(oldPos.SectorKey) ? CurrentSectorKey : oldPos.SectorKey;
+                    RemoveSpatialIndex(id.Value, oldSector, oldPos.Coord);
                 }
-                AddSpatialIndex(id.Value, newPos.Coord);
+                string newSector = string.IsNullOrEmpty(newPos.SectorKey) ? CurrentSectorKey : newPos.SectorKey;
+                AddSpatialIndex(id.Value, newSector, newPos.Coord);
             }
             else if (component is OwnerComponent newOwner)
             {
@@ -209,7 +215,8 @@ namespace TaiwuGu.Entities
             {
                 if (typeof(T) == typeof(PositionComponent) && table.TryGetValue(id.Value, out var posObj) && posObj is PositionComponent pos)
                 {
-                    RemoveSpatialIndex(id.Value, pos.Coord);
+                    string sKey = string.IsNullOrEmpty(pos.SectorKey) ? CurrentSectorKey : pos.SectorKey;
+                    RemoveSpatialIndex(id.Value, sKey, pos.Coord);
                 }
                 else if (typeof(T) == typeof(OwnerComponent) && table.TryGetValue(id.Value, out var ownObj) && ownObj is OwnerComponent own)
                 {
@@ -233,14 +240,17 @@ namespace TaiwuGu.Entities
             var pos = Get<PositionComponent>(id);
             if (pos == null)
             {
-                Set(id, new PositionComponent(newCoord, sectorKey ?? CurrentSectorKey));
+                string sKey = sectorKey ?? CurrentSectorKey;
+                Set(id, new PositionComponent(newCoord, sKey));
             }
             else
             {
-                RemoveSpatialIndex(id.Value, pos.Coord);
+                string oldSector = string.IsNullOrEmpty(pos.SectorKey) ? CurrentSectorKey : pos.SectorKey;
+                string newSector = sectorKey ?? oldSector;
+                RemoveSpatialIndex(id.Value, oldSector, pos.Coord);
                 pos.Coord = newCoord;
-                if (sectorKey != null) pos.SectorKey = sectorKey;
-                AddSpatialIndex(id.Value, newCoord);
+                pos.SectorKey = newSector;
+                AddSpatialIndex(id.Value, newSector, newCoord);
             }
         }
 
@@ -263,21 +273,12 @@ namespace TaiwuGu.Entities
 
         public IEnumerable<EntityId> GetEntitiesAt(GridCoord coord, string? sectorKeyFilter = null)
         {
-            if (_spatialIndex.TryGetValue(coord, out var set))
+            string sKey = sectorKeyFilter ?? CurrentSectorKey;
+            if (_spatialIndex.TryGetValue((sKey, coord), out var set))
             {
                 foreach (var rawId in set)
                 {
-                    var eid = new EntityId(rawId);
-                    if (!string.IsNullOrEmpty(sectorKeyFilter))
-                    {
-                        var pos = Get<PositionComponent>(eid);
-                        if (pos != null && !string.IsNullOrEmpty(pos.SectorKey) &&
-                            !string.Equals(pos.SectorKey, sectorKeyFilter, StringComparison.Ordinal))
-                        {
-                            continue;
-                        }
-                    }
-                    yield return eid;
+                    yield return new EntityId(rawId);
                 }
             }
         }
@@ -349,7 +350,8 @@ namespace TaiwuGu.Entities
 
             foreach (var (id, pos) in GetAll<PositionComponent>())
             {
-                AddSpatialIndex(id.Value, pos.Coord);
+                string sKey = string.IsNullOrEmpty(pos.SectorKey) ? CurrentSectorKey : pos.SectorKey;
+                AddSpatialIndex(id.Value, sKey, pos.Coord);
             }
 
             foreach (var (id, owner) in GetAll<OwnerComponent>())
@@ -370,7 +372,10 @@ namespace TaiwuGu.Entities
                 if (!string.IsNullOrEmpty(sector.SectorKey))
                 {
                     SectorEntitiesByKey[sector.SectorKey] = id.Value;
-                    sector.HydrateTiles();
+                    if (string.Equals(sector.SectorKey, CurrentSectorKey, StringComparison.Ordinal))
+                    {
+                        sector.HydrateTiles();
+                    }
                 }
             }
 
@@ -382,22 +387,24 @@ namespace TaiwuGu.Entities
 
         private static string ComponentKey<T>() => typeof(T).FullName ?? typeof(T).Name;
 
-        private void AddSpatialIndex(ulong id, GridCoord coord)
+        private void AddSpatialIndex(ulong id, string sectorKey, GridCoord coord)
         {
-            if (!_spatialIndex.TryGetValue(coord, out var set))
+            var key = (sectorKey ?? CurrentSectorKey, coord);
+            if (!_spatialIndex.TryGetValue(key, out var set))
             {
                 set = new HashSet<ulong>();
-                _spatialIndex[coord] = set;
+                _spatialIndex[key] = set;
             }
             set.Add(id);
         }
 
-        private void RemoveSpatialIndex(ulong id, GridCoord coord)
+        private void RemoveSpatialIndex(ulong id, string sectorKey, GridCoord coord)
         {
-            if (_spatialIndex.TryGetValue(coord, out var set))
+            var key = (sectorKey ?? CurrentSectorKey, coord);
+            if (_spatialIndex.TryGetValue(key, out var set))
             {
                 set.Remove(id);
-                if (set.Count == 0) _spatialIndex.Remove(coord);
+                if (set.Count == 0) _spatialIndex.Remove(key);
             }
         }
 

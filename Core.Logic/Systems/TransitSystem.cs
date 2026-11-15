@@ -318,26 +318,31 @@ namespace TaiwuGu.Systems
             }
         }
 
-        private static void LoadMountainSector(WorldStore world, SouthernMountainID destination)
+        public static void LoadSector(WorldStore world, string sectorKey)
         {
-            if (!MountainDatabase.TryGetValue(destination, out var data)) return;
+            var sector = world.GetSector(sectorKey);
+            WorldAtlasRegistry.TryGet(sectorKey, out var bp);
 
-            string destKey = MakeSectorKey(WorldRegionID.SouthernBorder, destination);
-            var sector = world.GetSector(destKey);
-            GridCoord spawn = new(data.SectorWidth / 2, data.SectorHeight / 2);
+            int width = bp?.Width ?? 30;
+            int height = bp?.Height ?? 30;
+            int seed = bp?.Seed ?? 17881588;
+            var region = bp?.Region ?? WorldRegionID.SouthernBorder;
+            var biome = bp?.Biome ?? BiomeType.BambooMountain;
+            string displayName = bp?.DisplayName ?? sectorKey;
 
             if (sector == null)
             {
-                EntityId secEntity = world.CreateEntity(destKey);
+                EntityId secEntity = world.CreateEntity(sectorKey);
                 sector = new SectorGridComponent
                 {
-                    SectorKey = destKey,
-                    Seed = data.RandomSeed,
-                    Region = WorldRegionID.SouthernBorder,
-                    MountainId = destination,
-                    DisplayName = data.MountainName,
-                    GridWidth = data.SectorWidth,
-                    GridHeight = data.SectorHeight
+                    SectorKey = sectorKey,
+                    Seed = seed,
+                    Region = region,
+                    MountainId = bp?.MountainId ?? SouthernMountainID.GuYueVillage,
+                    Biome = biome,
+                    DisplayName = displayName,
+                    GridWidth = width,
+                    GridHeight = height
                 };
                 sector.HydrateTiles();
                 world.Set(secEntity, sector);
@@ -347,48 +352,37 @@ namespace TaiwuGu.Systems
                 sector.EnsureHydrated();
             }
 
-            world.CurrentSectorKey = destKey;
-            world.SetPosition(world.PlayerEntity, spawn, destKey);
+            GridCoord spawn = new(width / 2, height / 2);
+            if (sector.Tiles != null)
+            {
+                for (int i = 0; i < sector.Tiles.Length; i++)
+                {
+                    if (sector.Tiles[i].POI == TilePOIType.WayStation || sector.Tiles[i].POI == TilePOIType.ClanPost)
+                    {
+                        spawn = new GridCoord(sector.Tiles[i].GridPos.X, sector.Tiles[i].GridPos.Y);
+                        break;
+                    }
+                }
+            }
+
+            world.CurrentSectorKey = sectorKey;
+            world.SetPosition(world.PlayerEntity, spawn, sectorKey);
             WorldFactory.RevealVision(sector, spawn, ExplorationSystem.DEFAULT_SENSORY_RADIUS);
 
             WorldSignals.EmitTopics(DirtyTopic.All);
         }
 
+        private static void LoadMountainSector(WorldStore world, SouthernMountainID destination)
+        {
+            string destKey = MakeSectorKey(WorldRegionID.SouthernBorder, destination);
+            LoadSector(world, destKey);
+        }
+
         private static void LoadRegionSector(WorldStore world, WorldRegionID destination)
         {
-            if (!RegionalDatabase.TryGetValue(destination, out var regData)) return;
-
-            SouthernMountainID mountainId = world.GetCurrentSector()?.MountainId ?? SouthernMountainID.GuYueVillage;
-            string destKey = MakeSectorKey(destination, mountainId);
-            var sector = world.GetSector(destKey);
-            GridCoord spawn = new(15, 15);
-
-            if (sector == null)
-            {
-                EntityId secEntity = world.CreateEntity(destKey);
-                sector = new SectorGridComponent
-                {
-                    SectorKey = destKey,
-                    Seed = regData.RandomSeed,
-                    Region = destination,
-                    MountainId = mountainId,
-                    DisplayName = regData.RegionName,
-                    GridWidth = 30,
-                    GridHeight = 30
-                };
-                sector.HydrateTiles();
-                world.Set(secEntity, sector);
-            }
-            else
-            {
-                sector.EnsureHydrated();
-            }
-
-            world.CurrentSectorKey = destKey;
-            world.SetPosition(world.PlayerEntity, spawn, destKey);
-            WorldFactory.RevealVision(sector, spawn, ExplorationSystem.DEFAULT_SENSORY_RADIUS);
-
-            WorldSignals.EmitTopics(DirtyTopic.All);
+            var regionSectors = WorldAtlasRegistry.GetByRegion(destination);
+            string destKey = regionSectors.Count > 0 ? regionSectors[0].SectorKey : MakeSectorKey(destination, SouthernMountainID.GuYueVillage);
+            LoadSector(world, destKey);
         }
     }
 }
