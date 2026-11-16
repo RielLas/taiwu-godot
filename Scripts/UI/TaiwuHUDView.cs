@@ -56,6 +56,8 @@ namespace Taiwu_Godot.Scripts.UI
         private Label? _lblDateSubtitle;
         private ProgressBar? _barAP;
         private Label? _lblAPText;
+        private ProgressBar? _barHP;
+        private Label? _lblHPText;
         private ProgressBar? _barSea;
         private Label? _lblSeaText;
         private RichTextLabel? _lblCultivatorBadge;
@@ -204,10 +206,10 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "GaugesContainer",
                 Alignment = BoxContainer.AlignmentMode.Center,
-                CustomMinimumSize = new Vector2(195f, 44f),
+                CustomMinimumSize = new Vector2(195f, 60f),
                 MouseFilter = MouseFilterEnum.Stop
             };
-            gaugesContainer.AddThemeConstantOverride("separation", 3);
+            gaugesContainer.AddThemeConstantOverride("separation", 2);
             leftHBox.AddChild(gaugesContainer);
 
             // StyleBox for Midnight Slot (#05090A)
@@ -225,6 +227,52 @@ namespace Taiwu_Godot.Scripts.UI
                 CornerRadiusTopRight = 2
             };
 
+            // HP Gauge: Compact crimson fill (#DC2626 / #EF4444)
+            var hpFillStyle = new StyleBoxFlat
+            {
+                BgColor = new Color(0.863f, 0.149f, 0.149f, 1f), // Crimson #DC2626
+                CornerRadiusBottomLeft = 2,
+                CornerRadiusBottomRight = 2,
+                CornerRadiusTopLeft = 2,
+                CornerRadiusTopRight = 2
+            };
+
+            var hpContainer = new Control
+            {
+                CustomMinimumSize = new Vector2(195f, 16f),
+                MouseFilter = MouseFilterEnum.Stop
+            };
+            gaugesContainer.AddChild(hpContainer);
+
+            _barHP = new ProgressBar
+            {
+                Name = "BarHP",
+                MinValue = 0,
+                MaxValue = 100,
+                Value = 100,
+                ShowPercentage = false,
+                Size = new Vector2(195f, 16f),
+                MouseFilter = MouseFilterEnum.Stop
+            };
+            _barHP.AddThemeStyleboxOverride("background", slotBgStyle);
+            _barHP.AddThemeStyleboxOverride("fill", hpFillStyle);
+            hpContainer.AddChild(_barHP);
+
+            _lblHPText = new Label
+            {
+                Name = "LblHPText",
+                Text = string.Empty,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Size = new Vector2(195f, 16f),
+                Modulate = new Color(1f, 0.984f, 0.922f, 1f),
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            _lblHPText.AddThemeFontSizeOverride("font_size", 10);
+            _lblHPText.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.9f));
+            _lblHPText.AddThemeConstantOverride("outline_size", 2);
+            hpContainer.AddChild(_lblHPText);
+
             // AP Gauge: Solid flat cyan fill (#06B6D4 / #10B981)
             var apFillStyle = new StyleBoxFlat
             {
@@ -237,7 +285,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             var apContainer = new Control
             {
-                CustomMinimumSize = new Vector2(195f, 20f),
+                CustomMinimumSize = new Vector2(195f, 16f),
                 MouseFilter = MouseFilterEnum.Stop
             };
             gaugesContainer.AddChild(apContainer);
@@ -249,10 +297,10 @@ namespace Taiwu_Godot.Scripts.UI
                 MaxValue = 1,
                 Value = 0,
                 ShowPercentage = false,
-                Size = new Vector2(195f, 20f),
+                Size = new Vector2(195f, 16f),
                 MouseFilter = MouseFilterEnum.Stop
             };
-            _barAP.AddThemeStyleboxOverride("background", slotBgStyle);
+            _barAP.AddThemeStyleboxOverride("background", (StyleBox)slotBgStyle.Duplicate());
             _barAP.AddThemeStyleboxOverride("fill", apFillStyle);
             apContainer.AddChild(_barAP);
 
@@ -262,11 +310,11 @@ namespace Taiwu_Godot.Scripts.UI
                 Text = string.Empty,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Size = new Vector2(195f, 20f),
+                Size = new Vector2(195f, 16f),
                 Modulate = new Color(1f, 0.984f, 0.922f, 1f), // Warm ivory gold #FFFBEB
                 MouseFilter = MouseFilterEnum.Ignore
             };
-            _lblAPText.AddThemeFontSizeOverride("font_size", 11);
+            _lblAPText.AddThemeFontSizeOverride("font_size", 10);
             _lblAPText.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.9f));
             _lblAPText.AddThemeConstantOverride("outline_size", 2);
             apContainer.AddChild(_lblAPText);
@@ -283,7 +331,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             var seaContainer = new Control
             {
-                CustomMinimumSize = new Vector2(195f, 20f),
+                CustomMinimumSize = new Vector2(195f, 16f),
                 MouseFilter = MouseFilterEnum.Stop
             };
             gaugesContainer.AddChild(seaContainer);
@@ -295,7 +343,7 @@ namespace Taiwu_Godot.Scripts.UI
                 MaxValue = 100,
                 Value = 0,
                 ShowPercentage = false,
-                Size = new Vector2(195f, 20f),
+                Size = new Vector2(195f, 16f),
                 MouseFilter = MouseFilterEnum.Stop
             };
             _barSea.AddThemeStyleboxOverride("background", (StyleBox)slotBgStyle.Duplicate());
@@ -308,11 +356,11 @@ namespace Taiwu_Godot.Scripts.UI
                 Text = string.Empty,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Size = new Vector2(195f, 20f),
+                Size = new Vector2(195f, 16f),
                 Modulate = new Color(1f, 0.984f, 0.922f, 1f),
                 MouseFilter = MouseFilterEnum.Ignore
             };
-            _lblSeaText.AddThemeFontSizeOverride("font_size", 11);
+            _lblSeaText.AddThemeFontSizeOverride("font_size", 10);
             _lblSeaText.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.9f));
             _lblSeaText.AddThemeConstantOverride("outline_size", 2);
             seaContainer.AddChild(_lblSeaText);
@@ -470,7 +518,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BtnPassMonth",
                 Text = "Pass Month",
-                CustomMinimumSize = new Vector2(104f, 26f),
+                CustomMinimumSize = new Vector2(98f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -486,8 +534,8 @@ namespace Taiwu_Godot.Scripts.UI
             var btnLedger = new Button
             {
                 Name = "BtnLedger",
-                Text = "【籍】 Ledger [Tab]",
-                CustomMinimumSize = new Vector2(96f, 26f),
+                Text = "【籍】Ledger",
+                CustomMinimumSize = new Vector2(82f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -503,8 +551,8 @@ namespace Taiwu_Godot.Scripts.UI
             var btnMap = new Button
             {
                 Name = "BtnMap",
-                Text = "【图】 Map [M]",
-                CustomMinimumSize = new Vector2(86f, 26f),
+                Text = "【图】Atlas",
+                CustomMinimumSize = new Vector2(76f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -520,8 +568,8 @@ namespace Taiwu_Godot.Scripts.UI
             var btnCauldron = new Button
             {
                 Name = "BtnCauldron",
-                Text = "【炼】 Cauldron [C]",
-                CustomMinimumSize = new Vector2(96f, 26f),
+                Text = "【炼】Cauldron",
+                CustomMinimumSize = new Vector2(88f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -549,8 +597,8 @@ namespace Taiwu_Godot.Scripts.UI
             var btnSystem = new Button
             {
                 Name = "BtnSystem",
-                Text = "System [Esc]",
-                CustomMinimumSize = new Vector2(76f, 26f),
+                Text = "Menu [Esc]",
+                CustomMinimumSize = new Vector2(72f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -902,6 +950,15 @@ namespace Taiwu_Godot.Scripts.UI
             }
             if (_lblAPText != null) _lblAPText.Text = $"AP: {currentAP}/{maxAP}";
             if (_btnPassMonth != null) _btnPassMonth.Text = $"Pass Month ({currentAP} AP)";
+
+            float currentHealth = ap?.CurrentHealth ?? 100f;
+            float maxHealth = ap?.MaxHealth ?? 100f;
+            if (_barHP != null)
+            {
+                _barHP.MaxValue = Math.Max(1f, maxHealth);
+                _barHP.Value = currentHealth;
+            }
+            if (_lblHPText != null) _lblHPText.Text = $"HP: {currentHealth:F0}/{maxHealth:F0}";
 
             float currentSea = ap?.CurrentEssenceSea ?? 0f;
             float maxSea = cult?.AptitudePercent ?? 44f;

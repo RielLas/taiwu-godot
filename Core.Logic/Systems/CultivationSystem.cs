@@ -219,6 +219,10 @@ namespace TaiwuGu.Systems
 
                 float regenPct = world.Has<PlayerTagComponent>(eid) ? cult.AptitudePercent * 0.25f : 15f;
                 aperture.CurrentEssenceSea = MathF.Min(cult.AptitudePercent, aperture.CurrentEssenceSea + regenPct);
+
+                // Passively recover +15% MaxHealth per Solar Term so post-combat and terrain hazard damage heal naturally
+                float healthRegen = aperture.MaxHealth * 0.15f;
+                aperture.CurrentHealth = MathF.Min(aperture.MaxHealth, aperture.CurrentHealth + healthRegen);
             }
             WorldSignals.EmitTopics(DirtyTopic.Aperture);
         }

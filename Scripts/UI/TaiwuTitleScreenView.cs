@@ -88,8 +88,9 @@ namespace Taiwu_Godot.Scripts.UI
                     }
                 }
                 VideoBackdrop.Autoplay = true;
-                VideoBackdrop.Loop = true;
+                VideoBackdrop.Loop = false;
                 VideoBackdrop.Expand = true;
+                VideoBackdrop.Finished += OnVideoFinished;
                 if (VideoBackdrop.Stream != null && !VideoBackdrop.IsPlaying())
                 {
                     VideoBackdrop.Play();
@@ -97,6 +98,15 @@ namespace Taiwu_Godot.Scripts.UI
             }
 
             ShowSubMenu(MainMenuContainer);
+        }
+
+        private void OnVideoFinished()
+        {
+            if (VideoBackdrop != null && IsInstanceValid(VideoBackdrop))
+            {
+                VideoBackdrop.Stop();
+                VideoBackdrop.Play();
+            }
         }
 
         public override void _ExitTree()

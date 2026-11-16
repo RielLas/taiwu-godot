@@ -210,7 +210,7 @@ namespace TaiwuGu.Map
                 BadgeColorHex = "#34D399",
                 AvailableActions = new[]
                 {
-                    new LandmarkActionDefinition("clan_post_rest", "Rest at Clan Pavilion (+5 AP Restored)", "Rest peacefully within the clan boundaries to recuperate action stamina.", 0, 0)
+                    new LandmarkActionDefinition("clan_post_rest", "Rest at Clan Pavilion (+5 AP, +35 HP Restored)", "Rest peacefully within the clan boundaries to recuperate action stamina and heal physical injuries.", 0, 0)
                 },
                 ExecuteAction = (world, actionId, pos) =>
                 {
@@ -220,8 +220,15 @@ namespace TaiwuGu.Map
                         if (clock != null)
                         {
                             clock.ActionPointsRemaining = Math.Min(clock.MonthlyAPBudget, clock.ActionPointsRemaining + 5);
-                            WorldSignals.EmitTopics(DirtyTopic.Calendar);
                         }
+
+                        var aperture = world.Get<ApertureComponent>(world.PlayerEntity);
+                        if (aperture != null)
+                        {
+                            aperture.CurrentHealth = Math.Min(aperture.MaxHealth, aperture.CurrentHealth + 35f);
+                        }
+
+                        WorldSignals.EmitTopics(DirtyTopic.Calendar | DirtyTopic.Aperture);
                     }
                 },
                 DirectInteraction = (world, pos) => WorldSignals.EmitOpenTilePOI(pos)
