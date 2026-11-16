@@ -79,11 +79,19 @@ namespace Taiwu_Godot.Scripts.Input
                 key.Keycode == Key.L || key.PhysicalKeycode == Key.L ||
                 key.IsActionPressed("toggle_ledger"))
             {
-                if (_isBattleLocked) return;
+                // Guard against modifier shortcuts (Alt+Tab window swap, Shift+Tab reverse focus, Ctrl+L, etc.)
+                if (key.CtrlPressed || key.AltPressed || key.MetaPressed || key.ShiftPressed) return;
 
                 // Don't intercept if user is actively typing in a text field
                 Control? focusOwner = GetViewport().GuiGetFocusOwner();
                 if (focusOwner is LineEdit || focusOwner is TextEdit) return;
+
+                // Consume Tab during combat so it cannot fall through to ui_focus_next
+                if (_isBattleLocked)
+                {
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
 
                 if (!IsModalActive || _modalStack?.IsModalOpen<TaiwuLedgerView>() == true)
                 {

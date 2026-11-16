@@ -125,9 +125,10 @@ def audit_gui_focus_traps(cs_files):
             btn_matches = re.findall(r"(?:var\s+([A-Za-z0-9_]+)|([A-Za-z0-9_]+))\s*=\s*new\s+Button\b", content)
             btn_names = [m[0] or m[1] for m in btn_matches]
             for btn in btn_names:
-                pattern = rf"{btn}\.FocusMode\s*=\s*(?:Control\.)?FocusModeEnum\.None"
-                prop_pattern = rf"new\s+Button\s*\{{[^}}]*?FocusMode\s*=\s*(?:Control\.)?FocusModeEnum\.None"
-                if not re.search(pattern, content) and not re.search(prop_pattern, content):
+                escaped = re.escape(btn)
+                setter_pattern = rf"{escaped}\.FocusMode\s*=\s*(?:Control\.)?FocusModeEnum\.None"
+                init_pattern = rf"(?:var\s+)?{escaped}\s*=\s*new\s+Button\s*\{{[^}}]*?FocusMode\s*=\s*(?:Control\.)?FocusModeEnum\.None"
+                if not re.search(setter_pattern, content) and not re.search(init_pattern, content):
                     traps.append(f"HUD button '{btn}' in {rel} missing FocusMode = FocusModeEnum.None (traps Tab/Space)")
 
         if "TaiwuInputRouter.cs" in rel:
