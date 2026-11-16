@@ -100,14 +100,13 @@ namespace Taiwu_Godot.Scripts.Map
             });
 
             // 4. Ancient Cultivator Ruins / Ancient Gu Cave
-            var steleTex = ResourceLoader.Load<Texture2D>("res://Resources/Tokens/landmark_stone_stele.png");
             var bambooTex = ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/tile_bamboo_mountain.png");
             db.RegisterEntry(new POIVisualEntry
             {
                 POIType = TilePOIType.AncientGuCave,
-                DioramaTexture = steleTex ?? bambooTex,
+                DioramaTexture = bambooTex,
                 BadgeColor = new Color(0.66f, 0.44f, 0.88f, 1f), // Mystic Daoist Violet
-                Tint = new Color(0.88f, 0.84f, 0.98f, 1f),
+                Tint = new Color(0.85f, 0.75f, 0.95f, 1f),
                 TargetFootprintWidth = 4.8f,
                 ContentWidth = 734f,
                 FootprintPivot = new Vector2(0.4971f, 0.4919f)
@@ -153,9 +152,9 @@ namespace Taiwu_Godot.Scripts.Map
             db.RegisterEntry(new POIVisualEntry
             {
                 POIType = TilePOIType.ShatteredStele,
-                DioramaTexture = steleTex ?? bambooTex,
+                DioramaTexture = bambooTex,
                 BadgeColor = new Color(0.55f, 0.53f, 0.50f, 1f), // Ancient Stone Grey
-                Tint = new Color(0.90f, 0.88f, 0.85f, 1f),
+                Tint = new Color(0.75f, 0.75f, 0.75f, 1f),
                 TargetFootprintWidth = 4.0f,
                 ContentWidth = 600f,
                 FootprintPivot = new Vector2(0.5f, 0.5f)
@@ -165,9 +164,9 @@ namespace Taiwu_Godot.Scripts.Map
             db.RegisterEntry(new POIVisualEntry
             {
                 POIType = TilePOIType.BoulderPrecipice,
-                DioramaTexture = steleTex ?? bambooTex,
+                DioramaTexture = bambooTex,
                 BadgeColor = new Color(0.28f, 0.33f, 0.41f, 1f), // Precipice Slate
-                Tint = new Color(0.70f, 0.72f, 0.75f, 1f),
+                Tint = new Color(0.55f, 0.58f, 0.65f, 1f),
                 TargetFootprintWidth = 4.2f,
                 ContentWidth = 600f,
                 FootprintPivot = new Vector2(0.5f, 0.5f)

@@ -283,7 +283,7 @@ namespace TaiwuGu.Map
                 LoreDescription = "Weathered megaliths inscribed with pre-antiquity dao formations. A subterranean cave descent hums with sealed alchemical resonance.",
                 IsTraversable = true,
                 MovementAPCost = 2,
-                TextureResourcePath = "res://Resources/Tokens/landmark_stone_stele.png",
+                TextureResourcePath = "res://Resources/Landmarks/tile_bamboo_mountain.png",
                 BadgeColorHex = "#C084FC",
                 AvailableActions = new[]
                 {
@@ -378,7 +378,7 @@ namespace TaiwuGu.Map
                 LoreDescription = "A weathered megalithic stele fractured by an ancient Gu battle. Pre-antiquity seal calligraphy remains faintly etched across its mossy surface.",
                 IsTraversable = true,
                 MovementAPCost = 2,
-                TextureResourcePath = "res://Resources/Tokens/landmark_stone_stele.png",
+                TextureResourcePath = "res://Resources/Landmarks/tile_bamboo_mountain.png",
                 BadgeColorHex = "#78716C",
                 DirectInteraction = (world, pos) =>
                 {
@@ -397,7 +397,7 @@ namespace TaiwuGu.Map
                 LoreDescription = "A sheer vertical cliff of jagged ironstone. Unclimbable by foot; mortal aperture cultivators must detour around its natural barrier.",
                 IsTraversable = false,
                 MovementAPCost = 999,
-                TextureResourcePath = "res://Resources/Tokens/landmark_stone_stele.png",
+                TextureResourcePath = "res://Resources/Landmarks/tile_bamboo_mountain.png",
                 BadgeColorHex = "#475569"
             });
         }

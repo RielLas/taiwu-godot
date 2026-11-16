@@ -13,10 +13,11 @@ namespace Taiwu_Godot.Scripts.Combat
 {
     /// <summary>
     /// Immediate-mode combat arena presentation at world position (2000, 2000).
-    /// Uses genuine 2D textures from res://Resources/Combat/ for stone floor, boundary pillars,
-    /// rotating Bagua aureole, parallax mountains/mist, and entity medallion tokens.
+    /// Uses 2D textures for stone floor, parallax mountains/mist, and entity medallion tokens.
+    /// Boundary formations use geometric Daoist array brackets and talisman calligraphy.
     /// Strict Halal aniconism: medallions, geometric totems, and talisman calligraphy only.
-    /// Employs a zero-GC ring buffer of 32 floating damage number structs and local hit-stop.
+    /// Employs a zero-GC ring buffer of 32 floating damage number structs, local hit-stop,
+    /// trauma-decoupled mouse aiming with a 0.2 deadzone, and a minimal ink-and-gold reticle.
     /// </summary>
     public partial class CombatArenaView : Node2D
     {
@@ -67,6 +68,9 @@ namespace Taiwu_Godot.Scripts.Combat
         private readonly float[] _prevHealth = new float[CombatArenaSimulation.MAX_ENTITIES];
         private float _hitStopTimer = 0f;
 
+        // Decoupled un-shaken mouse aiming position
+        private Vector2 _arenaCursorPos;
+
         private IWorldStateProvider? _provider;
         private Camera2D? _camera;
         private Font? _font;
@@ -80,7 +84,6 @@ namespace Taiwu_Godot.Scripts.Combat
         private Texture2D? _texBaguaAureole;
         private Texture2D? _texParallaxMountain;
         private Texture2D? _texParallaxMist;
-        private Texture2D? _texPropPillar;
         private Texture2D? _texTokenPlayer;
         private Texture2D? _texTokenBoar;
         private Texture2D? _texTokenCultivator;
@@ -105,7 +108,6 @@ namespace Taiwu_Godot.Scripts.Combat
             _texBaguaAureole = LoadTexture("res://Resources/Combat/BaguaAureole.png");
             _texParallaxMountain = LoadTexture("res://Resources/Combat/parallax_mountain_layer.png");
             _texParallaxMist = LoadTexture("res://Resources/Combat/parallax_mist_layer.png");
-            _texPropPillar = LoadTexture("res://Resources/Combat/prop_boundary_pillar.png");
             _texTokenPlayer = LoadTexture("res://Resources/Combat/token_player_seal.png");
             _texTokenBoar = LoadTexture("res://Resources/Combat/token_beast_boar.png");
             _texTokenCultivator = LoadTexture("res://Resources/Combat/token_cultivator_crimson.png");
@@ -180,8 +182,11 @@ namespace Taiwu_Godot.Scripts.Combat
 
                 if (key.Keycode == Key.Space)
                 {
-                    // Space is the canonical dash shortcut (slot 2 / Movement Gu).
-                    simulation.TryCastSkill(world, 2);
+                    // Space = Dash (slot 2 / Movement Gu) or Shield (slot 1 / Defense)
+                    if (!simulation.TryCastSkill(world, 2))
+                    {
+                        simulation.TryCastSkill(world, 1);
+                    }
                     GetViewport().SetInputAsHandled();
                     return;
                 }
@@ -192,12 +197,22 @@ namespace Taiwu_Godot.Scripts.Combat
                     GetViewport().SetInputAsHandled();
                 }
             }
-            else if (@event is InputEventMouseButton mouse &&
-                     mouse.ButtonIndex == MouseButton.Left &&
-                     mouse.Pressed)
+            else if (@event is InputEventMouseButton mouse && mouse.Pressed)
             {
-                simulation.TryCastSkill(world, 0);
-                GetViewport().SetInputAsHandled();
+                if (mouse.ButtonIndex == MouseButton.Left)
+                {
+                    simulation.TryCastSkill(world, 0);
+                    GetViewport().SetInputAsHandled();
+                }
+                else if (mouse.ButtonIndex == MouseButton.Right)
+                {
+                    // Right-Click = Dash (slot 2 / Movement Gu) or Shield (slot 1 / Defense)
+                    if (!simulation.TryCastSkill(world, 2))
+                    {
+                        simulation.TryCastSkill(world, 1);
+                    }
+                    GetViewport().SetInputAsHandled();
+                }
             }
         }
 
@@ -264,7 +279,22 @@ namespace Taiwu_Godot.Scripts.Combat
                 }
             }
 
-            // 4. Player movement and aiming inputs
+            // 4. Calculate un-shaken mouse aim decoupled from camera trauma
+            Vector2 viewportCenter = GetViewportRect().Size * 0.5f;
+            Vector2 screenOffset = GetViewport().GetMousePosition() - viewportCenter;
+            float currentZoom = _camera?.Zoom.X > 0.01f ? _camera.Zoom.X : ArenaZoom;
+            Vector2 unShakenCursor = screenOffset / currentZoom;
+            float cursorX = Math.Clamp(unShakenCursor.X, -ArenaHalfW, ArenaHalfW);
+            float cursorY = Math.Clamp(unShakenCursor.Y, -ArenaHalfH, ArenaHalfH);
+            _arenaCursorPos = new Vector2(cursorX, cursorY);
+
+            // Left-click hold-to-fire on cooldown
+            if (Godot.Input.IsMouseButtonPressed(MouseButton.Left))
+            {
+                simulation.TryCastSkill(world, 0);
+            }
+
+            // 5. Player movement and aiming inputs with deadzone
             float moveX = 0f;
             float moveY = 0f;
             if (Godot.Input.IsKeyPressed(Key.W) || Godot.Input.IsKeyPressed(Key.Up)) moveY -= 1f;
@@ -272,8 +302,20 @@ namespace Taiwu_Godot.Scripts.Combat
             if (Godot.Input.IsKeyPressed(Key.A) || Godot.Input.IsKeyPressed(Key.Left)) moveX -= 1f;
             if (Godot.Input.IsKeyPressed(Key.D) || Godot.Input.IsKeyPressed(Key.Right)) moveX += 1f;
 
-            Vector2 mouse = GetGlobalMousePosition() - GlobalPosition;
-            simulation.SetPlayerMoveAndAim(moveX, moveY, mouse.X, mouse.Y);
+            ref CombatEntityData player = ref simulation.EntityBuffer[0];
+            float aimDx = _arenaCursorPos.X - player.PosX;
+            float aimDy = _arenaCursorPos.Y - player.PosY;
+            float aimDistSq = aimDx * aimDx + aimDy * aimDy;
+
+            float targetAimX = player.AimX;
+            float targetAimY = player.AimY;
+            if (aimDistSq >= 0.04f) // 0.2-unit deadzone prevents 180° flipping on cursor overlap
+            {
+                targetAimX = aimDx;
+                targetAimY = aimDy;
+            }
+
+            simulation.SetPlayerMoveAndAim(moveX, moveY, targetAimX, targetAimY);
             QueueRedraw();
         }
 
@@ -358,6 +400,7 @@ namespace Taiwu_Godot.Scripts.Combat
             DrawEntities(simulation);
             DrawProjectiles(simulation);
             DrawFloatingDamage();
+            DrawAimReticle(simulation);
         }
 
         private void DrawArenaFrame(CombatArenaSimulation simulation)
@@ -404,19 +447,31 @@ namespace Taiwu_Godot.Scripts.Combat
                 DrawArc(Vector2.Zero, 4.2f, 0f, Mathf.Tau, 96, new Color(0.72f, 0.56f, 0.24f, 0.22f), 1.5f * Px, true);
             }
 
-            // 5. Four Corner Talisman Boundary Pillars
-            if (_texPropPillar != null)
-            {
-                Vector2 pillarSize = new Vector2(1.2f, 1.8f);
-                Vector2 offset = pillarSize * 0.5f;
+            // 5. Four Corner Formation Boundary Brackets & Seals (Pure Halal Geometric Aniconism)
+            DrawCornerFormationBracket(new Vector2(-ArenaHalfW + 0.35f, -ArenaHalfH + 0.35f), 1f, 1f);
+            DrawCornerFormationBracket(new Vector2(ArenaHalfW - 0.35f, -ArenaHalfH + 0.35f), -1f, 1f);
+            DrawCornerFormationBracket(new Vector2(-ArenaHalfW + 0.35f, ArenaHalfH - 0.35f), 1f, -1f);
+            DrawCornerFormationBracket(new Vector2(ArenaHalfW - 0.35f, ArenaHalfH - 0.35f), -1f, -1f);
 
-                DrawTextureRect(_texPropPillar, new Rect2(new Vector2(-ArenaHalfW + 0.5f, -ArenaHalfH + 0.5f) - offset, pillarSize), false);
-                DrawTextureRect(_texPropPillar, new Rect2(new Vector2(ArenaHalfW - 0.5f, -ArenaHalfH + 0.5f) - offset, pillarSize), false);
-                DrawTextureRect(_texPropPillar, new Rect2(new Vector2(-ArenaHalfW + 0.5f, ArenaHalfH - 0.5f) - offset, pillarSize), false);
-                DrawTextureRect(_texPropPillar, new Rect2(new Vector2(ArenaHalfW - 0.5f, ArenaHalfH - 0.5f) - offset, pillarSize), false);
-            }
+            DrawSeal(new Vector2(-ArenaHalfW + 0.9f, -ArenaHalfH + 0.9f), "【界】", Amber, 14);
+            DrawSeal(new Vector2(ArenaHalfW - 0.9f, -ArenaHalfH + 0.9f), "【界】", Amber, 14);
+            DrawSeal(new Vector2(-ArenaHalfW + 0.9f, ArenaHalfH - 0.9f), "【阵】", Amber, 14);
+            DrawSeal(new Vector2(ArenaHalfW - 0.9f, ArenaHalfH - 0.9f), "【阵】", Amber, 14);
 
             DrawSeal(new Vector2(0f, -ArenaHalfH + 0.55f), "【斗】", Amber, 22);
+        }
+
+        private void DrawCornerFormationBracket(Vector2 corner, float dirX, float dirY)
+        {
+            float len = 1.6f;
+            Vector2 pX = corner + new Vector2(dirX * len, 0f);
+            Vector2 pY = corner + new Vector2(0f, dirY * len);
+
+            DrawLine(corner, pX, LacquerEdge, 2.5f * Px, true);
+            DrawLine(corner, pY, LacquerEdge, 2.5f * Px, true);
+
+            DrawArc(corner + new Vector2(dirX * 0.45f, dirY * 0.45f), 0.35f, 0f, Mathf.Tau, 24, new Color(0.984f, 0.749f, 0.141f, 0.45f), 1.5f * Px, true);
+            DrawCircle(corner + new Vector2(dirX * 0.45f, dirY * 0.45f), 0.10f, Amber);
         }
 
         private void DrawEntities(CombatArenaSimulation simulation)
@@ -663,6 +718,33 @@ namespace Taiwu_Godot.Scripts.Combat
                         break;
                 }
             }
+        }
+
+        private void DrawAimReticle(CombatArenaSimulation simulation)
+        {
+            ref CombatEntityData player = ref simulation.EntityBuffer[0];
+            if (!player.Active) return;
+
+            Vector2 playerPos = new Vector2(player.PosX, player.PosY);
+            Vector2 aimDir = new Vector2(player.AimX, player.AimY);
+            if (aimDir.LengthSquared() < 0.001f) aimDir = Vector2.Right;
+
+            // 1. Subtle dashed / semi-transparent aim guideline from player edge to reticle
+            Vector2 playerEdge = playerPos + aimDir * (player.Radius + 0.18f);
+            DrawLine(playerEdge, _arenaCursorPos, new Color(Amber.R, Amber.G, Amber.B, 0.28f), 1.2f * Px, true);
+
+            // 2. Ink & Gold concentric reticle
+            DrawArc(_arenaCursorPos, 0.24f, 0f, Mathf.Tau, 32, Amber, 1.8f * Px, true);
+            DrawArc(_arenaCursorPos, 0.10f, 0f, Mathf.Tau, 20, Cyan, 1.2f * Px, true);
+            DrawCircle(_arenaCursorPos, 0.035f, Amber);
+
+            // 3. Four crosshair tick marks
+            float tickInner = 0.14f;
+            float tickOuter = 0.32f;
+            DrawLine(_arenaCursorPos + new Vector2(tickInner, 0f), _arenaCursorPos + new Vector2(tickOuter, 0f), Amber, 1.5f * Px, true);
+            DrawLine(_arenaCursorPos - new Vector2(tickInner, 0f), _arenaCursorPos - new Vector2(tickOuter, 0f), Amber, 1.5f * Px, true);
+            DrawLine(_arenaCursorPos + new Vector2(0f, tickInner), _arenaCursorPos + new Vector2(0f, tickOuter), Amber, 1.5f * Px, true);
+            DrawLine(_arenaCursorPos - new Vector2(0f, tickInner), _arenaCursorPos - new Vector2(0f, tickOuter), Amber, 1.5f * Px, true);
         }
 
         private void DrawFloatingDamage()

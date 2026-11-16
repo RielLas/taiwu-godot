@@ -36,6 +36,10 @@ namespace TaiwuGu.Combat
         public float StoneCrushCooldown;
         public float ElapsedTime;
         public float HitStopTimer;
+        public float MoveDirX;
+        public float MoveDirY;
+        public float TargetVelX;
+        public float TargetVelY;
 
         public void InitializeArena(
             WorldStore world,
@@ -63,6 +67,10 @@ namespace TaiwuGu.Combat
             StoneCrushCooldown = 0f;
             ElapsedTime = 0f;
             HitStopTimer = 0f;
+            MoveDirX = 0f;
+            MoveDirY = 0f;
+            TargetVelX = 0f;
+            TargetVelY = 0f;
             EnemyDisplayName = enemyName ?? GetDefaultEnemyName(encounter);
 
             _playerEntity = world.PlayerEntity;
@@ -96,18 +104,17 @@ namespace TaiwuGu.Combat
             float moveMag = MathF.Sqrt(moveX * moveX + moveY * moveY);
             if (moveMag > 0.001f)
             {
-                moveX /= moveMag;
-                moveY /= moveMag;
-                if (player.DashTimer <= 0f)
-                {
-                    player.VelX = moveX * player.MoveSpeed;
-                    player.VelY = moveY * player.MoveSpeed;
-                }
+                MoveDirX = moveX / moveMag;
+                MoveDirY = moveY / moveMag;
+                TargetVelX = MoveDirX * player.MoveSpeed;
+                TargetVelY = MoveDirY * player.MoveSpeed;
             }
-            else if (player.DashTimer <= 0f)
+            else
             {
-                player.VelX = 0f;
-                player.VelY = 0f;
+                MoveDirX = 0f;
+                MoveDirY = 0f;
+                TargetVelX = 0f;
+                TargetVelY = 0f;
             }
 
             float aimMag = MathF.Sqrt(aimDirX * aimDirX + aimDirY * aimDirY);
@@ -175,11 +182,20 @@ namespace TaiwuGu.Combat
                     WorldSignals.EmitSound(HalalSoundType.WoodenKnock);
                     break;
                 case GuSkillEffectKind.Dash:
-                    player.VelX = player.AimX * 12.5f;
-                    player.VelY = player.AimY * 12.5f;
+                {
+                    float dashDirX = MoveDirX;
+                    float dashDirY = MoveDirY;
+                    if (dashDirX * dashDirX + dashDirY * dashDirY < 0.01f)
+                    {
+                        dashDirX = player.AimX;
+                        dashDirY = player.AimY;
+                    }
+                    player.VelX = dashDirX * 12.5f;
+                    player.VelY = dashDirY * 12.5f;
                     player.DashTimer = 0.25f;
                     WorldSignals.EmitSound(HalalSoundType.DashWhoosh);
                     break;
+                }
                 case GuSkillEffectKind.Heal:
                     player.Health = MathF.Min(player.MaxHealth, player.Health + 20f * skill.Rank * mult);
                     aperture.CurrentHealth = player.Health;
@@ -264,6 +280,19 @@ namespace TaiwuGu.Combat
             }
 
             TickTimers(ref player, dt);
+
+            // Responsive acceleration & deceleration smoothing (18/s accel, 22/s decel)
+            if (player.DashTimer <= 0f)
+            {
+                bool isDecel = (TargetVelX == 0f && TargetVelY == 0f);
+                float rate = isDecel ? 22f : 18f;
+                float blend = MathF.Min(1.0f, rate * dt);
+                player.VelX += (TargetVelX - player.VelX) * blend;
+                player.VelY += (TargetVelY - player.VelY) * blend;
+
+                if (isDecel && MathF.Abs(player.VelX) < 0.05f) player.VelX = 0f;
+                if (isDecel && MathF.Abs(player.VelY) < 0.05f) player.VelY = 0f;
+            }
 
             player.PosX += player.VelX * dt;
             player.PosY += player.VelY * dt;
