@@ -82,6 +82,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 _guWormsTab.OpenCauldronRequested -= OpenCauldronFromLedger;
                 _guWormsTab.FeedGuRequested -= HandleFeedGuRequested;
+                _guWormsTab.ConsumeLifespanGuRequested -= HandleConsumeLifespanGuRequested;
             }
             if (_tabs != null)
             {
@@ -193,6 +194,12 @@ namespace Taiwu_Godot.Scripts.UI
                 GuEcologySystem.FeedGuByCatalogId(world, guId, diet, quantity);
         }
 
+        private void HandleConsumeLifespanGuRequested(string guId)
+        {
+            if (_stateProvider?.Current is WorldStore world)
+                CultivationSystem.ConsumeLifespanGu(world, guId);
+        }
+
         private void HandleBreakthroughRequested()
         {
             CloseLedger();
@@ -295,6 +302,7 @@ namespace Taiwu_Godot.Scripts.UI
             _guWormsTab = new GuWormsTab();
             _guWormsTab.OpenCauldronRequested += OpenCauldronFromLedger;
             _guWormsTab.FeedGuRequested += HandleFeedGuRequested;
+            _guWormsTab.ConsumeLifespanGuRequested += HandleConsumeLifespanGuRequested;
             tabs.AddTab("2. Gu Worms (0)", _guWormsTab, tabWidth);
 
             _inventoryTab = new InventoryTab();

@@ -19,6 +19,7 @@ namespace Taiwu_Godot.Scripts.Input
         public PlayerCultivatorController? PlayerController { get; set; }
         public TaiwuSystemMenuView? SystemMenuView { get; set; }
         public ApertureBreakthroughModalView? BreakthroughView { get; set; }
+        public WorldAtlasModalView? WorldAtlasView { get; set; }
 
         private TaiwuModalStack? _modalStack;
         private bool _isBattleLocked = false;
@@ -146,6 +147,23 @@ namespace Taiwu_Godot.Scripts.Input
                 else
                 {
                     BreakthroughSystem.OpenSession(WorldProvider.Current);
+                }
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
+            if (key.IsActionPressed("toggle_atlas"))
+            {
+                if (!IsModalActive || _modalStack?.IsModalOpen<WorldAtlasModalView>() == true)
+                {
+                    if (WorldAtlasView != null)
+                    {
+                        WorldAtlasView.Toggle();
+                    }
+                    else if (WorldAtlasModalView.Instance != null)
+                    {
+                        WorldAtlasModalView.Instance.Toggle();
+                    }
                 }
                 GetViewport().SetInputAsHandled();
                 return;

@@ -16,6 +16,7 @@ namespace Taiwu_Godot.Scripts.UI
     {
         public event Action? OpenCauldronRequested;
         public event Action<string, GuDietType, int>? FeedGuRequested;
+        public event Action<string>? ConsumeLifespanGuRequested;
 
         private VBoxContainer? _equippedContainer;
         private VBoxContainer? _reserveContainer;
@@ -238,6 +239,21 @@ namespace Taiwu_Godot.Scripts.UI
             };
             btnFeed.Pressed += () => FeedGuRequested?.Invoke(gu.GuID, gu.Diet, 1);
             hBox.AddChild(btnFeed);
+
+            // Lifespan Gu consumption action
+            if (gu.GuID.IndexOf("lifespan", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                int years = gu.GuID.Contains("20") ? 20 : 10;
+                var btnConsumeLifespan = new Button
+                {
+                    Text = $"Consume (+{years} Yrs)",
+                    CustomMinimumSize = new Vector2(120f, 34f),
+                    MouseFilter = MouseFilterEnum.Stop
+                };
+                btnConsumeLifespan.AddThemeColorOverride("font_color", new Color(0.984f, 0.749f, 0.141f, 1f));
+                btnConsumeLifespan.Pressed += () => ConsumeLifespanGuRequested?.Invoke(gu.GuID);
+                hBox.AddChild(btnConsumeLifespan);
+            }
 
             return card;
         }

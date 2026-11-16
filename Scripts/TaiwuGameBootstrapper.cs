@@ -40,6 +40,7 @@ namespace Taiwu_Godot.Scripts
         [Export] public InterMountainTransitModalView? TransitModalView { get; set; }
         [Export] public CombatArenaView? CombatArenaView { get; set; }
         [Export] public CombatHUDView? CombatHUDView { get; set; }
+        [Export] public WorldAtlasModalView? WorldAtlasView { get; set; }
 
         // --- Single Source of Truth ECS State Seam ---
         public WorldStateProvider StateProvider { get; private set; } = null!;
@@ -155,6 +156,20 @@ namespace Taiwu_Godot.Scripts
                 AddChild(TransitModalView);
             }
 
+            if (WorldAtlasView == null)
+            {
+                var atlasScene = ResourceLoader.Load<PackedScene>("res://Scenes/UI/WorldAtlasModal.tscn");
+                if (atlasScene != null)
+                {
+                    WorldAtlasView = atlasScene.Instantiate<WorldAtlasModalView>();
+                }
+                else
+                {
+                    WorldAtlasView = new WorldAtlasModalView { Name = "WorldAtlasModalView" };
+                }
+                AddChild(WorldAtlasView);
+            }
+
             if (AudioService == null)
             {
                 AudioService = new TaiwuAudioService { Name = "TaiwuAudioService" };
@@ -172,6 +187,7 @@ namespace Taiwu_Godot.Scripts
             WildGuModalView?.Initialize(StateProvider);
             NPCDialogueView?.Initialize(StateProvider);
             TransitModalView?.Initialize(StateProvider);
+            WorldAtlasView?.Initialize(ModalStack, StateProvider);
             PlayerController?.InitializeModalStack(ModalStack);
             CombatArenaView?.Initialize(StateProvider, CameraController);
             CombatHUDView?.Initialize(StateProvider);
@@ -182,6 +198,7 @@ namespace Taiwu_Godot.Scripts
                 InputRouter.PlayerController = PlayerController;
                 InputRouter.SystemMenuView = SystemMenuView;
                 InputRouter.BreakthroughView = BreakthroughModalView;
+                InputRouter.WorldAtlasView = WorldAtlasView;
             }
 
             // Defer initial broadcast until sibling views complete _Ready()

@@ -257,7 +257,7 @@ namespace TaiwuGu.Systems
             world.DestroyEntity(guEntityId);
 
             WorldSignals.EmitSound(HalalSoundType.CauldronSteam);
-            WorldSignals.EmitTopics(DirtyTopic.Cultivator);
+            WorldSignals.EmitTopics(DirtyTopic.Cultivator | DirtyTopic.Inventory);
             Debug.Log($"[CultivationSystem] {cult.Name} consumed Lifespan Gu ({gu.Name}). Lifespan extended by +{yearsToAdd} years! Total Lifespan: {cult.LifespanYears} years.");
             return true;
         }
@@ -282,7 +282,7 @@ namespace TaiwuGu.Systems
 
             cult.LifespanYears += years;
             WorldSignals.EmitSound(HalalSoundType.CauldronSteam);
-            WorldSignals.EmitTopics(DirtyTopic.Cultivator);
+            WorldSignals.EmitTopics(DirtyTopic.Cultivator | DirtyTopic.Inventory);
             return true;
         }
     }
