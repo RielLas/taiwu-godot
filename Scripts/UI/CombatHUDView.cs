@@ -51,7 +51,15 @@ namespace Taiwu_Godot.Scripts.UI
 
         public override void _Process(double delta)
         {
-            if (Visible) RefreshFromStore();
+            if (!Visible) return;
+            var world = _provider?.Current;
+            var session = world != null ? world.Get<CombatSessionComponent>(world.WorldEntity) : null;
+            if (session == null || !session.InBattle)
+            {
+                HandleBattleStageChanged(false);
+                return;
+            }
+            RefreshFromStore();
         }
 
         private void BuildUIHierarchy()
@@ -248,7 +256,18 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void HandleTopicsChanged(DirtyTopic topics)
         {
-            if (Visible) RefreshFromStore();
+            if (!Visible) return;
+            if ((topics & DirtyTopic.All) != 0)
+            {
+                var world = _provider?.Current;
+                var session = world != null ? world.Get<CombatSessionComponent>(world.WorldEntity) : null;
+                if (session == null || !session.InBattle)
+                {
+                    HandleBattleStageChanged(false);
+                    return;
+                }
+            }
+            RefreshFromStore();
         }
 
         private void HandleEscapeRequested()

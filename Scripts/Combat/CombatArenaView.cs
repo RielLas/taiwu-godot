@@ -117,11 +117,13 @@ namespace Taiwu_Godot.Scripts.Combat
             _texIconQiArcs = LoadTexture("res://Resources/Combat/icon_qiarcs.png");
 
             WorldSignals.OnBattleStageChanged += HandleBattleStageChanged;
+            WorldSignals.OnTopicsChanged += HandleTopicsChanged;
         }
 
         public override void _ExitTree()
         {
             WorldSignals.OnBattleStageChanged -= HandleBattleStageChanged;
+            WorldSignals.OnTopicsChanged -= HandleTopicsChanged;
         }
 
         private static Texture2D? LoadTexture(string resPath)
@@ -170,6 +172,7 @@ namespace Taiwu_Godot.Scripts.Combat
                     Key.Key3 => 2,
                     Key.Key4 => 3,
                     Key.Key5 => 4,
+                    Key.R => 5,
                     _ => -1
                 };
 
@@ -223,7 +226,11 @@ namespace Taiwu_Godot.Scripts.Combat
             var world = _provider?.Current;
             if (world == null) return;
             var session = world.Get<CombatSessionComponent>(world.WorldEntity);
-            if (session == null || !session.InBattle) return;
+            if (session == null || !session.InBattle)
+            {
+                HandleBattleStageChanged(false);
+                return;
+            }
             var simulation = session.Simulation;
             if (!simulation.IsActive) return;
 
@@ -330,6 +337,19 @@ namespace Taiwu_Godot.Scripts.Combat
                 Active = true
             };
             _damageRingHead = (_damageRingHead + 1) % 32;
+        }
+
+        private void HandleTopicsChanged(DirtyTopic topics)
+        {
+            if ((topics & DirtyTopic.All) != 0 && Visible)
+            {
+                var world = _provider?.Current;
+                var session = world != null ? world.Get<CombatSessionComponent>(world.WorldEntity) : null;
+                if (session == null || !session.InBattle)
+                {
+                    HandleBattleStageChanged(false);
+                }
+            }
         }
 
         private void HandleBattleStageChanged(bool inBattle)

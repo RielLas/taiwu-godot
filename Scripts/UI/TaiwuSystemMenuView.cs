@@ -528,8 +528,25 @@ namespace Taiwu_Godot.Scripts.UI
             btnConfirm.Pressed += () =>
             {
                 CloseMenu();
-                _stateProvider?.Replace(WorldFactory.CreateDefault());
-                WorldSignals.EmitTopics(DirtyTopic.All);
+                WorldSignals.EmitBattleStageChanged(false);
+
+                var tree = GetTree();
+                if (tree != null)
+                {
+                    var overlay = UniversalLoadingOverlay.EnsureInstance(tree);
+                    if (overlay != null)
+                    {
+                        _ = overlay.WrapSceneTransitionAsync(
+                            "res://Scenes/UI/TitleScreen.tscn",
+                            "Returning to Title (归隐凡尘)...",
+                            "天地为炉 · 万物为铜 · 阴阳为炭 · 造化为工"
+                        );
+                    }
+                    else
+                    {
+                        Callable.From(() => tree.ChangeSceneToFile("res://Scenes/UI/TitleScreen.tscn")).CallDeferred();
+                    }
+                }
             };
             btnsRow.AddChild(btnConfirm);
 

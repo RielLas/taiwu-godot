@@ -120,8 +120,8 @@ namespace Taiwu_Godot.Scripts.UI
             _topBarMargin.SetAnchorsPreset(LayoutPreset.TopWide);
             _topBarMargin.OffsetTop = 8f;
             _topBarMargin.OffsetBottom = 68f;
-            _topBarMargin.OffsetLeft = 14f;
-            _topBarMargin.OffsetRight = -14f;
+            _topBarMargin.OffsetLeft = 8f;
+            _topBarMargin.OffsetRight = -8f;
             AddChild(_topBarMargin);
 
             var topBarHBox = new HBoxContainer
@@ -406,7 +406,7 @@ namespace Taiwu_Godot.Scripts.UI
                 Alignment = BoxContainer.AlignmentMode.End,
                 MouseFilter = MouseFilterEnum.Stop
             };
-            buttonsHBox.AddThemeConstantOverride("separation", 6);
+            buttonsHBox.AddThemeConstantOverride("separation", 4);
             rightContainer.AddChild(buttonsHBox);
 
             // Button Styles: Crimson Lacquer for Pass Month
@@ -470,7 +470,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BtnPassMonth",
                 Text = "Pass Month",
-                CustomMinimumSize = new Vector2(140f, 28f),
+                CustomMinimumSize = new Vector2(104f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -487,7 +487,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BtnLedger",
                 Text = "【籍】 Ledger [Tab]",
-                CustomMinimumSize = new Vector2(110f, 28f),
+                CustomMinimumSize = new Vector2(96f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -504,7 +504,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BtnMap",
                 Text = "【图】 Map [M]",
-                CustomMinimumSize = new Vector2(100f, 28f),
+                CustomMinimumSize = new Vector2(86f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -521,7 +521,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BtnCauldron",
                 Text = "【炼】 Cauldron [C]",
-                CustomMinimumSize = new Vector2(110f, 28f),
+                CustomMinimumSize = new Vector2(96f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -550,7 +550,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BtnSystem",
                 Text = "System [Esc]",
-                CustomMinimumSize = new Vector2(84f, 28f),
+                CustomMinimumSize = new Vector2(76f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -569,7 +569,7 @@ namespace Taiwu_Godot.Scripts.UI
                 BbcodeEnabled = true,
                 FitContent = true,
                 ScrollActive = false,
-                CustomMinimumSize = new Vector2(230f, 18f),
+                CustomMinimumSize = new Vector2(200f, 18f),
                 MouseFilter = MouseFilterEnum.Ignore
             };
             _lblCultivatorBadge.AddThemeFontSizeOverride("normal_font_size", 11);

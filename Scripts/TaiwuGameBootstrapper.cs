@@ -159,15 +159,16 @@ namespace Taiwu_Godot.Scripts
             if (WorldAtlasView == null)
             {
                 var atlasScene = ResourceLoader.Load<PackedScene>("res://Scenes/UI/WorldAtlasModal.tscn");
-                if (atlasScene != null)
+                WorldAtlasView = atlasScene?.Instantiate<WorldAtlasModalView>() ?? new WorldAtlasModalView { Name = "WorldAtlasModalView" };
+
+                var atlasLayer = new CanvasLayer
                 {
-                    WorldAtlasView = atlasScene.Instantiate<WorldAtlasModalView>();
-                }
-                else
-                {
-                    WorldAtlasView = new WorldAtlasModalView { Name = "WorldAtlasModalView" };
-                }
-                AddChild(WorldAtlasView);
+                    Name = "WorldAtlasCanvasLayer",
+                    ProcessMode = ProcessModeEnum.Always,
+                    Layer = 16
+                };
+                AddChild(atlasLayer);
+                atlasLayer.AddChild(WorldAtlasView);
             }
 
             if (AudioService == null)

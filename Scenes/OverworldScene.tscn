@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://d3y1a2b3c4d5e"]
+[gd_scene load_steps=19 format=3 uid="uid://d3y1a2b3c4d5e"]
 
 [ext_resource type="Script" path="res://Scripts/TaiwuGameBootstrapper.cs" id="1_boot"]
 [ext_resource type="Script" path="res://Scripts/Input/TaiwuInputRouter.cs" id="2_input"]
@@ -17,10 +17,11 @@
 [ext_resource type="Script" path="res://Scripts/Combat/CombatArenaView.cs" id="15_arena"]
 [ext_resource type="Script" path="res://Scripts/UI/CombatHUDView.cs" id="16_combathud"]
 [ext_resource type="PackedScene" path="res://Scenes/UI/CaravanBazaarModal.tscn" id="17_caravan"]
+[ext_resource type="PackedScene" path="res://Scenes/UI/WorldAtlasModal.tscn" id="18_atlas"]
 
 [node name="OverworldScene" type="Node2D"]
 
-[node name="[SYSTEM_BOOTSTRAPPER]" type="Node2D" parent="." node_paths=PackedStringArray("TileManager", "InputRouter", "LandmarkManager", "PlayerController", "CameraController", "HUDView", "LedgerView", "CauldronView", "POIModalView", "SystemMenuView", "CombatArenaView", "CombatHUDView", "CaravanBazaarView")]
+[node name="[SYSTEM_BOOTSTRAPPER]" type="Node2D" parent="." node_paths=PackedStringArray("TileManager", "InputRouter", "LandmarkManager", "PlayerController", "CameraController", "HUDView", "LedgerView", "CauldronView", "POIModalView", "SystemMenuView", "CombatArenaView", "CombatHUDView", "CaravanBazaarView", "WorldAtlasView")]
 script = ExtResource("1_boot")
 TileManager = NodePath("../World2D/IsometricTileManager")
 InputRouter = NodePath("../[SYSTEM_INPUT]")
@@ -35,6 +36,7 @@ SystemMenuView = NodePath("../[UI_SYSTEM]/TaiwuSystemMenuView")
 CombatArenaView = NodePath("../World2D/CombatArenaView")
 CombatHUDView = NodePath("../[UI_SYSTEM]/CombatHUDView")
 CaravanBazaarView = NodePath("../[UI_SYSTEM]/CaravanBazaarModalView")
+WorldAtlasView = NodePath("../[UI_ATLAS_LAYER]/WorldAtlasModalView")
 
 [node name="[SYSTEM_INPUT]" type="Node" parent="." node_paths=PackedStringArray("StandaloneProvider")]
 process_mode = 3
@@ -145,3 +147,9 @@ grow_vertical = 2
 script = ExtResource("16_combathud")
 
 [node name="CaravanBazaarModalView" parent="[UI_SYSTEM]" instance=ExtResource("17_caravan")]
+
+[node name="[UI_ATLAS_LAYER]" type="CanvasLayer" parent="."]
+process_mode = 3
+layer = 16
+
+[node name="WorldAtlasModalView" parent="[UI_ATLAS_LAYER]" instance=ExtResource("18_atlas")]
