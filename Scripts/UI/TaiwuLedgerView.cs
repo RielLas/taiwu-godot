@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Godot;
 using Color = Godot.Color;
@@ -32,7 +33,7 @@ namespace Taiwu_Godot.Scripts.UI
 
         public void Dismiss() => CloseLedger();
 
-        private int _activeTabIndex = 0; // 0: Cultivation, 1: Gu Worms, 2: Dao Marks, 3: Factions
+        private int _activeTabIndex = 0; // 0: Cultivation, 1: Gu Worms, 2: Inventory, 3: Dao Marks, 4: Factions
         private bool _returnToLedgerOnCauldronClose = false;
 
         // UI references (chrome, tab strip and tab body live in Scenes/UI/TabbedModal.tscn)
@@ -42,6 +43,7 @@ namespace Taiwu_Godot.Scripts.UI
 
         private CultivationTab? _cultivationTab;
         private GuWormsTab? _guWormsTab;
+        private InventoryTab? _inventoryTab;
         private DaoMarksTab? _daoMarksTab;
         private FactionsTab? _factionsTab;
 
@@ -208,6 +210,7 @@ namespace Taiwu_Godot.Scripts.UI
             if ((topics & DirtyTopic.Inventory) != 0)
             {
                 RefreshGuWorms();
+                RefreshInventory();
                 UpdateTabHeaders();
             }
             if ((topics & DirtyTopic.Factions) != 0)
@@ -279,8 +282,8 @@ namespace Taiwu_Godot.Scripts.UI
             _lblSubtitle.AddThemeFontSizeOverride("font_size", 11);
             headerRows.AddChild(_lblSubtitle);
 
-            // 4-Tab Navigation Bar: the strip itself is declared in TabbedModal.tscn
-            float tabWidth = (840f - 36f - 18f) / 4f;
+            // 5-Tab Navigation Bar: the strip itself is declared in TabbedModal.tscn
+            float tabWidth = (840f - 36f - 24f) / 5f;
 
             _cultivationTab = new CultivationTab();
             _cultivationTab.MeditateRequested += HandleMeditateRequested;
@@ -294,11 +297,15 @@ namespace Taiwu_Godot.Scripts.UI
             _guWormsTab.FeedGuRequested += HandleFeedGuRequested;
             tabs.AddTab("2. Gu Worms (0)", _guWormsTab, tabWidth);
 
+            _inventoryTab = new InventoryTab();
+            _inventoryTab.FeedGuRequested += HandleFeedGuRequested;
+            tabs.AddTab("3. Inventory (行囊)", _inventoryTab, tabWidth);
+
             _daoMarksTab = new DaoMarksTab();
-            tabs.AddTab("3. Dao Marks (道痕)", _daoMarksTab, tabWidth);
+            tabs.AddTab("4. Dao Marks (道痕)", _daoMarksTab, tabWidth);
 
             _factionsTab = new FactionsTab();
-            tabs.AddTab("4. Factions (宗族恩仇)", _factionsTab, tabWidth);
+            tabs.AddTab("5. Factions (恩仇)", _factionsTab, tabWidth);
 
             // Tab body keeps the ledger's inset lacquer panel
             var body = tabs.Body;
@@ -330,6 +337,7 @@ namespace Taiwu_Godot.Scripts.UI
         {
             RefreshCultivation();
             RefreshGuWorms();
+            RefreshInventory();
             RefreshDaoMarks();
             RefreshFactions();
             UpdateTabHeaders();
@@ -390,6 +398,40 @@ namespace Taiwu_Godot.Scripts.UI
             _guWormsTab?.Bind(new GuWormsSnapshot(equipped, reserve));
         }
 
+        private void RefreshInventory()
+        {
+            var world = _stateProvider?.Current;
+            if (world == null) return;
+
+            var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
+            var inv = world.Get<InventoryComponent>(world.PlayerEntity);
+            int stones = cult?.PrimevalStones ?? 0;
+            var foodList = inv?.FoodStockpile ?? (IReadOnlyList<InventoryItem>)Array.Empty<InventoryItem>();
+
+            var (equipped, _) = GuEcologySystem.GetLoadout(world);
+            var dietMap = new Dictionary<GuDietType, (int Count, List<string> Names)>();
+            foreach (var gu in equipped)
+            {
+                if (gu.Diet == GuDietType.None) continue;
+                if (!dietMap.TryGetValue(gu.Diet, out var entry))
+                {
+                    entry = (0, new List<string>());
+                    dietMap[gu.Diet] = entry;
+                }
+                entry.Count++;
+                entry.Names.Add(gu.Name);
+            }
+
+            var demands = new List<DietDemandInfo>();
+            foreach (var (diet, (count, names)) in dietMap)
+            {
+                int stock = inv?.GetFoodQuantity(diet) ?? 0;
+                demands.Add(new DietDemandInfo(diet, count, stock, string.Join(", ", names)));
+            }
+
+            _inventoryTab?.Bind(new InventorySnapshot(stones, foodList, demands));
+        }
+
         private void RefreshDaoMarks()
         {
             var world = _stateProvider?.Current;
@@ -439,19 +481,27 @@ namespace Taiwu_Godot.Scripts.UI
             _tabs?.SelectTab(tabIndex);
 
             if (_activeTabIndex == 1) RefreshGuWorms();
-            if (_activeTabIndex == 3) RefreshFactions();
+            if (_activeTabIndex == 2) RefreshInventory();
+            if (_activeTabIndex == 4) RefreshFactions();
         }
 
         private void UpdateTabHeaders()
         {
             var world = _stateProvider?.Current;
             int totalGu = 0;
+            int totalFood = 0;
             if (world != null)
             {
                 var (equipped, reserve) = GuEcologySystem.GetLoadout(world);
                 totalGu = equipped.Count + reserve.Count;
+                var inv = world.Get<InventoryComponent>(world.PlayerEntity);
+                if (inv != null)
+                {
+                    foreach (var item in inv.FoodStockpile) totalFood += item.Quantity;
+                }
             }
             _tabs?.SetTabLabel(1, $"2. Gu Worms ({totalGu})");
+            _tabs?.SetTabLabel(2, $"3. Inventory ({totalFood})");
         }
     }
 }

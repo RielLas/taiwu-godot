@@ -35,6 +35,7 @@ namespace TaiwuGu.Combat
         public string EnemyDisplayName = string.Empty;
         public float StoneCrushCooldown;
         public float ElapsedTime;
+        public float HitStopTimer;
 
         public void InitializeArena(
             WorldStore world,
@@ -61,6 +62,7 @@ namespace TaiwuGu.Combat
             IsLethal = isLethal;
             StoneCrushCooldown = 0f;
             ElapsedTime = 0f;
+            HitStopTimer = 0f;
             EnemyDisplayName = enemyName ?? GetDefaultEnemyName(encounter);
 
             _playerEntity = world.PlayerEntity;
@@ -235,6 +237,12 @@ namespace TaiwuGu.Combat
         {
             float dt = MathF.Min(deltaTime, 0.1f);
             if (!IsActive || dt <= 0f) return Outcome;
+
+            if (HitStopTimer > 0f)
+            {
+                HitStopTimer = MathF.Max(0f, HitStopTimer - dt);
+                return Outcome;
+            }
 
             ElapsedTime += dt;
             if (StoneCrushCooldown > 0f) StoneCrushCooldown = MathF.Max(0f, StoneCrushCooldown - dt);

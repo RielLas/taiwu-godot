@@ -18,6 +18,7 @@ namespace Taiwu_Godot.Scripts.Map
         [Export] public float DefaultZoom { get; set; } = 68.0f;
 
         private float _targetZoom = 68.0f;
+        private float _trauma = 0f;
         private bool _isPauseLocked = false;
         private bool _isUIModalLocked = false;
         private bool _isBattleLocked = false;
@@ -65,9 +66,22 @@ namespace Taiwu_Godot.Scripts.Map
         public void LockOnTarget() => IsLockedToTarget = true;
         public void UnlockTarget() => IsLockedToTarget = false;
 
+        public void AddTrauma(float amount)
+        {
+            _trauma = Math.Clamp(_trauma + amount, 0f, 1f);
+        }
+
         private void HandlePauseToggled(bool isPaused) => _isPauseLocked = isPaused;
         private void HandleUIModalActive(bool isActive) => _isUIModalLocked = isActive;
-        private void HandleBattleStageStateChanged(bool inBattle) => _isBattleLocked = inBattle;
+        private void HandleBattleStageStateChanged(bool inBattle)
+        {
+            _isBattleLocked = inBattle;
+            if (!inBattle)
+            {
+                _trauma = 0f;
+                Offset = Vector2.Zero;
+            }
+        }
 
         private void HandleTopicsChanged(DirtyTopic topics)
         {
@@ -105,9 +119,25 @@ namespace Taiwu_Godot.Scripts.Map
 
         public override void _Process(double delta)
         {
-            if (_isPauseLocked || _isUIModalLocked || _isBattleLocked) return;
-
             float dt = (float)delta;
+
+            // Decaying camera trauma shake (Trauma^2 non-linear falloff)
+            if (_trauma > 0f)
+            {
+                _trauma = MathF.Max(0f, _trauma - dt * 1.8f);
+                float shake = _trauma * _trauma;
+                float maxOffset = 0.45f;
+                Offset = new Vector2(
+                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0) * maxOffset * shake,
+                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0) * maxOffset * shake
+                );
+            }
+            else if (Offset != Vector2.Zero)
+            {
+                Offset = Vector2.Zero;
+            }
+
+            if (_isPauseLocked || _isUIModalLocked || _isBattleLocked) return;
 
             // Smooth position follow when locked to player
             if (IsLockedToTarget && Target != null)

@@ -37,4 +37,17 @@ namespace Taiwu_Godot.Scripts.UI
     /// <summary>Read-only projection of the six Southern Border factions.</summary>
     public readonly record struct FactionsSnapshot(
         IReadOnlyList<FactionData> Factions);
+
+    /// <summary>Read-only projection of a single diet demand from active Gu worms.</summary>
+    public readonly record struct DietDemandInfo(
+        GuDietType DietType,
+        int ActiveConsumersCount,
+        int TotalStockpile,
+        string DependentGuNames);
+
+    /// <summary>Read-only projection of the cultivator's inventory, primeval stones, and stockpiles.</summary>
+    public readonly record struct InventorySnapshot(
+        int PrimevalStones,
+        IReadOnlyList<InventoryItem> FoodStockpile,
+        IReadOnlyList<DietDemandInfo> DietDemands);
 }

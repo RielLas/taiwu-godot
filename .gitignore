@@ -21,4 +21,5 @@ test_*.png
 test_*.png.import
 *.tmp
 *.log
+tools/captures/
 

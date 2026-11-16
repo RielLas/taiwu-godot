@@ -119,27 +119,36 @@ namespace Taiwu_Godot.Scripts.UI
             hotkeysVBox.AddThemeConstantOverride("separation", 1);
             leftHBox.AddChild(hotkeysVBox);
 
-            var lblEscHint = new Label
-            {
-                Text = "[Esc] System Menu",
-                Modulate = new Color(0.58f, 0.64f, 0.72f, 0.75f), // Slate grey #94A3B8
-                MouseFilter = MouseFilterEnum.Ignore
-            };
-            lblEscHint.AddThemeFontSizeOverride("font_size", 10);
-            hotkeysVBox.AddChild(lblEscHint);
-
             var lblLedgerHint = new Label
             {
-                Text = "[C / Tab] Ledger",
+                Text = "[Tab / L] Ledger",
                 Modulate = new Color(0.58f, 0.64f, 0.72f, 0.75f),
                 MouseFilter = MouseFilterEnum.Ignore
             };
             lblLedgerHint.AddThemeFontSizeOverride("font_size", 10);
             hotkeysVBox.AddChild(lblLedgerHint);
 
+            var lblCauldronHint = new Label
+            {
+                Text = "[C] Cauldron",
+                Modulate = new Color(0.58f, 0.64f, 0.72f, 0.75f),
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            lblCauldronHint.AddThemeFontSizeOverride("font_size", 10);
+            hotkeysVBox.AddChild(lblCauldronHint);
+
+            var lblEscHint = new Label
+            {
+                Text = "[Esc] Menu",
+                Modulate = new Color(0.58f, 0.64f, 0.72f, 0.75f), // Slate grey #94A3B8
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            lblEscHint.AddThemeFontSizeOverride("font_size", 10);
+            hotkeysVBox.AddChild(lblEscHint);
+
             var lblPanHint = new Label
             {
-                Text = "[WASD / Drag] Pan Map",
+                Text = "[WASD / Drag] Pan",
                 Modulate = new Color(0.58f, 0.64f, 0.72f, 0.75f),
                 MouseFilter = MouseFilterEnum.Ignore
             };
@@ -427,6 +436,22 @@ namespace Taiwu_Godot.Scripts.UI
             _btnPassMonth.AddThemeFontSizeOverride("font_size", 11);
             _btnPassMonth.Pressed += OnPassMonthPressed;
             buttonsHBox.AddChild(_btnPassMonth);
+
+            // Cultivator Ledger Button
+            var btnLedger = new Button
+            {
+                Name = "BtnLedger",
+                Text = "【籍】 Ledger [Tab]",
+                CustomMinimumSize = new Vector2(110f, 28f),
+                MouseFilter = MouseFilterEnum.Stop
+            };
+            btnLedger.AddThemeStyleboxOverride("normal", slateNormal);
+            btnLedger.AddThemeStyleboxOverride("hover", slateHover);
+            btnLedger.AddThemeStyleboxOverride("pressed", slateHover);
+            btnLedger.AddThemeColorOverride("font_color", new Color(0.204f, 0.827f, 0.6f, 1f)); // Jade green #34D399
+            btnLedger.AddThemeFontSizeOverride("font_size", 11);
+            btnLedger.Pressed += () => WorldSignals.EmitToggleLedger();
+            buttonsHBox.AddChild(btnLedger);
 
             // Alchemical Refinement Cauldron Button
             var btnCauldron = new Button
