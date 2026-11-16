@@ -279,12 +279,10 @@ namespace Taiwu_Godot.Scripts.Combat
                 }
             }
 
-            // 4. Calculate un-shaken mouse aim decoupled from camera trauma in local arena space
+            // 4. Calculate un-shaken mouse aim in local arena space.
+            // GetLocalMousePosition() already accounts for Camera2D.Offset via Viewport.CanvasTransform;
+            // subtracting _camera.Offset a second time would inject inverse shake into the aim vector.
             Vector2 localMouse = GetLocalMousePosition();
-            if (_camera != null)
-            {
-                localMouse -= _camera.Offset;
-            }
             float cursorX = Math.Clamp(localMouse.X, -ArenaHalfW, ArenaHalfW);
             float cursorY = Math.Clamp(localMouse.Y, -ArenaHalfH, ArenaHalfH);
             _arenaCursorPos = new Vector2(cursorX, cursorY);
