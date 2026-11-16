@@ -20,8 +20,7 @@ namespace Taiwu_Godot.Scripts.Map
         public override void _Ready()
         {
             ZIndex = 2;
-            Visible = true;
-            Position = ExplorationSystem.GridToWorld(new GridCoord(15, 14)).ToGodot();
+            Visible = false;
             WorldSignals.OnTargetTileSelected += HandleTargetTileSelected;
         }
 
@@ -54,6 +53,7 @@ namespace Taiwu_Godot.Scripts.Map
             if (!targetPos.HasValue)
             {
                 _lastMousePos = Vector2.Zero;
+                Visible = false;
                 return;
             }
 

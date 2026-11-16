@@ -51,8 +51,27 @@ namespace Taiwu_Godot.Scripts.Map
             TileManager = manager;
             _worldProvider = provider;
             CurrentGridPos = startPos;
-            Position = TileManager.GridToWorld(startPos);
+            Position = GetVisualPositionForGrid(startPos);
             EnsureVisuals();
+        }
+
+        private Vector2 GetVisualPositionForGrid(Vector2I gridPos)
+        {
+            Vector2 basePos = TileManager != null
+                ? TileManager.GridToWorld(gridPos)
+                : ExplorationSystem.GridToWorld(gridPos.ToGridCoord()).ToGodot();
+
+            if (TileManager != null && TileManager.IsWithinBounds(gridPos))
+            {
+                var tile = TileManager.GetTile(gridPos.X, gridPos.Y);
+                if (tile.POI == TilePOIType.ClanPost)
+                {
+                    // Gracefully offset token into the foreground so it doesn't merge dead-center with the ClanPost stele
+                    basePos += new Vector2(-0.25f, 0.28f);
+                }
+            }
+
+            return basePos;
         }
 
         public void InitializeModalStack(TaiwuModalStack modalStack) => _modalStack = modalStack;
@@ -72,14 +91,7 @@ namespace Taiwu_Godot.Scripts.Map
             WorldSignals.OnWildBeastAmbushed += HandleHaltMovementAmbush;
             WorldSignals.OnCombatRequested += HandleHaltMovementCombat;
 
-            if (TileManager != null)
-            {
-                Position = TileManager.GridToWorld(CurrentGridPos);
-            }
-            else
-            {
-                Position = ExplorationSystem.GridToWorld(CurrentGridPos.ToGridCoord()).ToGodot();
-            }
+            Position = GetVisualPositionForGrid(CurrentGridPos);
         }
 
         public override void _ExitTree()
@@ -107,9 +119,7 @@ namespace Taiwu_Godot.Scripts.Map
                 if (domainPos != CurrentGridPos)
                 {
                     CurrentGridPos = domainPos;
-                    Position = TileManager != null
-                        ? TileManager.GridToWorld(domainPos)
-                        : ExplorationSystem.GridToWorld(domainPos.ToGridCoord()).ToGodot();
+                    Position = GetVisualPositionForGrid(domainPos);
                 }
             }
         }
@@ -269,7 +279,7 @@ namespace Taiwu_Godot.Scripts.Map
 
             Vector2I targetGrid = _activePath[_currentPathIndex];
             _stepStartPos = Position;
-            _stepTargetPos = TileManager.GridToWorld(targetGrid);
+            _stepTargetPos = GetVisualPositionForGrid(targetGrid);
             _stepElapsed = 0f;
         }
 
