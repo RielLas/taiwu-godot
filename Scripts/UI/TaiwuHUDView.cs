@@ -427,7 +427,8 @@ namespace Taiwu_Godot.Scripts.UI
                 Name = "BtnPassMonth",
                 Text = "Pass Month",
                 CustomMinimumSize = new Vector2(140f, 28f),
-                MouseFilter = MouseFilterEnum.Stop
+                MouseFilter = MouseFilterEnum.Stop,
+                FocusMode = FocusModeEnum.None
             };
             _btnPassMonth.AddThemeStyleboxOverride("normal", passMonthNormal);
             _btnPassMonth.AddThemeStyleboxOverride("hover", passMonthHover);
@@ -443,7 +444,8 @@ namespace Taiwu_Godot.Scripts.UI
                 Name = "BtnLedger",
                 Text = "【籍】 Ledger [Tab]",
                 CustomMinimumSize = new Vector2(110f, 28f),
-                MouseFilter = MouseFilterEnum.Stop
+                MouseFilter = MouseFilterEnum.Stop,
+                FocusMode = FocusModeEnum.None
             };
             btnLedger.AddThemeStyleboxOverride("normal", slateNormal);
             btnLedger.AddThemeStyleboxOverride("hover", slateHover);
@@ -459,7 +461,8 @@ namespace Taiwu_Godot.Scripts.UI
                 Name = "BtnCauldron",
                 Text = "【炼】 Cauldron [C]",
                 CustomMinimumSize = new Vector2(110f, 28f),
-                MouseFilter = MouseFilterEnum.Stop
+                MouseFilter = MouseFilterEnum.Stop,
+                FocusMode = FocusModeEnum.None
             };
             btnCauldron.AddThemeStyleboxOverride("normal", slateNormal);
             btnCauldron.AddThemeStyleboxOverride("hover", slateHover);
@@ -487,7 +490,8 @@ namespace Taiwu_Godot.Scripts.UI
                 Name = "BtnSystem",
                 Text = "System [Esc]",
                 CustomMinimumSize = new Vector2(84f, 28f),
-                MouseFilter = MouseFilterEnum.Stop
+                MouseFilter = MouseFilterEnum.Stop,
+                FocusMode = FocusModeEnum.None
             };
             btnSystem.AddThemeStyleboxOverride("normal", slateNormal);
             btnSystem.AddThemeStyleboxOverride("hover", slateHover);

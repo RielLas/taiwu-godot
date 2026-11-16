@@ -114,6 +114,30 @@ def audit_input_actions(cs_files):
         })
     return action_results
 
+def audit_gui_focus_traps(cs_files):
+    traps = []
+    for path in cs_files:
+        rel = os.path.relpath(path, PROJECT_DIR)
+        if "TaiwuHUDView.cs" in rel:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            # Check buttons defined in HUD top bar
+            btn_matches = re.findall(r"(?:var\s+([A-Za-z0-9_]+)|([A-Za-z0-9_]+))\s*=\s*new\s+Button\b", content)
+            btn_names = [m[0] or m[1] for m in btn_matches]
+            for btn in btn_names:
+                pattern = rf"{btn}\.FocusMode\s*=\s*(?:Control\.)?FocusModeEnum\.None"
+                prop_pattern = rf"new\s+Button\s*\{{[^}}]*?FocusMode\s*=\s*(?:Control\.)?FocusModeEnum\.None"
+                if not re.search(pattern, content) and not re.search(prop_pattern, content):
+                    traps.append(f"HUD button '{btn}' in {rel} missing FocusMode = FocusModeEnum.None (traps Tab/Space)")
+
+        if "TaiwuInputRouter.cs" in rel:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            if "_Input" not in content or "Key.Tab" not in content:
+                traps.append(f"TaiwuInputRouter in {rel} does not intercept Key.Tab in _Input() (Godot ui_focus_next will steal Tab)")
+
+    return traps
+
 def run_audit():
     cs_files = get_runtime_cs_files()
     event_results = audit_world_signals(cs_files)
@@ -159,6 +183,16 @@ def run_audit():
             print(f"  [OK] '{a['action']}' -> {', '.join(a['references'])}")
 
     print("\n" + "="*70)
+    print("GODOT GUI FOCUS TRAP AUDIT (Tab Navigation & Control Focus)")
+    print("="*70)
+    focus_traps = audit_gui_focus_traps(cs_files)
+    if not focus_traps:
+        print("  [OK] Zero GUI focus traps: Tab intercepted before ui_focus_next and HUD buttons cannot steal focus.")
+    else:
+        for t in focus_traps:
+            print(f"  [X] Trap: {t}")
+
+    print("\n" + "="*70)
     print("AUDIT SUMMARY:")
     print("="*70)
     print(f"  Total WorldSignals Definitions: {len(event_results)}")
@@ -168,6 +202,7 @@ def run_audit():
     print(f"  Unused / Stub Signals:          {len(dead_events)}")
     print(f"  Asymmetrical Subscriptions:     {len(asymmetrical)}")
     print(f"  Ghost Input Actions:            {len(ghost_actions)}")
+    print(f"  GUI Focus Traps:                {len(focus_traps)}")
     print("="*70)
 
 if __name__ == "__main__":

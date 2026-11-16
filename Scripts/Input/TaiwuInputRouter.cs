@@ -70,6 +70,30 @@ namespace Taiwu_Godot.Scripts.Input
             StandaloneProvider?.SetModalActive(isActive);
         }
 
+        public override void _Input(InputEvent @event)
+        {
+            if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
+
+            // Intercept Tab / L before Godot's built-in GUI focus navigation (ui_focus_next) consumes it
+            if (key.Keycode == Key.Tab || key.PhysicalKeycode == Key.Tab ||
+                key.Keycode == Key.L || key.PhysicalKeycode == Key.L ||
+                key.IsActionPressed("toggle_ledger"))
+            {
+                if (_isBattleLocked) return;
+
+                // Don't intercept if user is actively typing in a text field
+                Control? focusOwner = GetViewport().GuiGetFocusOwner();
+                if (focusOwner is LineEdit || focusOwner is TextEdit) return;
+
+                if (!IsModalActive || _modalStack?.IsModalOpen<TaiwuLedgerView>() == true)
+                {
+                    WorldSignals.EmitToggleLedger();
+                }
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+        }
+
         public override void _UnhandledInput(InputEvent @event)
         {
             if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
