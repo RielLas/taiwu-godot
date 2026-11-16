@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://Scripts/UI/TaiwuTitleScreenView.cs" id="1_title"]
 [ext_resource type="Texture2D" path="res://Resources/UI/banner_ink_mountains.png" id="2_mountains"]
+[ext_resource type="VideoStream" path="res://Resources/Videos/OpeningScreen.ogv" id="3_video"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel_card"]
 bg_color = Color(0.04, 0.065, 0.07, 0.96)
@@ -27,7 +28,7 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
-[node name="TitleScreen" type="Control" node_paths=PackedStringArray("MainMenuContainer", "CharCreationContainer", "LoadGameContainer", "SettingsContainer", "BtnBeginJourney", "BtnLoadGame", "BtnSettings", "BtnQuit", "TxtPlayerName", "OptClan", "OptAptitude", "OptSector", "OptVitalGu", "OptDisposition", "BtnConfirmEmbark", "BtnBackFromCreation", "SlotListContainer", "BtnBackFromLoad", "BtnBackFromSettings")]
+[node name="TitleScreen" type="Control" node_paths=PackedStringArray("VideoBackdrop", "FallbackBackdrop", "MainMenuContainer", "CharCreationContainer", "LoadGameContainer", "SettingsContainer", "BtnBeginJourney", "BtnLoadGame", "BtnSettings", "BtnQuit", "TxtPlayerName", "OptClan", "OptAptitude", "OptSector", "OptVitalGu", "OptDisposition", "BtnConfirmEmbark", "BtnBackFromCreation", "SlotListContainer", "BtnBackFromLoad", "BtnBackFromSettings")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -35,6 +36,8 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_title")
+VideoBackdrop = NodePath("VideoBackdrop")
+FallbackBackdrop = NodePath("MountainsBanner")
 MainMenuContainer = NodePath("Menus/MainMenu")
 CharCreationContainer = NodePath("Menus/CharCreation")
 LoadGameContainer = NodePath("Menus/LoadGame")
@@ -64,8 +67,20 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.015, 0.025, 0.03, 1)
 
+[node name="VideoBackdrop" type="VideoStreamPlayer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stream = ExtResource("3_video")
+autoplay = true
+expand = true
+loop = true
+
 [node name="MountainsBanner" type="TextureRect" parent="."]
-modulate = Color(1, 1, 1, 0.22)
+modulate = Color(1, 1, 1, 0.12)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

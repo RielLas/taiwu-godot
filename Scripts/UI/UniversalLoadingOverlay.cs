@@ -31,8 +31,20 @@ namespace Taiwu_Godot.Scripts.UI
             "\"五域界壁，天堑难越。唯坚道心，方登绝顶。\""
         };
 
+        private static readonly string[] LoadingArtPaths =
+        {
+            "res://Resources/LoadingScreens/1.png",
+            "res://Resources/LoadingScreens/2.png",
+            "res://Resources/LoadingScreens/3.png",
+            "res://Resources/LoadingScreens/4.jpeg",
+            "res://Resources/LoadingScreens/5.jpg",
+            "res://Resources/LoadingScreens/6.jpg",
+            "res://Resources/LoadingScreens/7.png"
+        };
+
         [Export] public Control? OverlayRoot { get; set; }
         [Export] public ColorRect? Backdrop { get; set; }
+        [Export] public TextureRect? LoadingArtRect { get; set; }
         [Export] public Label? SealLabel { get; set; }
         [Export] public Label? TitleLabel { get; set; }
         [Export] public Label? TipLabel { get; set; }
@@ -113,6 +125,17 @@ namespace Taiwu_Godot.Scripts.UI
             if (TitleLabel != null)
             {
                 TitleLabel.Text = title;
+            }
+
+            if (LoadingArtRect != null)
+            {
+                int artIdx = Random.Shared.Next(LoadingArtPaths.Length);
+                var tex = ResourceLoader.Load<Texture2D>(LoadingArtPaths[artIdx]);
+                if (tex != null)
+                {
+                    LoadingArtRect.Texture = tex;
+                    LoadingArtRect.Visible = true;
+                }
             }
 
             if (TipLabel != null)

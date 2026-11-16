@@ -24,6 +24,9 @@ namespace Taiwu_Godot.Scripts.UI
         public static NewRunConfig? PendingRunConfig { get; set; }
         public static string? PendingLoadSlot { get; set; }
 
+        [Export] public VideoStreamPlayer? VideoBackdrop { get; set; }
+        [Export] public TextureRect? FallbackBackdrop { get; set; }
+
         [Export] public Control? MainMenuContainer { get; set; }
         [Export] public Control? CharCreationContainer { get; set; }
         [Export] public Control? LoadGameContainer { get; set; }
@@ -73,6 +76,25 @@ namespace Taiwu_Godot.Scripts.UI
             SetupCharacterCreation();
             SetupLoadGameMenu();
             SetupSettingsMenu();
+
+            if (VideoBackdrop != null)
+            {
+                if (VideoBackdrop.Stream == null)
+                {
+                    var stream = ResourceLoader.Load<VideoStream>("res://Resources/Videos/OpeningScreen.ogv");
+                    if (stream != null)
+                    {
+                        VideoBackdrop.Stream = stream;
+                    }
+                }
+                VideoBackdrop.Autoplay = true;
+                VideoBackdrop.Loop = true;
+                VideoBackdrop.Expand = true;
+                if (VideoBackdrop.Stream != null && !VideoBackdrop.IsPlaying())
+                {
+                    VideoBackdrop.Play();
+                }
+            }
 
             ShowSubMenu(MainMenuContainer);
         }
