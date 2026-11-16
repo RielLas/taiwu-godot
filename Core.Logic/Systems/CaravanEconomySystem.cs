@@ -96,14 +96,20 @@ namespace TaiwuGu.Systems
             if (clock == null) return session;
 
             int term = Math.Clamp(clock.CurrentSolarTermIndex, 1, WorldClockComponent.TERMS_PER_YEAR);
-            if (session.HasStock && session.RestockYear == clock.CurrentYear && session.RestockTerm == term)
+            string currentSector = world.CurrentSectorKey ?? string.Empty;
+            if (session.HasStock &&
+                session.RestockYear == clock.CurrentYear &&
+                session.RestockTerm == term &&
+                string.Equals(session.SectorKey, currentSector, StringComparison.Ordinal))
             {
                 return session;
             }
 
             session.RestockYear = clock.CurrentYear;
             session.RestockTerm = term;
-            session.StockSeed = unchecked(world.RunSeed * 397 ^ clock.CurrentYear * 7919 ^ term * 104729);
+            session.SectorKey = currentSector;
+            int sectorHash = ComputeStringHash(currentSector);
+            session.StockSeed = unchecked(world.RunSeed * 397 ^ clock.CurrentYear * 7919 ^ term * 104729 ^ sectorHash * 31);
             session.Stock.Clear();
 
             var rng = new SeededRandom(session.StockSeed);
@@ -114,6 +120,20 @@ namespace TaiwuGu.Systems
 
             session.HasStock = true;
             return session;
+        }
+
+        private static int ComputeStringHash(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return 0;
+            unchecked
+            {
+                int hash = 17;
+                for (int i = 0; i < text.Length; i++)
+                {
+                    hash = hash * 31 + text[i];
+                }
+                return hash;
+            }
         }
 
         public static bool IsAutumnArrival(int solarTermIndex) =>

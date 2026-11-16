@@ -88,6 +88,7 @@ namespace TaiwuGu.Systems
                     scene.LingeringSoulQiTerms = 0;
                     scene.FramedFaction = "Xiong Clan (熊家寨)";
                     Debug.Log($"[ForensicsSystem] Planted Xiong Clan tokens at {pos}.");
+                    WorldDirectorSystem.TriggerFramedSkirmish(world, world.CurrentSectorKey, FactionID.XiongClan);
                     break;
             }
 

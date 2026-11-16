@@ -556,7 +556,7 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void HandleTopicsChanged(DirtyTopic topics)
         {
-            if ((topics & (DirtyTopic.Calendar | DirtyTopic.Cultivator | DirtyTopic.Aperture | DirtyTopic.Map)) != 0)
+            if ((topics & (DirtyTopic.Calendar | DirtyTopic.Cultivator | DirtyTopic.Aperture | DirtyTopic.Map | DirtyTopic.Director | DirtyTopic.Bounty)) != 0)
             {
                 RefreshFromStore();
             }

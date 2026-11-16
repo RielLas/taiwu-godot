@@ -40,6 +40,12 @@ namespace Taiwu_Godot.Scripts.Map
         private readonly List<Color> _batchedCols = new(900 * 8);
         private readonly List<int> _batchedTris = new(900 * 12);
 
+        private Vector2[] _cachedVertsArray = System.Array.Empty<Vector2>();
+        private Vector2[] _cachedUvsArray = System.Array.Empty<Vector2>();
+        private Color[] _cachedColsArray = System.Array.Empty<Color>();
+        private int[] _cachedTrisArray = System.Array.Empty<int>();
+        private readonly Godot.Collections.Array _cachedSurfaceArrays = new();
+
         protected Vector2I? selectedTargetPos = null;
         protected readonly HashSet<Vector2I> previewPathTiles = new();
 
@@ -64,6 +70,7 @@ namespace Taiwu_Godot.Scripts.Map
                 combinedMesh.Dispose();
                 combinedMesh = null;
             }
+            _cachedSurfaceArrays.Clear();
         }
 
         private void HandleTopicsChanged(DirtyTopic topics)
@@ -120,13 +127,13 @@ namespace Taiwu_Godot.Scripts.Map
                 {
                     int y = diag - x;
                     var tileInfo = GetTileDisplayInfo(x, y);
-                    if (!tileInfo.active) continue;
 
                     // Southern / foreground neighbors check for 2.5D stone cliff extrusion (+Y down)
                     // Bottom-Left (South-West) neighbor is at (x, y + 1)
                     // Bottom-Right (South-East) neighbor is at (x + 1, y)
-                    bool exposeBottomLeft = (y + 1 >= GridHeight) || !GetTileDisplayInfo(x, y + 1).active;
-                    bool exposeBottomRight = (x + 1 >= GridWidth) || !GetTileDisplayInfo(x + 1, y).active;
+                    // Only active mountain tiles drop cliff skirts down to void / edge
+                    bool exposeBottomLeft = tileInfo.active && ((y + 1 >= GridHeight) || !GetTileDisplayInfo(x, y + 1).active);
+                    bool exposeBottomRight = tileInfo.active && ((x + 1 >= GridWidth) || !GetTileDisplayInfo(x + 1, y).active);
 
                     activeGridCoords.Add(new Vector2I(x, y));
                     Vector2 pos = GridToWorld(new Vector2I(x, y));
@@ -141,6 +148,7 @@ namespace Taiwu_Godot.Scripts.Map
                         tileInfo.poi,
                         tileInfo.visible,
                         tileInfo.explored,
+                        tileInfo.active,
                         x,
                         y,
                         exposeBottomLeft,
@@ -152,14 +160,18 @@ namespace Taiwu_Godot.Scripts.Map
             combinedMesh ??= new ArrayMesh();
             combinedMesh.ClearSurfaces();
 
-            var surfaceArrays = new Godot.Collections.Array();
-            surfaceArrays.Resize((int)Mesh.ArrayType.Max);
-            surfaceArrays[(int)Mesh.ArrayType.Vertex] = _batchedVerts.ToArray();
-            surfaceArrays[(int)Mesh.ArrayType.TexUV] = _batchedUvs.ToArray();
-            surfaceArrays[(int)Mesh.ArrayType.Color] = _batchedCols.ToArray();
-            surfaceArrays[(int)Mesh.ArrayType.Index] = _batchedTris.ToArray();
+            _cachedVertsArray = _batchedVerts.ToArray();
+            _cachedUvsArray = _batchedUvs.ToArray();
+            _cachedColsArray = _batchedCols.ToArray();
+            _cachedTrisArray = _batchedTris.ToArray();
 
-            combinedMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, surfaceArrays);
+            _cachedSurfaceArrays.Resize((int)Mesh.ArrayType.Max);
+            _cachedSurfaceArrays[(int)Mesh.ArrayType.Vertex] = _cachedVertsArray;
+            _cachedSurfaceArrays[(int)Mesh.ArrayType.TexUV] = _cachedUvsArray;
+            _cachedSurfaceArrays[(int)Mesh.ArrayType.Color] = _cachedColsArray;
+            _cachedSurfaceArrays[(int)Mesh.ArrayType.Index] = _cachedTrisArray;
+
+            combinedMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, _cachedSurfaceArrays);
 
             if (tileMeshInstance != null)
             {
@@ -212,6 +224,7 @@ namespace Taiwu_Godot.Scripts.Map
             TilePOIType poi,
             bool visible,
             bool explored,
+            bool active,
             int gx,
             int gy,
             bool extrudeLeftSkirt,
@@ -221,7 +234,7 @@ namespace Taiwu_Godot.Scripts.Map
             float hh = TILE_HALF_HEIGHT;
             float cliff = TILE_CLIFF_THICKNESS;
 
-            Color faceColor = EvaluateTileColor(biome, poi, visible, explored, gx, gy);
+            Color faceColor = EvaluateTileColor(biome, poi, visible, explored, active, gx, gy);
             Color leftCliffColor = new(faceColor.R * 0.48f, faceColor.G * 0.48f, faceColor.B * 0.52f, faceColor.A);
             Color rightCliffColor = new(faceColor.R * 0.34f, faceColor.G * 0.34f, faceColor.B * 0.38f, faceColor.A);
 
@@ -301,8 +314,14 @@ namespace Taiwu_Godot.Scripts.Map
             activeTileSkirtFlags.Add((extrudeLeftSkirt, extrudeRightSkirt));
         }
 
-        public Color EvaluateTileColor(BiomeType biome, TilePOIType poi, bool visible, bool explored, int gx = 0, int gy = 0)
+        public Color EvaluateTileColor(BiomeType biome, TilePOIType poi, bool visible, bool explored, bool active = true, int gx = 0, int gy = 0)
         {
+            if (!active)
+            {
+                // Inactive void boundary / abyss: Seamless rolling mist
+                return new Color(0.031f, 0.051f, 0.059f, 0.0f);
+            }
+
             // Deterministic hash-based variation replacing Perlin noise
             float hash = MathF.Sin(gx * 12.9898f + gy * 78.233f) * 43758.5453f;
             float noise = hash - MathF.Floor(hash);
@@ -372,6 +391,20 @@ namespace Taiwu_Godot.Scripts.Map
             int totalVerts = _batchedVerts.Count;
             if (totalVerts == 0) return;
 
+            if (_cachedColsArray.Length != totalVerts)
+            {
+                _cachedVertsArray = _batchedVerts.ToArray();
+                _cachedUvsArray = _batchedUvs.ToArray();
+                _cachedColsArray = _batchedCols.ToArray();
+                _cachedTrisArray = _batchedTris.ToArray();
+
+                _cachedSurfaceArrays.Resize((int)Mesh.ArrayType.Max);
+                _cachedSurfaceArrays[(int)Mesh.ArrayType.Vertex] = _cachedVertsArray;
+                _cachedSurfaceArrays[(int)Mesh.ArrayType.TexUV] = _cachedUvsArray;
+                _cachedSurfaceArrays[(int)Mesh.ArrayType.Color] = _cachedColsArray;
+                _cachedSurfaceArrays[(int)Mesh.ArrayType.Index] = _cachedTrisArray;
+            }
+
             int vertexCursor = 0;
             for (int i = 0; i < activeGridCoords.Count; i++)
             {
@@ -379,12 +412,13 @@ namespace Taiwu_Godot.Scripts.Map
                 int vCount = (i < activeTileVertexCounts.Count) ? activeTileVertexCounts[i] : 4;
 
                 var tileInfo = GetTileDisplayInfo(coord.X, coord.Y);
-                Color topColor = EvaluateTileColor(tileInfo.biome, tileInfo.poi, tileInfo.visible, tileInfo.explored, coord.X, coord.Y);
+                Color topColor = EvaluateTileColor(tileInfo.biome, tileInfo.poi, tileInfo.visible, tileInfo.explored, tileInfo.active, coord.X, coord.Y);
 
                 // First 4 vertices are always the top diamond surface
                 for (int v = 0; v < 4 && (vertexCursor + v) < totalVerts; v++)
                 {
                     _batchedCols[vertexCursor + v] = topColor;
+                    _cachedColsArray[vertexCursor + v] = topColor;
                 }
 
                 // Remaining vertices belong to the 2.5D cliff skirts with directional shading
@@ -398,6 +432,7 @@ namespace Taiwu_Godot.Scripts.Map
                         for (int v = 0; v < 4 && (cursor + v) < totalVerts; v++)
                         {
                             _batchedCols[cursor + v] = leftCliffColor;
+                            _cachedColsArray[cursor + v] = leftCliffColor;
                         }
                         cursor += 4;
                     }
@@ -407,6 +442,7 @@ namespace Taiwu_Godot.Scripts.Map
                         for (int v = 0; v < 4 && (cursor + v) < totalVerts; v++)
                         {
                             _batchedCols[cursor + v] = rightCliffColor;
+                            _cachedColsArray[cursor + v] = rightCliffColor;
                         }
                         cursor += 4;
                     }
@@ -415,15 +451,10 @@ namespace Taiwu_Godot.Scripts.Map
                 vertexCursor += vCount;
             }
 
-            // Dynamically refresh vertex colors on the combined mesh surface
+            // Dynamically refresh vertex colors on the combined mesh surface without heap allocations
+            _cachedSurfaceArrays[(int)Mesh.ArrayType.Color] = _cachedColsArray;
             combinedMesh.ClearSurfaces();
-            var surfaceArrays = new Godot.Collections.Array();
-            surfaceArrays.Resize((int)Mesh.ArrayType.Max);
-            surfaceArrays[(int)Mesh.ArrayType.Vertex] = _batchedVerts.ToArray();
-            surfaceArrays[(int)Mesh.ArrayType.TexUV] = _batchedUvs.ToArray();
-            surfaceArrays[(int)Mesh.ArrayType.Color] = _batchedCols.ToArray();
-            surfaceArrays[(int)Mesh.ArrayType.Index] = _batchedTris.ToArray();
-            combinedMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, surfaceArrays);
+            combinedMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, _cachedSurfaceArrays);
         }
 
         protected virtual (BiomeType biome, TilePOIType poi, bool visible, bool explored, bool active) GetTileDisplayInfo(int x, int y)

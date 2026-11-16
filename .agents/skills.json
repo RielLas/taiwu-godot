@@ -18,6 +18,14 @@
         "ui-ux-pro-max",
         "graphify"
       ]
+    },
+    {
+      "path": "C:\\Users\\rifas\\.gemini\\antigravity\\builtin\\skills",
+      "include_only": [
+        "native_swarm",
+        "swarm_monitor",
+        "swarm_narrator"
+      ]
     }
   ]
 }

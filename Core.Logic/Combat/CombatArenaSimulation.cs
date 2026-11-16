@@ -25,7 +25,6 @@ namespace TaiwuGu.Combat
 
         private readonly EntityId[] _skillGuEntityIds = new EntityId[MAX_SKILLS];
         private EntityId _playerEntity;
-        private ApertureComponent? _playerAperture;
 
         public bool IsActive;
         public CombatOutcome Outcome;
@@ -66,7 +65,6 @@ namespace TaiwuGu.Combat
 
             _playerEntity = world.PlayerEntity;
             ApertureComponent? aperture = world.Get<ApertureComponent>(_playerEntity);
-            _playerAperture = aperture;
 
             ref CombatEntityData player = ref EntityBuffer[0];
             player.Active = true;
@@ -182,7 +180,7 @@ namespace TaiwuGu.Combat
                     break;
                 case GuSkillEffectKind.Heal:
                     player.Health = MathF.Min(player.MaxHealth, player.Health + 20f * skill.Rank * mult);
-                    if (_playerAperture != null) _playerAperture.CurrentHealth = player.Health;
+                    aperture.CurrentHealth = player.Health;
                     WorldSignals.EmitSound(HalalSoundType.CauldronSteam);
                     break;
                 case GuSkillEffectKind.AoEPulse:
@@ -431,7 +429,8 @@ namespace TaiwuGu.Combat
                 }
             }
 
-            if (_playerAperture != null) _playerAperture.CurrentHealth = player.Health;
+            var playerAperture = world.Get<ApertureComponent>(_playerEntity);
+            if (playerAperture != null) playerAperture.CurrentHealth = player.Health;
             return Outcome;
         }
 

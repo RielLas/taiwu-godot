@@ -176,6 +176,8 @@ namespace Taiwu_Godot.Scripts.Audio
             WorldSignals.OnTransitModalToggled += HandleModalRustle;
             WorldSignals.OnBattleStageChanged += HandleBattleStageChanged;
             WorldSignals.OnSoundRequested += PlaySoundByType;
+            WorldSignals.OnWorldCalamityUpdated += HandleWorldCalamitySound;
+            WorldSignals.OnBountyHunterAmbush += HandleBountyHunterSound;
         }
 
         private void UnregisterEvents()
@@ -187,6 +189,18 @@ namespace Taiwu_Godot.Scripts.Audio
             WorldSignals.OnTransitModalToggled -= HandleModalRustle;
             WorldSignals.OnBattleStageChanged -= HandleBattleStageChanged;
             WorldSignals.OnSoundRequested -= PlaySoundByType;
+            WorldSignals.OnWorldCalamityUpdated -= HandleWorldCalamitySound;
+            WorldSignals.OnBountyHunterAmbush -= HandleBountyHunterSound;
+        }
+
+        private void HandleWorldCalamitySound(WorldEventEntry entry)
+        {
+            PlaySoundByType(HalalSoundType.ParchmentRustle);
+        }
+
+        private void HandleBountyHunterSound(BountyHunterRecord hunter, GridCoord pos)
+        {
+            PlaySoundByType(HalalSoundType.BladeSlash);
         }
 
         /// <summary>

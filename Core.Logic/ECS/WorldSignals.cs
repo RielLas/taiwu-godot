@@ -23,6 +23,8 @@ namespace TaiwuGu.Entities
         Breakthrough  = 1 << 11,
         WildEncounter = 1 << 12,
         Transit       = 1 << 13,
+        Director      = 1 << 14,
+        Bounty        = 1 << 15,
         All           = ~0
     }
 
@@ -53,6 +55,8 @@ namespace TaiwuGu.Entities
         public static event Action<GridCoord, string, int, float>? OnTerrainHazardTriggered;
         public static event Action<GridCoord, string>? OnWildBeastAmbushed;
         public static event Action<ArenaEncounterType, GridCoord>? OnRoadAmbushOccurred;
+        public static event Action<WorldEventEntry>? OnWorldCalamityUpdated;
+        public static event Action<BountyHunterRecord, GridCoord>? OnBountyHunterAmbush;
         public static event Action? OnCaravanBazaarRequested;
         public static event Action<string, bool>? OnGameSaved;
         public static event Action<string, bool>? OnGameLoaded;
@@ -93,6 +97,8 @@ namespace TaiwuGu.Entities
         public static void EmitTerrainHazardTriggered(GridCoord pos, string hazardName, int hpDmg, float seaDmg) => OnTerrainHazardTriggered?.Invoke(pos, hazardName, hpDmg, seaDmg);
         public static void EmitWildBeastAmbushed(GridCoord pos, string beastName) => OnWildBeastAmbushed?.Invoke(pos, beastName);
         public static void EmitRoadAmbushOccurred(ArenaEncounterType enc, GridCoord pos) => OnRoadAmbushOccurred?.Invoke(enc, pos);
+        public static void EmitWorldCalamityUpdated(WorldEventEntry entry) => OnWorldCalamityUpdated?.Invoke(entry);
+        public static void EmitBountyHunterAmbush(BountyHunterRecord hunter, GridCoord pos) => OnBountyHunterAmbush?.Invoke(hunter, pos);
         public static void EmitCaravanBazaarRequested() => OnCaravanBazaarRequested?.Invoke();
         public static void EmitGameSaved(string slot, bool ok) => OnGameSaved?.Invoke(slot, ok);
         public static void EmitGameLoaded(string slot, bool ok) => OnGameLoaded?.Invoke(slot, ok);
@@ -139,6 +145,8 @@ namespace TaiwuGu.Entities
             OnTerrainHazardTriggered = null;
             OnWildBeastAmbushed = null;
             OnRoadAmbushOccurred = null;
+            OnWorldCalamityUpdated = null;
+            OnBountyHunterAmbush = null;
             OnCaravanBazaarRequested = null;
             OnGameSaved = null;
             OnGameLoaded = null;

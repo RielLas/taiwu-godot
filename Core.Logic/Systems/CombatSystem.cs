@@ -173,8 +173,7 @@ namespace TaiwuGu.Systems
                 else if (encounter == ArenaEncounterType.DemonicCultivator)
                 {
                     cult.PrimevalStones += 40;
-                    string[] caveLootPool = { "gu_liquor_worm_r1", "gu_white_jade_r1", "gu_little_light_r1", "gu_bronze_skin_r1" };
-                    string lootId = caveLootPool[rng.Next(0, caveLootPool.Length)];
+                    string lootId = ExplorationSystem.PickWildGuForSector(world, world.CurrentSectorKey, rng);
                     var wildGu = GuDatabase.CreateGuWormComponent(lootId, isWild: true);
                     if (wildGu != null) WorldFactory.SpawnGuForOwner(world, world.PlayerEntity, wildGu, isEquipped: false);
 

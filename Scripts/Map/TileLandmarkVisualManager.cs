@@ -17,7 +17,8 @@ namespace Taiwu_Godot.Scripts.Map
         private IWorldStateProvider? _worldProvider;
         private readonly List<Node2D> activeLandmarks = new();
         private readonly Dictionary<Node2D, (Vector2I pos, Sprite2D sprite)> landmarkDataMap = new();
-        private readonly List<Node2D> activeCultivatorTokens = new();
+        private readonly Dictionary<ulong, Node2D> _activeTokens = new();
+        private readonly Stack<Node2D> _tokenPool = new();
 
         private Texture2D? clanVillageTex;
         private Texture2D? merchantInnTex;
@@ -89,19 +90,95 @@ namespace Taiwu_Godot.Scripts.Map
 
         private void RefreshCultivatorTokens()
         {
-            ClearCultivatorTokens();
-            if (TileManager == null || _worldProvider == null) return;
-
-            var occupiedTiles = SocialVendettaSystem.GetOccupiedNPCTiles(_worldProvider.Current);
-            for (int i = 0; i < occupiedTiles.Count; i++)
+            if (TileManager == null || _worldProvider == null)
             {
-                Vector2I pos = occupiedTiles[i].ToGodot();
-                Vector2 worldPos = TileManager.GridToWorld(pos);
-                Node2D? token = CreateCultivatorTokenObject(worldPos, pos);
-                if (token != null)
+                ClearCultivatorTokens();
+                return;
+            }
+
+            var world = _worldProvider.Current;
+            string sector = world.CurrentSectorKey;
+            var activeEntityIds = new HashSet<ulong>();
+
+            foreach (var (eid, cult) in world.GetAll<CultivatorComponent>())
+            {
+                if (!cult.IsAlive || world.Has<PlayerTagComponent>(eid)) continue;
+                if (world.TryGet<PositionComponent>(eid, out var pos))
                 {
-                    AddChild(token);
-                    activeCultivatorTokens.Add(token);
+                    if (string.IsNullOrEmpty(pos.SectorKey) || string.Equals(pos.SectorKey, sector, StringComparison.Ordinal))
+                    {
+                        ulong id = eid.Value;
+                        activeEntityIds.Add(id);
+                        Vector2I gridPos = pos.Coord.ToGodot();
+                        Vector2 worldPos = TileManager.GridToWorld(gridPos);
+
+                        if (_activeTokens.TryGetValue(id, out var tokenNode))
+                        {
+                            if (GodotObject.IsInstanceValid(tokenNode))
+                            {
+                                if (tokenNode.Position != worldPos)
+                                {
+                                    tokenNode.Position = worldPos;
+                                }
+                                tokenNode.Visible = true;
+                            }
+                        }
+                        else
+                        {
+                            Node2D? token = null;
+                            while (_tokenPool.Count > 0)
+                            {
+                                var candidate = _tokenPool.Pop();
+                                if (GodotObject.IsInstanceValid(candidate))
+                                {
+                                    token = candidate;
+                                    break;
+                                }
+                            }
+
+                            if (token != null)
+                            {
+                                token.Position = worldPos;
+                                token.Visible = true;
+                            }
+                            else
+                            {
+                                token = CreateCultivatorTokenObject(worldPos, gridPos);
+                                if (token != null)
+                                {
+                                    AddChild(token);
+                                }
+                            }
+
+                            if (token != null)
+                            {
+                                _activeTokens[id] = token;
+                            }
+                        }
+                    }
+                }
+            }
+
+            List<ulong>? toRemove = null;
+            foreach (var (id, tokenNode) in _activeTokens)
+            {
+                if (!activeEntityIds.Contains(id))
+                {
+                    toRemove ??= new List<ulong>();
+                    toRemove.Add(id);
+                    if (GodotObject.IsInstanceValid(tokenNode))
+                    {
+                        tokenNode.Visible = false;
+                        _tokenPool.Push(tokenNode);
+                    }
+                }
+            }
+
+            if (toRemove != null)
+            {
+                for (int i = 0; i < toRemove.Count; i++)
+                {
+                    _activeTokens.Remove(toRemove[i]);
                 }
             }
         }
@@ -156,14 +233,23 @@ namespace Taiwu_Godot.Scripts.Map
 
         private void ClearCultivatorTokens()
         {
-            for (int i = 0; i < activeCultivatorTokens.Count; i++)
+            foreach (var token in _activeTokens.Values)
             {
-                if (GodotObject.IsInstanceValid(activeCultivatorTokens[i]))
+                if (GodotObject.IsInstanceValid(token))
                 {
-                    activeCultivatorTokens[i].QueueFree();
+                    token.QueueFree();
                 }
             }
-            activeCultivatorTokens.Clear();
+            _activeTokens.Clear();
+
+            while (_tokenPool.Count > 0)
+            {
+                var token = _tokenPool.Pop();
+                if (GodotObject.IsInstanceValid(token))
+                {
+                    token.QueueFree();
+                }
+            }
         }
 
         private Node2D? CreatePOILandmarkObject(TilePOIType poi, Vector2 worldPos, Vector2I gridPos)
@@ -267,9 +353,8 @@ namespace Taiwu_Godot.Scripts.Map
                 }
             }
 
-            for (int i = 0; i < activeCultivatorTokens.Count; i++)
+            foreach (var token in _activeTokens.Values)
             {
-                Node2D token = activeCultivatorTokens[i];
                 if (!GodotObject.IsInstanceValid(token)) continue;
                 // Tokens on explored tiles remain visible
                 token.Visible = true;

@@ -57,6 +57,7 @@ namespace TaiwuGu.Systems
             GuEcologySystem.ProcessFeedingCycleForWorld(world);
             ForensicsSystem.AdvanceCrimeScenes(world);
             SocialVendettaSystem.TickMonthlyNPCs(world, rng);
+            WorldDirectorSystem.TickSolarTerm(world, rng);
 
             Debug.Log($"[TimeSystem] Month Rollover -> Year {clock.CurrentYear}, {clock.ActiveSolarTerm} ({clock.GetSolarTermName()}) | AP: {clock.ActionPointsRemaining}/{clock.MonthlyAPBudget}");
 

@@ -33,6 +33,7 @@ namespace TaiwuGu.Entities
     {
         public int RestockYear { get; set; }
         public int RestockTerm { get; set; }
+        public string SectorKey { get; set; } = string.Empty;
         public int StockSeed { get; set; }
         public bool HasStock { get; set; }
         public int GambleSequence { get; set; }

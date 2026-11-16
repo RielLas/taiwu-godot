@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TaiwuGu.Combat;
 using TaiwuGu.Core;
 using TaiwuGu.Entities;
@@ -162,15 +163,56 @@ namespace TaiwuGu.Systems
                 return;
             }
 
-            // 3. Wild Gu Discovery (~4%)
-            if (rng.NextDouble() < 0.04f)
+            // 3. Wild Gu Discovery (Miniscule chance: ~0.5%)
+            if (rng.NextDouble() < 0.005f)
             {
-                string[] wildPool = { "gu_moonlight_r1", "gu_white_boar_r1", "gu_little_light_r1", "gu_bronze_skin_r1", "gu_liquor_worm_r1" };
-                string pickedGu = wildPool[rng.Next(0, wildPool.Length)];
+                string pickedGu = PickWildGuForSector(world, world.CurrentSectorKey, rng);
                 var temp = (WildOrganismTemperament)rng.Next(0, 3);
                 var organism = WildOrganismData.CreateWildOrganism(pickedGu, temp);
                 WildEncounterSystem.OpenEncounter(world, organism);
             }
+        }
+
+        public static string PickWildGuForSector(WorldStore world, string sectorKey, IRandomSource rng)
+        {
+            string sKey = string.IsNullOrEmpty(sectorKey) ? world.CurrentSectorKey : sectorKey;
+            if (WorldAtlasRegistry.TryGet(sKey, out var bp) && bp != null && GuDatabase.IsLoaded)
+            {
+                var candidates = new List<string>();
+                var fallbackCandidates = new List<string>();
+
+                foreach (var def in GuDatabase.GetAll())
+                {
+                    if (def == null || string.IsNullOrEmpty(def.Id)) continue;
+                    if (def.Rank > bp.MaxWildGuRank) continue;
+
+                    fallbackCandidates.Add(def.Id);
+
+                    if (bp.NativeGuPaths != null && bp.NativeGuPaths.Count > 0)
+                    {
+                        for (int i = 0; i < bp.NativeGuPaths.Count; i++)
+                        {
+                            if (string.Equals(bp.NativeGuPaths[i], def.Path, StringComparison.OrdinalIgnoreCase))
+                            {
+                                candidates.Add(def.Id);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (candidates.Count > 0)
+                {
+                    return candidates[rng.Next(0, candidates.Count)];
+                }
+                if (fallbackCandidates.Count > 0)
+                {
+                    return fallbackCandidates[rng.Next(0, fallbackCandidates.Count)];
+                }
+            }
+
+            string[] defaultPool = { "gu_moonlight_r1", "gu_white_boar_r1", "gu_little_light_r1", "gu_bronze_skin_r1", "gu_liquor_worm_r1" };
+            return defaultPool[rng.Next(0, defaultPool.Length)];
         }
     }
 }
