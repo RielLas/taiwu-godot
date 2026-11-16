@@ -314,6 +314,46 @@ namespace Taiwu_Godot.Scripts.Map
             activeTileSkirtFlags.Add((extrudeLeftSkirt, extrudeRightSkirt));
         }
 
+        /// <summary>
+        /// Computes organic 1-tile transition ring fog factors by probing 8-neighbor visibility and exploration states.
+        /// Zero heap allocation (uses stackalloc).
+        /// </summary>
+        protected (float visibleFactor, float exploredFactor) ComputeFogTransitionFactors(int gx, int gy, bool isVisible, bool isExplored)
+        {
+            float visWeight = isVisible ? 1.0f : 0f;
+            float expWeight = isExplored ? 1.0f : 0f;
+            float totalWeight = 1.0f;
+
+            ReadOnlySpan<(int dx, int dy, float w)> offsets = stackalloc (int, int, float)[]
+            {
+                ( 1,  0, 0.25f),
+                (-1,  0, 0.25f),
+                ( 0,  1, 0.25f),
+                ( 0, -1, 0.25f),
+                ( 1,  1, 0.125f),
+                (-1, -1, 0.125f),
+                ( 1, -1, 0.125f),
+                (-1,  1, 0.125f)
+            };
+
+            for (int i = 0; i < offsets.Length; i++)
+            {
+                int nx = gx + offsets[i].dx;
+                int ny = gy + offsets[i].dy;
+                if (!IsWithinBounds(new Vector2I(nx, ny))) continue;
+
+                var nInfo = GetTileDisplayInfo(nx, ny);
+                if (!nInfo.active) continue;
+
+                float w = offsets[i].w;
+                totalWeight += w;
+                if (nInfo.visible) visWeight += w;
+                if (nInfo.explored) expWeight += w;
+            }
+
+            return (visWeight / totalWeight, expWeight / totalWeight);
+        }
+
         public Color EvaluateTileColor(BiomeType biome, TilePOIType poi, bool visible, bool explored, bool active = true, int gx = 0, int gy = 0)
         {
             if (!active)
@@ -345,29 +385,79 @@ namespace Taiwu_Godot.Scripts.Map
                 1f
             );
 
+            var (visFactor, expFactor) = ComputeFogTransitionFactors(gx, gy, visible, explored);
+
             if (!explored)
             {
-                // Unexplored: Dim organic mountain landscape under gentle Dao mist (Alpha=0.20)
+                if (expFactor > 0.01f)
+                {
+                    // 1-tile organic transition ring around IsExplored
+                    float ringT = Math.Clamp(expFactor * 2.5f, 0f, 1f);
+                    float alpha = Godot.Mathf.Lerp(0.20f, 0.38f, ringT);
+                    float rMul = Godot.Mathf.Lerp(0.35f, 0.48f, ringT);
+                    float gMul = Godot.Mathf.Lerp(0.40f, 0.52f, ringT);
+                    float bMul = Godot.Mathf.Lerp(0.36f, 0.49f, ringT);
+                    return new Color(baseColor.R * rMul, baseColor.G * gMul, baseColor.B * bMul, alpha);
+                }
+
+                // Deep unexplored: Dim organic mountain landscape under gentle Dao mist (Alpha=0.20)
                 return new Color(baseColor.R * 0.35f, baseColor.G * 0.40f, baseColor.B * 0.36f, 0.20f);
             }
             else if (!visible)
             {
-                // Explored but out of sight: Half-lit mountain (Alpha=0.55)
-                baseColor = new Color(baseColor.R * 0.60f, baseColor.G * 0.65f, baseColor.B * 0.62f, 0.55f);
+                if (visFactor > 0.01f)
+                {
+                    // 1-tile organic transition ring around IsVisible
+                    float visT = Math.Clamp(visFactor * 2.5f, 0f, 1f);
+                    float alpha = Godot.Mathf.Lerp(0.55f, 0.85f, visT);
+                    float rMul = Godot.Mathf.Lerp(0.60f, 0.85f, visT);
+                    float gMul = Godot.Mathf.Lerp(0.65f, 0.88f, visT);
+                    float bMul = Godot.Mathf.Lerp(0.62f, 0.86f, visT);
+                    baseColor = new Color(baseColor.R * rMul, baseColor.G * gMul, baseColor.B * bMul, alpha);
+                }
+                else if (expFactor < 0.95f)
+                {
+                    // Explored boundary bordering unexplored fog
+                    float borderT = Math.Clamp((1.0f - expFactor) * 2.0f, 0f, 1f);
+                    float alpha = Godot.Mathf.Lerp(0.55f, 0.44f, borderT);
+                    float rMul = Godot.Mathf.Lerp(0.60f, 0.50f, borderT);
+                    float gMul = Godot.Mathf.Lerp(0.65f, 0.54f, borderT);
+                    float bMul = Godot.Mathf.Lerp(0.62f, 0.51f, borderT);
+                    baseColor = new Color(baseColor.R * rMul, baseColor.G * gMul, baseColor.B * bMul, alpha);
+                }
+                else
+                {
+                    // Standard explored out of sight: Half-lit mountain (Alpha=0.55)
+                    baseColor = new Color(baseColor.R * 0.60f, baseColor.G * 0.65f, baseColor.B * 0.62f, 0.55f);
+                }
             }
             else
             {
-                // Fully visible: Lush, vibrant verdant bamboo jade (Alpha=1.0)
-                baseColor = new Color(baseColor.R, baseColor.G, baseColor.B, 1.0f);
+                if (visFactor < 0.95f)
+                {
+                    // Visible edge bordering fog: softly transition into Dao mist
+                    float edgeT = Math.Clamp((1.0f - visFactor) * 1.5f, 0f, 1f);
+                    float alpha = Godot.Mathf.Lerp(1.0f, 0.92f, edgeT);
+                    float rMul = Godot.Mathf.Lerp(1.0f, 0.95f, edgeT);
+                    float gMul = Godot.Mathf.Lerp(1.0f, 0.96f, edgeT);
+                    float bMul = Godot.Mathf.Lerp(1.0f, 0.95f, edgeT);
+                    baseColor = new Color(baseColor.R * rMul, baseColor.G * gMul, baseColor.B * bMul, alpha);
+                }
+                else
+                {
+                    // Fully visible core: Lush, vibrant verdant bamboo jade (Alpha=1.0)
+                    baseColor = new Color(baseColor.R, baseColor.G, baseColor.B, 1.0f);
+                }
             }
 
             Vector2I currentCoord = new(gx, gy);
             if (selectedTargetPos.HasValue && selectedTargetPos.Value == currentCoord)
             {
+                // Soft jade-celadon highlight (#34D399 / #67E8F9) without heavy yellow fill
                 baseColor = new Color(
-                    Math.Clamp(baseColor.R * 1.35f + 0.35f, 0f, 1f),
-                    Math.Clamp(baseColor.G * 1.05f + 0.20f, 0f, 1f),
-                    Math.Clamp(baseColor.B * 0.40f, 0f, 1f),
+                    Math.Clamp(baseColor.R * 0.85f + 0.05f, 0f, 1f),
+                    Math.Clamp(baseColor.G * 1.15f + 0.12f, 0f, 1f),
+                    Math.Clamp(baseColor.B * 1.10f + 0.12f, 0f, 1f),
                     baseColor.A
                 );
             }

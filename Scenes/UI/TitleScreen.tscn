@@ -1,0 +1,423 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/TaiwuTitleScreenView.cs" id="1_title"]
+[ext_resource type="Texture2D" path="res://Resources/UI/banner_ink_mountains.png" id="2_mountains"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel_card"]
+bg_color = Color(0.04, 0.065, 0.07, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.851, 0.467, 0.024, 0.7)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_gold"]
+bg_color = Color(0.12, 0.16, 0.22, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.85, 0.65, 0.15, 0.7)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="TitleScreen" type="Control" node_paths=PackedStringArray("MainMenuContainer", "CharCreationContainer", "LoadGameContainer", "SettingsContainer", "BtnBeginJourney", "BtnLoadGame", "BtnSettings", "BtnQuit", "TxtPlayerName", "OptClan", "OptAptitude", "OptSector", "OptVitalGu", "OptDisposition", "BtnConfirmEmbark", "BtnBackFromCreation", "SlotListContainer", "BtnBackFromLoad", "BtnBackFromSettings")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_title")
+MainMenuContainer = NodePath("Menus/MainMenu")
+CharCreationContainer = NodePath("Menus/CharCreation")
+LoadGameContainer = NodePath("Menus/LoadGame")
+SettingsContainer = NodePath("Menus/Settings")
+BtnBeginJourney = NodePath("Menus/MainMenu/VBox/Buttons/BtnBegin")
+BtnLoadGame = NodePath("Menus/MainMenu/VBox/Buttons/BtnLoad")
+BtnSettings = NodePath("Menus/MainMenu/VBox/Buttons/BtnSettings")
+BtnQuit = NodePath("Menus/MainMenu/VBox/Buttons/BtnQuit")
+TxtPlayerName = NodePath("Menus/CharCreation/Panel/Margin/VBox/Form/RowName/TxtName")
+OptClan = NodePath("Menus/CharCreation/Panel/Margin/VBox/Form/RowClan/OptClan")
+OptAptitude = NodePath("Menus/CharCreation/Panel/Margin/VBox/Form/RowAptitude/OptAptitude")
+OptSector = NodePath("Menus/CharCreation/Panel/Margin/VBox/Form/RowSector/OptSector")
+OptVitalGu = NodePath("Menus/CharCreation/Panel/Margin/VBox/Form/RowVital/OptVital")
+OptDisposition = NodePath("Menus/CharCreation/Panel/Margin/VBox/Form/RowDisposition/OptDisposition")
+BtnConfirmEmbark = NodePath("Menus/CharCreation/Panel/Margin/VBox/ActionButtons/BtnConfirm")
+BtnBackFromCreation = NodePath("Menus/CharCreation/Panel/Margin/VBox/ActionButtons/BtnBack")
+SlotListContainer = NodePath("Menus/LoadGame/Panel/Margin/VBox/Scroll/SlotList")
+BtnBackFromLoad = NodePath("Menus/LoadGame/Panel/Margin/VBox/BtnBackLoad")
+BtnBackFromSettings = NodePath("Menus/Settings/Panel/Margin/VBox/BtnBackSettings")
+
+[node name="BackdropColor" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.015, 0.025, 0.03, 1)
+
+[node name="MountainsBanner" type="TextureRect" parent="."]
+modulate = Color(1, 1, 1, 0.22)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_mountains")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Menus" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainMenu" type="CenterContainer" parent="Menus"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Menus/MainMenu"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+theme_override_constants/separation = 28
+alignment = 1
+
+[node name="TitleBox" type="VBoxContainer" parent="Menus/MainMenu/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="ChineseTitle" type="Label" parent="Menus/MainMenu/VBox/TitleBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 42
+text = "太 吾 蛊 道"
+horizontal_alignment = 1
+
+[node name="EnglishTitle" type="Label" parent="Menus/MainMenu/VBox/TitleBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.91, 0.94, 0.85)
+theme_override_font_sizes/font_size = 14
+text = "TAIWU: PATH OF THE GU"
+horizontal_alignment = 1
+
+[node name="LoreSub" type="Label" parent="Menus/MainMenu/VBox/TitleBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.62, 0.68, 0.75)
+theme_override_font_sizes/font_size = 11
+text = "天地为炉 • 万物为铜 • 阴阳为炭 • 造化为工"
+horizontal_alignment = 1
+
+[node name="Buttons" type="VBoxContainer" parent="Menus/MainMenu/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BtnBegin" type="Button" parent="Menus/MainMenu/VBox/Buttons"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_gold")
+text = "【踏入仙途】 Begin Journey"
+
+[node name="BtnLoad" type="Button" parent="Menus/MainMenu/VBox/Buttons"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.204, 0.827, 0.6, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_gold")
+text = "【再续前缘】 Load Chronicle"
+
+[node name="BtnSettings" type="Button" parent="Menus/MainMenu/VBox/Buttons"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_gold")
+text = "【心境玄通】 Settings"
+
+[node name="BtnQuit" type="Button" parent="Menus/MainMenu/VBox/Buttons"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.7, 0.75, 0.8, 0.9)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_gold")
+text = "【归隐凡尘】 Quit Game"
+
+[node name="CharCreation" type="CenterContainer" parent="Menus"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Menus/CharCreation"]
+custom_minimum_size = Vector2(580, 520)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel_card")
+
+[node name="Margin" type="MarginContainer" parent="Menus/CharCreation/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="VBox" type="VBoxContainer" parent="Menus/CharCreation/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="Menus/CharCreation/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 18
+text = "◆ 凝 窍 启 程 — Character Genesis ◆"
+horizontal_alignment = 1
+
+[node name="Form" type="VBoxContainer" parent="Menus/CharCreation/Panel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="RowName" type="HBoxContainer" parent="Menus/CharCreation/Panel/Margin/VBox/Form"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Lbl" type="Label" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowName"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
+theme_override_font_sizes/font_size = 11
+text = "Cultivator Name (道号):"
+
+[node name="TxtName" type="LineEdit" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowName"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+text = "Gu Yue Fang Yuan"
+
+[node name="RowClan" type="HBoxContainer" parent="Menus/CharCreation/Panel/Margin/VBox/Form"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Lbl" type="Label" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowClan"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
+theme_override_font_sizes/font_size = 11
+text = "Origin Clan (出身山寨):"
+
+[node name="OptClan" type="OptionButton" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowClan"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+
+[node name="RowAptitude" type="HBoxContainer" parent="Menus/CharCreation/Panel/Margin/VBox/Form"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Lbl" type="Label" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowAptitude"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
+theme_override_font_sizes/font_size = 11
+text = "Aptitude Grade (资质):"
+
+[node name="OptAptitude" type="OptionButton" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowAptitude"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+
+[node name="RowSector" type="HBoxContainer" parent="Menus/CharCreation/Panel/Margin/VBox/Form"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Lbl" type="Label" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowSector"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
+theme_override_font_sizes/font_size = 11
+text = "Starting Sector (初入界域):"
+
+[node name="OptSector" type="OptionButton" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowSector"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+
+[node name="RowVital" type="HBoxContainer" parent="Menus/CharCreation/Panel/Margin/VBox/Form"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Lbl" type="Label" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowVital"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
+theme_override_font_sizes/font_size = 11
+text = "Vital Gu (本命蛊):"
+
+[node name="OptVital" type="OptionButton" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowVital"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+
+[node name="RowDisposition" type="HBoxContainer" parent="Menus/CharCreation/Panel/Margin/VBox/Form"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Lbl" type="Label" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowDisposition"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
+theme_override_font_sizes/font_size = 11
+text = "Disposition (心性处世):"
+
+[node name="OptDisposition" type="OptionButton" parent="Menus/CharCreation/Panel/Margin/VBox/Form/RowDisposition"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+
+[node name="ActionButtons" type="HBoxContainer" parent="Menus/CharCreation/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 2
+
+[node name="BtnBack" type="Button" parent="Menus/CharCreation/Panel/Margin/VBox/ActionButtons"]
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "Back (返回)"
+
+[node name="BtnConfirm" type="Button" parent="Menus/CharCreation/Panel/Margin/VBox/ActionButtons"]
+custom_minimum_size = Vector2(160, 32)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_gold")
+text = "【启程】 Confirm & Embark"
+
+[node name="LoadGame" type="CenterContainer" parent="Menus"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Menus/LoadGame"]
+custom_minimum_size = Vector2(520, 420)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel_card")
+
+[node name="Margin" type="MarginContainer" parent="Menus/LoadGame/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="Menus/LoadGame/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Menus/LoadGame/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 16
+text = "◆ 再 续 前 缘 — Load Recorded Chronicle ◆"
+horizontal_alignment = 1
+
+[node name="Scroll" type="ScrollContainer" parent="Menus/LoadGame/Panel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="SlotList" type="VBoxContainer" parent="Menus/LoadGame/Panel/Margin/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="BtnBackLoad" type="Button" parent="Menus/LoadGame/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(100, 30)
+layout_mode = 2
+size_flags_horizontal = 8
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "Back (返回)"
+
+[node name="Settings" type="CenterContainer" parent="Menus"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Menus/Settings"]
+custom_minimum_size = Vector2(460, 320)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel_card")
+
+[node name="Margin" type="MarginContainer" parent="Menus/Settings/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="Menus/Settings/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="Menus/Settings/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 16
+text = "◆ 心 境 玄 通 — Preferences & Settings ◆"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="Menus/Settings/Panel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.7, 0.75, 0.8, 1)
+theme_override_font_sizes/font_size = 11
+text = "Audio volumes, screen display, and input keybindings are automatically persisted in user preferences."
+autowrap_mode = 3
+
+[node name="BtnBackSettings" type="Button" parent="Menus/Settings/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(100, 30)
+layout_mode = 2
+size_flags_horizontal = 8
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "Back (返回)"

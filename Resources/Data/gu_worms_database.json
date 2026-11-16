@@ -1,1538 +1,3091 @@
 [
-{
-"id": "gu_moonlight_r1",
-"canonical_name": "Moonlight Gu",
-"chinese_name": "月光蛊",
-"path": "Moon",
-"rank": 1,
-"slot_category": 0,
-"base_beu_cost": 10.0,
-"cooldown_seconds": 0.8,
-"diet": {
-"diet_type": 1,
-"feed_frequency_days": 5,
-"ration_amount": 2,
-"starvation_grace_days": 3
-},
-"combat_stats": {
-"projectile_prefab": "Moonblade",
-"base_damage": 25.0,
-"speed": 12.0,
-"range": 8.0
-},
-"passive_modifiers": {
-"dao_mark_affinity": "Moon",
-"essence_leak_rate": 0.0
-},
-"description": "Rank 1 Moon Path Gu. The signature relic of the Gu Yue clan. Consumes primeval essence to release razor-sharp cyan curved crescent moonblades from the palm.",
-"refinement_paths": [
-{
-"result_gu_id": "gu_moonglow_r2",
-"required_materials": [
-"gu_moonlight_r1",
-"gu_little_light_r1"
-],
-"catalysts": [
-"primeval_stones_50",
-"moon_orchid_10"
-],
-"base_success_rate": 0.65
-},
-{
-"result_gu_id": "gu_moonscar_r2",
-"required_materials": [
-"gu_moonlight_r1",
-"gu_scar_stone_catalyst"
-],
-"catalysts": [
-"primeval_stones_40"
-],
-"base_success_rate": 0.70
-}
-]
-},
-{
-   "id": "gu_little_light_r1",
-   "canonical_name": "Little Light Gu",
-   "chinese_name": "小光蛊",
-   "path": "Light",
-   "rank": 1,
-   "slot_category": 6,
-   "base_beu_cost": 4.0,
-   "cooldown_seconds": 1.2,
-   "diet": {
-       "diet_type": 4,
-       "feed_frequency_days": 4,
-       "ration_amount": 1,
-       "starvation_grace_days": 2
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Light",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Light Path auxiliary Gu. Emits a warm speck of light that can illuminate dark grottos or be infused into offensive Gu to amplify radiance and projectile velocity.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_moonglow_r2",
-           "required_materials": [
-               "gu_little_light_r1",
-               "gu_moonlight_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_50",
-               "moon_orchid_10"
-           ],
-           "base_success_rate": 0.65
-       }
-   ]
-},
-
-{
-   "id": "gu_moonglow_r2",
-   "canonical_name": "Moonglow Gu",
-   "chinese_name": "月芒蛊",
-   "path": "Moon",
-   "rank": 2,
-   "slot_category": 0,
-   "base_beu_cost": 18.0,
-   "cooldown_seconds": 0.7,
-   "diet": {
-       "diet_type": 1,
-       "feed_frequency_days": 4,
-       "ration_amount": 4,
-       "starvation_grace_days": 3
-   },
-   "combat_stats": {
-       "projectile_prefab": "MoonglowBlade",
-       "base_damage": 65.0,
-       "speed": 16.0,
-       "range": 12.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Moon",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Moon Path Gu. Refined by merging Moonlight Gu with Little Light Gu. Fires eerie, elongated moonbeams with significantly heightened piercing power.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_golden_moon_r3",
-           "required_materials": [
-               "gu_moonglow_r2"
-           ],
-           "catalysts": [
-               "primeval_stones_200",
-               "iron_gold_powder_10"
-           ],
-           "base_success_rate": 0.55
-       },
-       {
-           "result_gu_id": "gu_blood_moon_r3",
-           "required_materials": [
-               "gu_moonglow_r2"
-           ],
-           "catalysts": [
-               "primeval_stones_150",
-               "frenzied_wolf_blood_vial_5"
-           ],
-           "base_success_rate": 0.50
-       }
-   ]
-},
-
-{
-   "id": "gu_moonscar_r2",
-   "canonical_name": "Moonscar Gu",
-   "chinese_name": "月痕蛊",
-   "path": "Moon",
-   "rank": 2,
-   "slot_category": 0,
-   "base_beu_cost": 16.0,
-   "cooldown_seconds": 0.9,
-   "diet": {
-       "diet_type": 1,
-       "feed_frequency_days": 4,
-       "ration_amount": 3,
-       "starvation_grace_days": 3
-   },
-   "combat_stats": {
-       "projectile_prefab": "MoonscarBlade",
-       "base_damage": 55.0,
-       "speed": 13.0,
-       "range": 10.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Moon",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Moon Path Gu. Produces curved moonblades that inflict persistent festering lacerations, slowing wound closure and causing blood leakage.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_blood_moon_r3",
-           "required_materials": [
-               "gu_moonscar_r2"
-           ],
-           "catalysts": [
-               "primeval_stones_160",
-               "wolf_blood_10"
-           ],
-           "base_success_rate": 0.55
-       }
-   ]
-},
-
-{
-   "id": "gu_golden_moon_r3",
-   "canonical_name": "Golden Moon Gu",
-   "chinese_name": "金月蛊",
-   "path": "Moon",
-   "rank": 3,
-   "slot_category": 0,
-   "base_beu_cost": 32.0,
-   "cooldown_seconds": 1.0,
-   "diet": {
-       "diet_type": 5,
-       "feed_frequency_days": 6,
-       "ration_amount": 5,
-       "starvation_grace_days": 4
-   },
-   "combat_stats": {
-       "projectile_prefab": "GoldenMoonBlade",
-       "base_damage": 175.0,
-       "speed": 18.0,
-       "range": 14.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Moon",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 3 Moon Path Gu. Integrates metal brilliance into lunar blade resonance, producing shimmering golden arcs capable of slicing through granite fortifications.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_shattering_gold_moon_r4",
-           "required_materials": [
-               "gu_golden_moon_r3"
-           ],
-           "catalysts": [
-               "primeval_stones_800",
-               "pure_gold_essence_3"
-           ],
-           "base_success_rate": 0.35
-       }
-   ]
-},
-
-{
-   "id": "gu_blood_moon_r3",
-   "canonical_name": "Blood Moon Gu",
-   "chinese_name": "血月蛊",
-   "path": "Moon",
-   "rank": 3,
-   "slot_category": 0,
-   "base_beu_cost": 28.0,
-   "cooldown_seconds": 0.8,
-   "diet": {
-       "diet_type": 6,
-       "feed_frequency_days": 3,
-       "ration_amount": 3,
-       "starvation_grace_days": 2
-   },
-   "combat_stats": {
-       "projectile_prefab": "BloodMoonScythe",
-       "base_damage": 190.0,
-       "speed": 17.0,
-       "range": 13.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Blood",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 3 Demonic Moon/Blood Path Gu. Swallows fresh blood to launch crimson lunar discs that carve flesh and siphons vitality to accelerate flight duration.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_blood_crescent_scythe_r4",
-           "required_materials": [
-               "gu_blood_moon_r3"
-           ],
-           "catalysts": [
-               "primeval_stones_900",
-               "gu_master_heart_blood"
-           ],
-           "base_success_rate": 0.30
-       }
-   ]
-},
-
-{
-   "id": "gu_white_boar_r1",
-   "canonical_name": "White Boar Gu",
-   "chinese_name": "白猪蛊",
-   "path": "Strength",
-   "rank": 1,
-   "slot_category": 6,
-   "base_beu_cost": 15.0,
-   "cooldown_seconds": 10.0,
-   "diet": {
-       "diet_type": 2,
-       "feed_frequency_days": 5,
-       "ration_amount": 2,
-       "starvation_grace_days": 4
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Strength",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Strength Path body modification Gu. Consumes essence over time to continuously rebuild the mortal host's marrow and muscles, engraving the permanent strength of one boar.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_steel_boar_r2",
-           "required_materials": [
-               "gu_white_boar_r1",
-               "gu_black_boar_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_80",
-               "iron_ore_catalyst_10"
-           ],
-           "base_success_rate": 0.60
-       },
-       {
-           "result_gu_id": "gu_bear_strength_r2",
-           "required_materials": [
-               "gu_white_boar_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_75",
-               "black_bear_gallbladder"
-           ],
-           "base_success_rate": 0.55
-       }
-   ]
-},
-
-{
-   "id": "gu_black_boar_r1",
-   "canonical_name": "Black Boar Gu",
-   "chinese_name": "黑猪蛊",
-   "path": "Strength",
-   "rank": 1,
-   "slot_category": 6,
-   "base_beu_cost": 15.0,
-   "cooldown_seconds": 10.0,
-   "diet": {
-       "diet_type": 2,
-       "feed_frequency_days": 5,
-       "ration_amount": 2,
-       "starvation_grace_days": 4
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Strength",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Strength Path body modification Gu. Permanently confers the physical strength of one black boar once fully integrated through prolonged nourishment and marrow tempering.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_steel_boar_r2",
-           "required_materials": [
-               "gu_black_boar_r1",
-               "gu_white_boar_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_80",
-               "iron_ore_catalyst_10"
-           ],
-           "base_success_rate": 0.60
-       }
-   ]
-},
-
-{
-   "id": "gu_steel_boar_r2",
-   "canonical_name": "Steel Boar Gu",
-   "chinese_name": "铁皮猪蛊",
-   "path": "Strength",
-   "rank": 2,
-   "slot_category": 6,
-   "base_beu_cost": 25.0,
-   "cooldown_seconds": 8.0,
-   "diet": {
-       "diet_type": 5,
-       "feed_frequency_days": 6,
-       "ration_amount": 3,
-       "starvation_grace_days": 4
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Strength",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Strength Path Gu. Hardens muscle fibers to an iron-like density while permanently bestowing an additional layer of brutal boar charging force.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_brown_bear_innate_strength_r3",
-           "required_materials": [
-               "gu_steel_boar_r2"
-           ],
-           "catalysts": [
-               "primeval_stones_180",
-               "bear_tendon_3"
-           ],
-           "base_success_rate": 0.50
-       }
-   ]
-},
-
-{
-   "id": "gu_bear_strength_r2",
-   "canonical_name": "Bear Strength Gu",
-   "chinese_name": "熊力蛊",
-   "path": "Strength",
-   "rank": 2,
-   "slot_category": 6,
-   "base_beu_cost": 24.0,
-   "cooldown_seconds": 8.0,
-   "diet": {
-       "diet_type": 2,
-       "feed_frequency_days": 5,
-       "ration_amount": 4,
-       "starvation_grace_days": 3
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Strength",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Strength Path Gu. Imprints the towering muscular foundation of a feral mountain bear directly onto human anatomy.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_brown_bear_innate_strength_r3",
-           "required_materials": [
-               "gu_bear_strength_r2"
-           ],
-           "catalysts": [
-               "primeval_stones_220",
-               "tyrant_bear_bone_5"
-           ],
-           "base_success_rate": 0.55
-       }
-   ]
-},
-
-{
-   "id": "gu_brown_bear_innate_strength_r3",
-   "canonical_name": "Brown Bear Innate Strength Gu",
-   "chinese_name": "棕熊生力蛊",
-   "path": "Strength",
-   "rank": 3,
-   "slot_category": 6,
-   "base_beu_cost": 45.0,
-   "cooldown_seconds": 6.0,
-   "diet": {
-       "diet_type": 2,
-       "feed_frequency_days": 4,
-       "ration_amount": 6,
-       "starvation_grace_days": 3
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Strength",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 3 Ancient Strength Path Gu. Engraves permanent brown bear strength dao marks onto skeleton and flesh, allowing mortal hands to overturn boulders without essence expenditure.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_all_out_effort_r4",
-           "required_materials": [
-               "gu_brown_bear_innate_strength_r3"
-           ],
-           "catalysts": [
-               "primeval_stones_1200",
-               "ancient_beast_blood_core"
-           ],
-           "base_success_rate": 0.35
-       }
-   ]
-},
-
-{
-   "id": "gu_bronze_skin_r1",
-   "canonical_name": "Bronze Skin Gu",
-   "chinese_name": "青铜皮蛊",
-   "path": "Metal",
-   "rank": 1,
-   "slot_category": 1,
-   "base_beu_cost": 8.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 5,
-       "feed_frequency_days": 8,
-       "ration_amount": 2,
-       "starvation_grace_days": 4
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Metal",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Defense Gu. Bestows a dull bronze luster across the body surface, granting resistance against blunt impacts and shallow iron blades.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_iron_bone_r2",
-           "required_materials": [
-               "gu_bronze_skin_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_70",
-               "calcined_iron_powder_5"
-           ],
-           "base_success_rate": 0.65
-       }
-   ]
-},
-
-{
-   "id": "gu_white_jade_r1",
-   "canonical_name": "White Jade Gu",
-   "chinese_name": "白玉蛊",
-   "path": "Transformation",
-   "rank": 1,
-   "slot_category": 1,
-   "base_beu_cost": 12.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 5,
-       "feed_frequency_days": 10,
-       "ration_amount": 2,
-       "starvation_grace_days": 6
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Transformation",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Defense Gu. Coats the host epidermis in spotless white jade luster, deflecting standard Rank 1 moonblades and mortal weapon cuts with minimal essence consumption.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_jade_skin_r2",
-           "required_materials": [
-               "gu_white_jade_r1",
-               "gu_bronze_skin_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_80",
-               "pure_jade_shavings_10"
-           ],
-           "base_success_rate": 0.60
-       }
-   ]
-},
-
-{
-   "id": "gu_jade_skin_r2",
-   "canonical_name": "Jade Skin Gu",
-   "chinese_name": "玉皮蛊",
-   "path": "Transformation",
-   "rank": 2,
-   "slot_category": 1,
-   "base_beu_cost": 22.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 5,
-       "feed_frequency_days": 8,
-       "ration_amount": 3,
-       "starvation_grace_days": 5
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Transformation",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Defense Gu. Upgrades the epidermal layer into dense white nephrite jade, capable of absorbing physical kinetic concussions and magical element splashes.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_sky_canopy_r3",
-           "required_materials": [
-               "gu_jade_skin_r2",
-               "gu_little_light_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_250",
-               "canopy_silk_catalyst_1"
-           ],
-           "base_success_rate": 0.50
-       }
-   ]
-},
-
-{
-   "id": "gu_iron_bone_r2",
-   "canonical_name": "Iron Bone Gu",
-   "chinese_name": "铁骨蛊",
-   "path": "Bone",
-   "rank": 2,
-   "slot_category": 1,
-   "base_beu_cost": 18.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 5,
-       "feed_frequency_days": 7,
-       "ration_amount": 4,
-       "starvation_grace_days": 4
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Bone",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Bone Path Gu. Penetrates into deep skeletal tissue, converting calcium bone into solid dark iron to withstand bone-shattering force.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_sky_canopy_r3",
-           "required_materials": [
-               "gu_iron_bone_r2",
-               "gu_bronze_skin_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_220",
-               "iron_essence_block"
-           ],
-           "base_success_rate": 0.45
-       }
-   ]
-},
-
-{
-   "id": "gu_sky_canopy_r3",
-   "canonical_name": "Sky Canopy Gu",
-   "chinese_name": "天蓬蛊",
-   "path": "Light",
-   "rank": 3,
-   "slot_category": 1,
-   "base_beu_cost": 38.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 7,
-       "feed_frequency_days": 6,
-       "ration_amount": 2,
-       "starvation_grace_days": 5
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Light",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 3 Peak Defense Gu. Envelops the Gu Master in an ethereal glowing white mantle of celestial armor, completely dissipating Rank 1-2 strikes and mitigating Rank 3 attacks.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_iron_canopy_bastion_r4",
-           "required_materials": [
-               "gu_sky_canopy_r3"
-           ],
-           "catalysts": [
-               "primeval_stones_1500",
-               "heavenly_cloud_thread_5"
-           ],
-           "base_success_rate": 0.30
-       }
-   ]
-},
-
-{
-   "id": "gu_stealth_scales_r1",
-   "canonical_name": "Stealth Scales Gu",
-   "chinese_name": "潜鳞蛊",
-   "path": "Recon",
-   "rank": 1,
-   "slot_category": 4,
-   "base_beu_cost": 8.0,
-   "cooldown_seconds": 2.0,
-   "diet": {
-       "diet_type": 7,
-       "feed_frequency_days": 7,
-       "ration_amount": 1,
-       "starvation_grace_days": 4
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Water",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Recon/Concealment Gu. Manifests translucent fish scales across the skin, obscuring body heat and auditory presence in rivers or damp marshlands.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_stealth_scales_r2",
-           "required_materials": [
-               "gu_stealth_scales_r1",
-               "gu_stealth_scales_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_50",
-               "river_carp_scale_bundle"
-           ],
-           "base_success_rate": 0.65
-       }
-   ]
-},
-
-{
-   "id": "gu_stealth_scales_r2",
-   "canonical_name": "Concealed Scale Gu",
-   "chinese_name": "匿鳞蛊",
-   "path": "Recon",
-   "rank": 2,
-   "slot_category": 4,
-   "base_beu_cost": 16.0,
-   "cooldown_seconds": 1.5,
-   "diet": {
-       "diet_type": 7,
-       "feed_frequency_days": 6,
-       "ration_amount": 2,
-       "starvation_grace_days": 4
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Water",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Recon Gu. Renders the user near-invisible to mortal vision and Rank 1 olfactory and auditory inspection as long as motion remains measured.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_water_ghost_stealth_r3",
-           "required_materials": [
-               "gu_stealth_scales_r2",
-               "gu_breath_concealment_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_180",
-               "shadow_lake_sediment"
-           ],
-           "base_success_rate": 0.50
-       }
-   ]
-},
-
-{
-   "id": "gu_water_ghost_stealth_r3",
-   "canonical_name": "Water Ghost Stealth Gu",
-   "chinese_name": "水鬼蛊",
-   "path": "Recon",
-   "rank": 3,
-   "slot_category": 4,
-   "base_beu_cost": 30.0,
-   "cooldown_seconds": 1.0,
-   "diet": {
-       "diet_type": 7,
-       "feed_frequency_days": 5,
-       "ration_amount": 3,
-       "starvation_grace_days": 3
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Water",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 3 Recon Gu. Allows the Gu Master to completely merge into aquatic currents like an incorporeal phantom, suppressing essence leakage and acoustic ripples.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_formless_tide_phantom_r4",
-           "required_materials": [
-               "gu_water_ghost_stealth_r3"
-           ],
-           "catalysts": [
-               "primeval_stones_1000",
-               "ancient_abyssal_kelp"
-           ],
-           "base_success_rate": 0.35
-       }
-   ]
-},
-
-{
-   "id": "gu_jumping_grass_r1",
-   "canonical_name": "Jumping Grass",
-   "chinese_name": "跳跳草",
-   "path": "Wood",
-   "rank": 1,
-   "slot_category": 2,
-   "base_beu_cost": 6.0,
-   "cooldown_seconds": 0.5,
-   "diet": {
-       "diet_type": 4,
-       "feed_frequency_days": 3,
-       "ration_amount": 2,
-       "starvation_grace_days": 3
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Wood",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Wood Path Movement Gu. Rooted into the soles of the boots or feet, spring coils release rapid kinetic bursts for vertical launches and tactical evasions.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_spiral_leaping_grass_r2",
-           "required_materials": [
-               "gu_jumping_grass_r1",
-               "gu_jumping_grass_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_45",
-               "elastic_spring_vine_3"
-           ],
-           "base_success_rate": 0.70
-       }
-   ]
-},
-
-{
-   "id": "gu_spiral_leaping_grass_r2",
-   "canonical_name": "Spiral Leaping Grass",
-   "chinese_name": "螺旋跳草",
-   "path": "Wood",
-   "rank": 2,
-   "slot_category": 2,
-   "base_beu_cost": 14.0,
-   "cooldown_seconds": 0.4,
-   "diet": {
-       "diet_type": 4,
-       "feed_frequency_days": 3,
-       "ration_amount": 4,
-       "starvation_grace_days": 2
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Wood",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Movement Gu. Coils elastic green energy beneath the host limbs to execute consecutive mid-air ricochets and rapid tactical repositioning.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_lightning_chaser_r3",
-           "required_materials": [
-               "gu_spiral_leaping_grass_r2",
-               "gu_wind_pedal_r2"
-           ],
-           "catalysts": [
-               "primeval_stones_160",
-               "thunder_struck_wood_core"
-           ],
-           "base_success_rate": 0.50
-       }
-   ]
-},
-
-{
-   "id": "gu_wind_pedal_r2",
-   "canonical_name": "Wind Pedal Gu",
-   "chinese_name": "风足蛊",
-   "path": "Wind",
-   "rank": 2,
-   "slot_category": 2,
-   "base_beu_cost": 12.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 7,
-       "feed_frequency_days": 5,
-       "ration_amount": 2,
-       "starvation_grace_days": 4
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Wind",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Wind Path Movement Gu. Summons miniature air currents swirling around the feet, accelerating sprint velocity and negating terrain friction.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_lightning_chaser_r3",
-           "required_materials": [
-               "gu_wind_pedal_r2",
-               "gu_spiral_leaping_grass_r2"
-           ],
-           "catalysts": [
-               "primeval_stones_160",
-               "thunder_struck_wood_core"
-           ],
-           "base_success_rate": 0.50
-       }
-   ]
-},
-
-{
-   "id": "gu_lightning_chaser_r3",
-   "canonical_name": "Lightning Chaser Gu",
-   "chinese_name": "追电蛊",
-   "path": "Lightning",
-   "rank": 3,
-   "slot_category": 2,
-   "base_beu_cost": 28.0,
-   "cooldown_seconds": 1.5,
-   "diet": {
-       "diet_type": 5,
-       "feed_frequency_days": 5,
-       "ration_amount": 4,
-       "starvation_grace_days": 3
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Lightning",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 3 Movement Gu. Ignites electrical spark trajectories underfoot, granting blistering horizontal sprint bursts equivalent to flash lightning across the battlefield.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_thunder_wings_r4",
-           "required_materials": [
-               "gu_lightning_chaser_r3"
-           ],
-           "catalysts": [
-               "primeval_stones_1100",
-               "lightning_beast_feather_8"
-           ],
-           "base_success_rate": 0.35
-       }
-   ]
-},
-
-{
-   "id": "gu_sweet_water_r1",
-   "canonical_name": "Sweet Water Gu",
-   "chinese_name": "甜水蛊",
-   "path": "Water",
-   "rank": 1,
-   "slot_category": 3,
-   "base_beu_cost": 10.0,
-   "cooldown_seconds": 3.0,
-   "diet": {
-       "diet_type": 7,
-       "feed_frequency_days": 6,
-       "ration_amount": 1,
-       "starvation_grace_days": 5
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Water",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Water Path Healing Gu. Exudes clean restorative nectar to detoxify weak poisons and quench fatigue, rapidly replenishing physiological stamina.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_heal_wound_r2",
-           "required_materials": [
-               "gu_sweet_water_r1",
-               "gu_jumping_grass_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_60",
-               "willow_paste_extract"
-           ],
-           "base_success_rate": 0.60
-       }
-   ]
-},
-
-{
-   "id": "gu_heal_wound_r2",
-   "canonical_name": "Heal Wound Gu",
-   "chinese_name": "愈伤蛊",
-   "path": "Wood",
-   "rank": 2,
-   "slot_category": 3,
-   "base_beu_cost": 20.0,
-   "cooldown_seconds": 2.0,
-   "diet": {
-       "diet_type": 4,
-       "feed_frequency_days": 4,
-       "ration_amount": 3,
-       "starvation_grace_days": 3
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Wood",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Wood Path Healing Gu. Emits vitality-rich emerald mist over flesh wounds to halt severe bleeding and mend torn muscle fibers within seconds.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_nine_leaf_vitality_grass_r2",
-           "required_materials": [
-               "gu_heal_wound_r2",
-               "gu_sweet_water_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_100",
-               "ancient_tree_core_resin"
-           ],
-           "base_success_rate": 0.50
-       },
-       {
-           "result_gu_id": "gu_undying_grass_r3",
-           "required_materials": [
-               "gu_heal_wound_r2"
-           ],
-           "catalysts": [
-               "primeval_stones_200",
-               "thousand_year_ginseng_root"
-           ],
-           "base_success_rate": 0.45
-       }
-   ]
-},
-
-{
-   "id": "gu_nine_leaf_vitality_grass_r2",
-   "canonical_name": "Nine Leaf Vitality Grass",
-   "chinese_name": "九叶生机草",
-   "path": "Wood",
-   "rank": 2,
-   "slot_category": 3,
-   "base_beu_cost": 35.0,
-   "cooldown_seconds": 30.0,
-   "diet": {
-       "diet_type": 7,
-       "feed_frequency_days": 3,
-       "ration_amount": 2,
-       "starvation_grace_days": 6
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Wood",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Strategic Flora Gu. Rooted inside the primeval sea, it sprouts up to nine emerald vitality leaves that can be plucked and consumed directly for instant wound regeneration.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_undying_grass_r3",
-           "required_materials": [
-               "gu_nine_leaf_vitality_grass_r2"
-           ],
-           "catalysts": [
-               "primeval_stones_300",
-               "primeval_water_spring_essence"
-           ],
-           "base_success_rate": 0.55
-       }
-   ]
-},
-
-{
-   "id": "gu_undying_grass_r3",
-   "canonical_name": "Undying Grass Gu",
-   "chinese_name": "不死草",
-   "path": "Wood",
-   "rank": 3,
-   "slot_category": 3,
-   "base_beu_cost": 50.0,
-   "cooldown_seconds": 5.0,
-   "diet": {
-       "diet_type": 7,
-       "feed_frequency_days": 4,
-       "ration_amount": 3,
-       "starvation_grace_days": 4
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Wood",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 3 Rare Wood Path Gu. Channels surging restorative bio-vitality capable of knitting shattered bone fractures, repairing ruptured organs, and restoring near-fatal trauma.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_flesh_bone_reconstruction_r4",
-           "required_materials": [
-               "gu_undying_grass_r3"
-           ],
-           "catalysts": [
-               "primeval_stones_1400",
-               "ancient_divine_wood_bark"
-           ],
-           "base_success_rate": 0.30
-       }
-   ]
-},
-
-{
-   "id": "gu_nine_fragrances_bug_r1",
-   "canonical_name": "Nine Fragrances Bug",
-   "chinese_name": "九香虫",
-   "path": "Recon",
-   "rank": 1,
-   "slot_category": 4,
-   "base_beu_cost": 5.0,
-   "cooldown_seconds": 1.0,
-   "diet": {
-       "diet_type": 4,
-       "feed_frequency_days": 4,
-       "ration_amount": 1,
-       "starvation_grace_days": 3
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Wood",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Olfactory Recon Gu. Secretes invisible aromatic markers on targets to trace footsteps, beast packs, and hidden trails over several li.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_earth_hearing_ear_r2",
-           "required_materials": [
-               "gu_nine_fragrances_bug_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_75",
-               "fleshy_earth_root_clod"
-           ],
-           "base_success_rate": 0.55
-       }
-   ]
-},
-
-{
-   "id": "gu_breath_concealment_r1",
-   "canonical_name": "Breath Concealment Gu",
-   "chinese_name": "敛气蛊",
-   "path": "Qi",
-   "rank": 1,
-   "slot_category": 4,
-   "base_beu_cost": 6.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 7,
-       "feed_frequency_days": 7,
-       "ration_amount": 1,
-       "starvation_grace_days": 5
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Qi",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Qi Path Gu. Subdues the biological and spiritual aura of the Gu Master, disguising aperture cultivation stage from hostile inspection.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_stealth_scales_r2",
-           "required_materials": [
-               "gu_breath_concealment_r1",
-               "gu_stealth_scales_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_65"
-           ],
-           "base_success_rate": 0.60
-       }
-   ]
-},
-
-{
-   "id": "gu_earth_hearing_ear_r2",
-   "canonical_name": "Earth Hearing Ear",
-   "chinese_name": "地听肉耳草",
-   "path": "Earth",
-   "rank": 2,
-   "slot_category": 4,
-   "base_beu_cost": 15.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 6,
-       "feed_frequency_days": 7,
-       "ration_amount": 2,
-       "starvation_grace_days": 5
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Earth",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Earth Path Symbiotic Recon Gu. Replaces one natural human ear with flesh root tendrils that burrow into the soil to detect underground movements and footsteps hundreds of paces away.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_subterranean_root_ear_r3",
-           "required_materials": [
-               "gu_earth_hearing_ear_r2"
-           ],
-           "catalysts": [
-               "primeval_stones_220",
-               "deep_subterranean_marrow"
-           ],
-           "base_success_rate": 0.50
-       }
-   ]
-},
-
-{
-   "id": "gu_subterranean_root_ear_r3",
-   "canonical_name": "Subterranean Root Ear Gu",
-   "chinese_name": "地脉肉耳蛊",
-   "path": "Earth",
-   "rank": 3,
-   "slot_category": 4,
-   "base_beu_cost": 30.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 6,
-       "feed_frequency_days": 5,
-       "ration_amount": 3,
-       "starvation_grace_days": 4
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Earth",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 3 Advanced Recon Gu. Deepens somatic acoustic resonance to map subterranean tunnels, hollow caverns, hidden ore veins, and troop troop distributions over several miles.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_earth_pulse_divination_r4",
-           "required_materials": [
-               "gu_subterranean_root_ear_r3"
-           ],
-           "catalysts": [
-               "primeval_stones_1300",
-               "ancient_earth_crystal"
-           ],
-           "base_success_rate": 0.30
-       }
-   ]
-},
-
-{
-   "id": "gu_tusita_flower_r1",
-   "canonical_name": "Tusita Flower",
-   "chinese_name": "兜率花",
-   "path": "Space",
-   "rank": 1,
-   "slot_category": 5,
-   "base_beu_cost": 2.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 7,
-       "feed_frequency_days": 7,
-       "ration_amount": 1,
-       "starvation_grace_days": 5
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Space",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Wood/Space Storage Gu. Buds as a lantern-like crimson flower on host skin, yielding an internal dimensional pocket of roughly one cubic meter for inanimate cargo.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_tusita_pouch_r2",
-           "required_materials": [
-               "gu_tusita_flower_r1",
-               "gu_tusita_flower_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_90",
-               "spatial_silk_cocoon"
-           ],
-           "base_success_rate": 0.65
-       }
-   ]
-},
-
-{
-   "id": "gu_tusita_pouch_r2",
-   "canonical_name": "Tusita Pouch Gu",
-   "chinese_name": "兜率袋蛊",
-   "path": "Space",
-   "rank": 2,
-   "slot_category": 5,
-   "base_beu_cost": 5.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 7,
-       "feed_frequency_days": 6,
-       "ration_amount": 2,
-       "starvation_grace_days": 5
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Space",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Storage Gu. Expands spatial holding capacity to ten cubic meters, with minor mass dampening to allow effortless transport of provisions, ores, and weapons.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_tusita_satchel_r3",
-           "required_materials": [
-               "gu_tusita_pouch_r2"
-           ],
-           "catalysts": [
-               "primeval_stones_250",
-               "silver_space_sand_10"
-           ],
-           "base_success_rate": 0.50
-       }
-   ]
-},
-
-{
-   "id": "gu_liquor_worm_r1",
-   "canonical_name": "Liquor Worm",
-   "chinese_name": "酒虫",
-   "path": "Food",
-   "rank": 1,
-   "slot_category": 6,
-   "base_beu_cost": 20.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 3,
-       "feed_frequency_days": 7,
-       "ration_amount": 1,
-       "starvation_grace_days": 7
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Food",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 1 Legendary Food Path Support Gu. Ingests crude primeval essence from the host aperture and regurgitates it refined by one sub-stage, effectively doubling combat output efficiency.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_four_liquors_worm_r2",
-           "required_materials": [
-               "gu_liquor_worm_r1",
-               "gu_liquor_worm_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_150",
-               "four_seasons_distilled_liquor_barrel"
-           ],
-           "base_success_rate": 0.60
-       }
-   ]
-},
-
-{
-   "id": "gu_four_liquors_worm_r2",
-   "canonical_name": "Four Liquors Worm",
-   "chinese_name": "四味酒虫",
-   "path": "Food",
-   "rank": 2,
-   "slot_category": 6,
-   "base_beu_cost": 40.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 3,
-       "feed_frequency_days": 6,
-       "ration_amount": 2,
-       "starvation_grace_days": 6
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Food",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 2 Support Gu. Requires spicy, sweet, sour, and bitter vintages to refine. Purifies Rank 2 Red Iron primeval essence up to a higher sub-stage.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_seven_fragrances_liquor_worm_r3",
-           "required_materials": [
-               "gu_four_liquors_worm_r2",
-               "gu_nine_fragrances_bug_r1"
-           ],
-           "catalysts": [
-               "primeval_stones_350",
-               "seven_fragrance_aged_nectar"
-           ],
-           "base_success_rate": 0.45
-       }
-   ]
-},
-
-{
-   "id": "gu_seven_fragrances_liquor_worm_r3",
-   "canonical_name": "Seven Fragrances Liquor Worm",
-   "chinese_name": "七香酒虫",
-   "path": "Food",
-   "rank": 3,
-   "slot_category": 6,
-   "base_beu_cost": 75.0,
-   "cooldown_seconds": 0.0,
-   "diet": {
-       "diet_type": 3,
-       "feed_frequency_days": 5,
-       "ration_amount": 3,
-       "starvation_grace_days": 5
-   },
-   "combat_stats": {
-       "projectile_prefab": "None",
-       "base_damage": 0.0,
-       "speed": 0.0,
-       "range": 0.0
-   },
-   "passive_modifiers": {
-       "dao_mark_affinity": "Food",
-       "essence_leak_rate": 0.0
-   },
-   "description": "Rank 3 Sublime Food Path Gu. Purifies White Silver primeval essence, allowing Rank 3 Gu Masters to wield Upper or Peak stage combat intensity prematurely.",
-   "refinement_paths": [
-       {
-           "result_gu_id": "gu_nine_revolutions_liquor_worm_r4",
-           "required_materials": [
-               "gu_seven_fragrances_liquor_worm_r3"
-           ],
-           "catalysts": [
-               "primeval_stones_2000",
-               "hundred_flower_immortal_dew"
-           ],
-           "base_success_rate": 0.25
-       }
-   ]
-}
-
+  {
+    "id": "gu_moonlight_r1",
+    "canonical_name": "Moonlight Gu",
+    "chinese_name": "月光蛊",
+    "path": "Moon",
+    "rank": 1,
+    "slot_category": 0,
+    "base_beu_cost": 10.0,
+    "cooldown_seconds": 0.8,
+    "diet": {
+      "diet_type": 1,
+      "feed_frequency_days": 5,
+      "ration_amount": 2,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "Moonblade",
+      "base_damage": 25.0,
+      "speed": 12.0,
+      "range": 8.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Moon",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Moon Path Gu. The signature relic of the Gu Yue clan. Consumes primeval essence to release razor-sharp cyan curved crescent moonblades from the palm.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_moonglow_r2",
+        "required_materials": [
+          "gu_moonlight_r1",
+          "gu_little_light_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_50",
+          "moon_orchid_10"
+        ],
+        "base_success_rate": 0.65
+      },
+      {
+        "result_gu_id": "gu_moonscar_r2",
+        "required_materials": [
+          "gu_moonlight_r1",
+          "gu_scar_stone_catalyst"
+        ],
+        "catalysts": [
+          "primeval_stones_40"
+        ],
+        "base_success_rate": 0.7
+      }
+    ]
+  },
+  {
+    "id": "gu_little_light_r1",
+    "canonical_name": "Little Light Gu",
+    "chinese_name": "小光蛊",
+    "path": "Light",
+    "rank": 1,
+    "slot_category": 6,
+    "base_beu_cost": 4.0,
+    "cooldown_seconds": 1.2,
+    "diet": {
+      "diet_type": 4,
+      "feed_frequency_days": 4,
+      "ration_amount": 1,
+      "starvation_grace_days": 2
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Light",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Light Path auxiliary Gu. Emits a warm speck of light that can illuminate dark grottos or be infused into offensive Gu to amplify radiance and projectile velocity.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_moonglow_r2",
+        "required_materials": [
+          "gu_little_light_r1",
+          "gu_moonlight_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_50",
+          "moon_orchid_10"
+        ],
+        "base_success_rate": 0.65
+      }
+    ]
+  },
+  {
+    "id": "gu_moonglow_r2",
+    "canonical_name": "Moonglow Gu",
+    "chinese_name": "月芒蛊",
+    "path": "Moon",
+    "rank": 2,
+    "slot_category": 0,
+    "base_beu_cost": 18.0,
+    "cooldown_seconds": 0.7,
+    "diet": {
+      "diet_type": 1,
+      "feed_frequency_days": 4,
+      "ration_amount": 4,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "MoonglowBlade",
+      "base_damage": 65.0,
+      "speed": 16.0,
+      "range": 12.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Moon",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Moon Path Gu. Refined by merging Moonlight Gu with Little Light Gu. Fires eerie, elongated moonbeams with significantly heightened piercing power.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_golden_moon_r3",
+        "required_materials": [
+          "gu_moonglow_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_200",
+          "iron_gold_powder_10"
+        ],
+        "base_success_rate": 0.55
+      },
+      {
+        "result_gu_id": "gu_blood_moon_r3",
+        "required_materials": [
+          "gu_moonglow_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_150",
+          "frenzied_wolf_blood_vial_5"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_moonscar_r2",
+    "canonical_name": "Moonscar Gu",
+    "chinese_name": "月痕蛊",
+    "path": "Moon",
+    "rank": 2,
+    "slot_category": 0,
+    "base_beu_cost": 16.0,
+    "cooldown_seconds": 0.9,
+    "diet": {
+      "diet_type": 1,
+      "feed_frequency_days": 4,
+      "ration_amount": 3,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "MoonscarBlade",
+      "base_damage": 55.0,
+      "speed": 13.0,
+      "range": 10.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Moon",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Moon Path Gu. Produces curved moonblades that inflict persistent festering lacerations, slowing wound closure and causing blood leakage.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_blood_moon_r3",
+        "required_materials": [
+          "gu_moonscar_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_160",
+          "wolf_blood_10"
+        ],
+        "base_success_rate": 0.55
+      }
+    ]
+  },
+  {
+    "id": "gu_golden_moon_r3",
+    "canonical_name": "Golden Moon Gu",
+    "chinese_name": "金月蛊",
+    "path": "Moon",
+    "rank": 3,
+    "slot_category": 0,
+    "base_beu_cost": 32.0,
+    "cooldown_seconds": 1.0,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 6,
+      "ration_amount": 5,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "GoldenMoonBlade",
+      "base_damage": 175.0,
+      "speed": 18.0,
+      "range": 14.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Moon",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 3 Moon Path Gu. Integrates metal brilliance into lunar blade resonance, producing shimmering golden arcs capable of slicing through granite fortifications.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_shattering_gold_moon_r4",
+        "required_materials": [
+          "gu_golden_moon_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_800",
+          "pure_gold_essence_3"
+        ],
+        "base_success_rate": 0.35
+      }
+    ]
+  },
+  {
+    "id": "gu_blood_moon_r3",
+    "canonical_name": "Blood Moon Gu",
+    "chinese_name": "血月蛊",
+    "path": "Moon",
+    "rank": 3,
+    "slot_category": 0,
+    "base_beu_cost": 28.0,
+    "cooldown_seconds": 0.8,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 3,
+      "ration_amount": 3,
+      "starvation_grace_days": 2
+    },
+    "combat_stats": {
+      "projectile_prefab": "BloodMoonScythe",
+      "base_damage": 190.0,
+      "speed": 17.0,
+      "range": 13.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Blood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 3 Demonic Moon/Blood Path Gu. Swallows fresh blood to launch crimson lunar discs that carve flesh and siphons vitality to accelerate flight duration.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_blood_crescent_scythe_r4",
+        "required_materials": [
+          "gu_blood_moon_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_900",
+          "gu_master_heart_blood"
+        ],
+        "base_success_rate": 0.3
+      }
+    ]
+  },
+  {
+    "id": "gu_white_boar_r1",
+    "canonical_name": "White Boar Gu",
+    "chinese_name": "白猪蛊",
+    "path": "Strength",
+    "rank": 1,
+    "slot_category": 6,
+    "base_beu_cost": 15.0,
+    "cooldown_seconds": 10.0,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 5,
+      "ration_amount": 2,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Strength Path body modification Gu. Consumes essence over time to continuously rebuild the mortal host's marrow and muscles, engraving the permanent strength of one boar.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_steel_boar_r2",
+        "required_materials": [
+          "gu_white_boar_r1",
+          "gu_black_boar_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_80",
+          "iron_ore_catalyst_10"
+        ],
+        "base_success_rate": 0.6
+      },
+      {
+        "result_gu_id": "gu_bear_strength_r2",
+        "required_materials": [
+          "gu_white_boar_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_75",
+          "black_bear_gallbladder"
+        ],
+        "base_success_rate": 0.55
+      }
+    ]
+  },
+  {
+    "id": "gu_black_boar_r1",
+    "canonical_name": "Black Boar Gu",
+    "chinese_name": "黑猪蛊",
+    "path": "Strength",
+    "rank": 1,
+    "slot_category": 6,
+    "base_beu_cost": 15.0,
+    "cooldown_seconds": 10.0,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 5,
+      "ration_amount": 2,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Strength Path body modification Gu. Permanently confers the physical strength of one black boar once fully integrated through prolonged nourishment and marrow tempering.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_steel_boar_r2",
+        "required_materials": [
+          "gu_black_boar_r1",
+          "gu_white_boar_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_80",
+          "iron_ore_catalyst_10"
+        ],
+        "base_success_rate": 0.6
+      }
+    ]
+  },
+  {
+    "id": "gu_steel_boar_r2",
+    "canonical_name": "Steel Boar Gu",
+    "chinese_name": "铁皮猪蛊",
+    "path": "Strength",
+    "rank": 2,
+    "slot_category": 6,
+    "base_beu_cost": 25.0,
+    "cooldown_seconds": 8.0,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 6,
+      "ration_amount": 3,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Strength Path Gu. Hardens muscle fibers to an iron-like density while permanently bestowing an additional layer of brutal boar charging force.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_brown_bear_innate_strength_r3",
+        "required_materials": [
+          "gu_steel_boar_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_180",
+          "bear_tendon_3"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_bear_strength_r2",
+    "canonical_name": "Bear Strength Gu",
+    "chinese_name": "熊力蛊",
+    "path": "Strength",
+    "rank": 2,
+    "slot_category": 6,
+    "base_beu_cost": 24.0,
+    "cooldown_seconds": 8.0,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 5,
+      "ration_amount": 4,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Strength Path Gu. Imprints the towering muscular foundation of a feral mountain bear directly onto human anatomy.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_brown_bear_innate_strength_r3",
+        "required_materials": [
+          "gu_bear_strength_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_220",
+          "tyrant_bear_bone_5"
+        ],
+        "base_success_rate": 0.55
+      }
+    ]
+  },
+  {
+    "id": "gu_brown_bear_innate_strength_r3",
+    "canonical_name": "Brown Bear Innate Strength Gu",
+    "chinese_name": "棕熊生力蛊",
+    "path": "Strength",
+    "rank": 3,
+    "slot_category": 6,
+    "base_beu_cost": 45.0,
+    "cooldown_seconds": 6.0,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 4,
+      "ration_amount": 6,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 3 Ancient Strength Path Gu. Engraves permanent brown bear strength dao marks onto skeleton and flesh, allowing mortal hands to overturn boulders without essence expenditure.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_all_out_effort_r4",
+        "required_materials": [
+          "gu_brown_bear_innate_strength_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_1200",
+          "ancient_beast_blood_core"
+        ],
+        "base_success_rate": 0.35
+      }
+    ]
+  },
+  {
+    "id": "gu_bronze_skin_r1",
+    "canonical_name": "Bronze Skin Gu",
+    "chinese_name": "青铜皮蛊",
+    "path": "Metal",
+    "rank": 1,
+    "slot_category": 1,
+    "base_beu_cost": 8.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 8,
+      "ration_amount": 2,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Metal",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Defense Gu. Bestows a dull bronze luster across the body surface, granting resistance against blunt impacts and shallow iron blades.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_iron_bone_r2",
+        "required_materials": [
+          "gu_bronze_skin_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_70",
+          "calcined_iron_powder_5"
+        ],
+        "base_success_rate": 0.65
+      }
+    ]
+  },
+  {
+    "id": "gu_white_jade_r1",
+    "canonical_name": "White Jade Gu",
+    "chinese_name": "白玉蛊",
+    "path": "Transformation",
+    "rank": 1,
+    "slot_category": 1,
+    "base_beu_cost": 12.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 10,
+      "ration_amount": 2,
+      "starvation_grace_days": 6
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Transformation",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Defense Gu. Coats the host epidermis in spotless white jade luster, deflecting standard Rank 1 moonblades and mortal weapon cuts with minimal essence consumption.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_jade_skin_r2",
+        "required_materials": [
+          "gu_white_jade_r1",
+          "gu_bronze_skin_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_80",
+          "pure_jade_shavings_10"
+        ],
+        "base_success_rate": 0.6
+      }
+    ]
+  },
+  {
+    "id": "gu_jade_skin_r2",
+    "canonical_name": "Jade Skin Gu",
+    "chinese_name": "玉皮蛊",
+    "path": "Transformation",
+    "rank": 2,
+    "slot_category": 1,
+    "base_beu_cost": 22.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 8,
+      "ration_amount": 3,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Transformation",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Defense Gu. Upgrades the epidermal layer into dense white nephrite jade, capable of absorbing physical kinetic concussions and magical element splashes.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_sky_canopy_r3",
+        "required_materials": [
+          "gu_jade_skin_r2",
+          "gu_little_light_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_250",
+          "canopy_silk_catalyst_1"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_iron_bone_r2",
+    "canonical_name": "Iron Bone Gu",
+    "chinese_name": "铁骨蛊",
+    "path": "Bone",
+    "rank": 2,
+    "slot_category": 1,
+    "base_beu_cost": 18.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 7,
+      "ration_amount": 4,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Bone",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Bone Path Gu. Penetrates into deep skeletal tissue, converting calcium bone into solid dark iron to withstand bone-shattering force.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_sky_canopy_r3",
+        "required_materials": [
+          "gu_iron_bone_r2",
+          "gu_bronze_skin_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_220",
+          "iron_essence_block"
+        ],
+        "base_success_rate": 0.45
+      }
+    ]
+  },
+  {
+    "id": "gu_sky_canopy_r3",
+    "canonical_name": "Sky Canopy Gu",
+    "chinese_name": "天蓬蛊",
+    "path": "Light",
+    "rank": 3,
+    "slot_category": 1,
+    "base_beu_cost": 38.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 6,
+      "ration_amount": 2,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Light",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 3 Peak Defense Gu. Envelops the Gu Master in an ethereal glowing white mantle of celestial armor, completely dissipating Rank 1-2 strikes and mitigating Rank 3 attacks.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_iron_canopy_bastion_r4",
+        "required_materials": [
+          "gu_sky_canopy_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_1500",
+          "heavenly_cloud_thread_5"
+        ],
+        "base_success_rate": 0.3
+      }
+    ]
+  },
+  {
+    "id": "gu_stealth_scales_r1",
+    "canonical_name": "Stealth Scales Gu",
+    "chinese_name": "潜鳞蛊",
+    "path": "Recon",
+    "rank": 1,
+    "slot_category": 4,
+    "base_beu_cost": 8.0,
+    "cooldown_seconds": 2.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 7,
+      "ration_amount": 1,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Water",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Recon/Concealment Gu. Manifests translucent fish scales across the skin, obscuring body heat and auditory presence in rivers or damp marshlands.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_stealth_scales_r2",
+        "required_materials": [
+          "gu_stealth_scales_r1",
+          "gu_stealth_scales_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_50",
+          "river_carp_scale_bundle"
+        ],
+        "base_success_rate": 0.65
+      }
+    ]
+  },
+  {
+    "id": "gu_stealth_scales_r2",
+    "canonical_name": "Concealed Scale Gu",
+    "chinese_name": "匿鳞蛊",
+    "path": "Recon",
+    "rank": 2,
+    "slot_category": 4,
+    "base_beu_cost": 16.0,
+    "cooldown_seconds": 1.5,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 6,
+      "ration_amount": 2,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Water",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Recon Gu. Renders the user near-invisible to mortal vision and Rank 1 olfactory and auditory inspection as long as motion remains measured.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_water_ghost_stealth_r3",
+        "required_materials": [
+          "gu_stealth_scales_r2",
+          "gu_breath_concealment_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_180",
+          "shadow_lake_sediment"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_water_ghost_stealth_r3",
+    "canonical_name": "Water Ghost Stealth Gu",
+    "chinese_name": "水鬼蛊",
+    "path": "Recon",
+    "rank": 3,
+    "slot_category": 4,
+    "base_beu_cost": 30.0,
+    "cooldown_seconds": 1.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 5,
+      "ration_amount": 3,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Water",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 3 Recon Gu. Allows the Gu Master to completely merge into aquatic currents like an incorporeal phantom, suppressing essence leakage and acoustic ripples.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_formless_tide_phantom_r4",
+        "required_materials": [
+          "gu_water_ghost_stealth_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_1000",
+          "ancient_abyssal_kelp"
+        ],
+        "base_success_rate": 0.35
+      }
+    ]
+  },
+  {
+    "id": "gu_jumping_grass_r1",
+    "canonical_name": "Jumping Grass",
+    "chinese_name": "跳跳草",
+    "path": "Wood",
+    "rank": 1,
+    "slot_category": 2,
+    "base_beu_cost": 6.0,
+    "cooldown_seconds": 0.5,
+    "diet": {
+      "diet_type": 4,
+      "feed_frequency_days": 3,
+      "ration_amount": 2,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Wood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Wood Path Movement Gu. Rooted into the soles of the boots or feet, spring coils release rapid kinetic bursts for vertical launches and tactical evasions.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_spiral_leaping_grass_r2",
+        "required_materials": [
+          "gu_jumping_grass_r1",
+          "gu_jumping_grass_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_45",
+          "elastic_spring_vine_3"
+        ],
+        "base_success_rate": 0.7
+      }
+    ]
+  },
+  {
+    "id": "gu_spiral_leaping_grass_r2",
+    "canonical_name": "Spiral Leaping Grass",
+    "chinese_name": "螺旋跳草",
+    "path": "Wood",
+    "rank": 2,
+    "slot_category": 2,
+    "base_beu_cost": 14.0,
+    "cooldown_seconds": 0.4,
+    "diet": {
+      "diet_type": 4,
+      "feed_frequency_days": 3,
+      "ration_amount": 4,
+      "starvation_grace_days": 2
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Wood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Movement Gu. Coils elastic green energy beneath the host limbs to execute consecutive mid-air ricochets and rapid tactical repositioning.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_lightning_chaser_r3",
+        "required_materials": [
+          "gu_spiral_leaping_grass_r2",
+          "gu_wind_pedal_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_160",
+          "thunder_struck_wood_core"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_wind_pedal_r2",
+    "canonical_name": "Wind Pedal Gu",
+    "chinese_name": "风足蛊",
+    "path": "Wind",
+    "rank": 2,
+    "slot_category": 2,
+    "base_beu_cost": 12.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 5,
+      "ration_amount": 2,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Wind",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Wind Path Movement Gu. Summons miniature air currents swirling around the feet, accelerating sprint velocity and negating terrain friction.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_lightning_chaser_r3",
+        "required_materials": [
+          "gu_wind_pedal_r2",
+          "gu_spiral_leaping_grass_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_160",
+          "thunder_struck_wood_core"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_lightning_chaser_r3",
+    "canonical_name": "Lightning Chaser Gu",
+    "chinese_name": "追电蛊",
+    "path": "Lightning",
+    "rank": 3,
+    "slot_category": 2,
+    "base_beu_cost": 28.0,
+    "cooldown_seconds": 1.5,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 5,
+      "ration_amount": 4,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Lightning",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 3 Movement Gu. Ignites electrical spark trajectories underfoot, granting blistering horizontal sprint bursts equivalent to flash lightning across the battlefield.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_thunder_wings_r4",
+        "required_materials": [
+          "gu_lightning_chaser_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_1100",
+          "lightning_beast_feather_8"
+        ],
+        "base_success_rate": 0.35
+      }
+    ]
+  },
+  {
+    "id": "gu_sweet_water_r1",
+    "canonical_name": "Sweet Water Gu",
+    "chinese_name": "甜水蛊",
+    "path": "Water",
+    "rank": 1,
+    "slot_category": 3,
+    "base_beu_cost": 10.0,
+    "cooldown_seconds": 3.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 6,
+      "ration_amount": 1,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Water",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Water Path Healing Gu. Exudes clean restorative nectar to detoxify weak poisons and quench fatigue, rapidly replenishing physiological stamina.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_heal_wound_r2",
+        "required_materials": [
+          "gu_sweet_water_r1",
+          "gu_jumping_grass_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_60",
+          "willow_paste_extract"
+        ],
+        "base_success_rate": 0.6
+      }
+    ]
+  },
+  {
+    "id": "gu_heal_wound_r2",
+    "canonical_name": "Heal Wound Gu",
+    "chinese_name": "愈伤蛊",
+    "path": "Wood",
+    "rank": 2,
+    "slot_category": 3,
+    "base_beu_cost": 20.0,
+    "cooldown_seconds": 2.0,
+    "diet": {
+      "diet_type": 4,
+      "feed_frequency_days": 4,
+      "ration_amount": 3,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Wood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Wood Path Healing Gu. Emits vitality-rich emerald mist over flesh wounds to halt severe bleeding and mend torn muscle fibers within seconds.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_nine_leaf_vitality_grass_r2",
+        "required_materials": [
+          "gu_heal_wound_r2",
+          "gu_sweet_water_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_100",
+          "ancient_tree_core_resin"
+        ],
+        "base_success_rate": 0.5
+      },
+      {
+        "result_gu_id": "gu_undying_grass_r3",
+        "required_materials": [
+          "gu_heal_wound_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_200",
+          "thousand_year_ginseng_root"
+        ],
+        "base_success_rate": 0.45
+      }
+    ]
+  },
+  {
+    "id": "gu_nine_leaf_vitality_grass_r2",
+    "canonical_name": "Nine Leaf Vitality Grass",
+    "chinese_name": "九叶生机草",
+    "path": "Wood",
+    "rank": 2,
+    "slot_category": 3,
+    "base_beu_cost": 35.0,
+    "cooldown_seconds": 30.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 3,
+      "ration_amount": 2,
+      "starvation_grace_days": 6
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Wood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Strategic Flora Gu. Rooted inside the primeval sea, it sprouts up to nine emerald vitality leaves that can be plucked and consumed directly for instant wound regeneration.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_undying_grass_r3",
+        "required_materials": [
+          "gu_nine_leaf_vitality_grass_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_300",
+          "primeval_water_spring_essence"
+        ],
+        "base_success_rate": 0.55
+      }
+    ]
+  },
+  {
+    "id": "gu_undying_grass_r3",
+    "canonical_name": "Undying Grass Gu",
+    "chinese_name": "不死草",
+    "path": "Wood",
+    "rank": 3,
+    "slot_category": 3,
+    "base_beu_cost": 50.0,
+    "cooldown_seconds": 5.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 4,
+      "ration_amount": 3,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Wood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 3 Rare Wood Path Gu. Channels surging restorative bio-vitality capable of knitting shattered bone fractures, repairing ruptured organs, and restoring near-fatal trauma.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_flesh_bone_reconstruction_r4",
+        "required_materials": [
+          "gu_undying_grass_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_1400",
+          "ancient_divine_wood_bark"
+        ],
+        "base_success_rate": 0.3
+      }
+    ]
+  },
+  {
+    "id": "gu_nine_fragrances_bug_r1",
+    "canonical_name": "Nine Fragrances Bug",
+    "chinese_name": "九香虫",
+    "path": "Recon",
+    "rank": 1,
+    "slot_category": 4,
+    "base_beu_cost": 5.0,
+    "cooldown_seconds": 1.0,
+    "diet": {
+      "diet_type": 4,
+      "feed_frequency_days": 4,
+      "ration_amount": 1,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Wood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Olfactory Recon Gu. Secretes invisible aromatic markers on targets to trace footsteps, beast packs, and hidden trails over several li.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_earth_hearing_ear_r2",
+        "required_materials": [
+          "gu_nine_fragrances_bug_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_75",
+          "fleshy_earth_root_clod"
+        ],
+        "base_success_rate": 0.55
+      }
+    ]
+  },
+  {
+    "id": "gu_breath_concealment_r1",
+    "canonical_name": "Breath Concealment Gu",
+    "chinese_name": "敛气蛊",
+    "path": "Qi",
+    "rank": 1,
+    "slot_category": 4,
+    "base_beu_cost": 6.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 7,
+      "ration_amount": 1,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Qi",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Qi Path Gu. Subdues the biological and spiritual aura of the Gu Master, disguising aperture cultivation stage from hostile inspection.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_stealth_scales_r2",
+        "required_materials": [
+          "gu_breath_concealment_r1",
+          "gu_stealth_scales_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_65"
+        ],
+        "base_success_rate": 0.6
+      }
+    ]
+  },
+  {
+    "id": "gu_earth_hearing_ear_r2",
+    "canonical_name": "Earth Hearing Ear",
+    "chinese_name": "地听肉耳草",
+    "path": "Earth",
+    "rank": 2,
+    "slot_category": 4,
+    "base_beu_cost": 15.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 7,
+      "ration_amount": 2,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Earth",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Earth Path Symbiotic Recon Gu. Replaces one natural human ear with flesh root tendrils that burrow into the soil to detect underground movements and footsteps hundreds of paces away.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_subterranean_root_ear_r3",
+        "required_materials": [
+          "gu_earth_hearing_ear_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_220",
+          "deep_subterranean_marrow"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_subterranean_root_ear_r3",
+    "canonical_name": "Subterranean Root Ear Gu",
+    "chinese_name": "地脉肉耳蛊",
+    "path": "Earth",
+    "rank": 3,
+    "slot_category": 4,
+    "base_beu_cost": 30.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 5,
+      "ration_amount": 3,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Earth",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 3 Advanced Recon Gu. Deepens somatic acoustic resonance to map subterranean tunnels, hollow caverns, hidden ore veins, and troop troop distributions over several miles.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_earth_pulse_divination_r4",
+        "required_materials": [
+          "gu_subterranean_root_ear_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_1300",
+          "ancient_earth_crystal"
+        ],
+        "base_success_rate": 0.3
+      }
+    ]
+  },
+  {
+    "id": "gu_tusita_flower_r1",
+    "canonical_name": "Tusita Flower",
+    "chinese_name": "兜率花",
+    "path": "Space",
+    "rank": 1,
+    "slot_category": 5,
+    "base_beu_cost": 2.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 7,
+      "ration_amount": 1,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Space",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Wood/Space Storage Gu. Buds as a lantern-like crimson flower on host skin, yielding an internal dimensional pocket of roughly one cubic meter for inanimate cargo.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_tusita_pouch_r2",
+        "required_materials": [
+          "gu_tusita_flower_r1",
+          "gu_tusita_flower_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_90",
+          "spatial_silk_cocoon"
+        ],
+        "base_success_rate": 0.65
+      }
+    ]
+  },
+  {
+    "id": "gu_tusita_pouch_r2",
+    "canonical_name": "Tusita Pouch Gu",
+    "chinese_name": "兜率袋蛊",
+    "path": "Space",
+    "rank": 2,
+    "slot_category": 5,
+    "base_beu_cost": 5.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 6,
+      "ration_amount": 2,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Space",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Storage Gu. Expands spatial holding capacity to ten cubic meters, with minor mass dampening to allow effortless transport of provisions, ores, and weapons.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_tusita_satchel_r3",
+        "required_materials": [
+          "gu_tusita_pouch_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_250",
+          "silver_space_sand_10"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_liquor_worm_r1",
+    "canonical_name": "Liquor Worm",
+    "chinese_name": "酒虫",
+    "path": "Food",
+    "rank": 1,
+    "slot_category": 6,
+    "base_beu_cost": 20.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 3,
+      "feed_frequency_days": 7,
+      "ration_amount": 1,
+      "starvation_grace_days": 7
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Food",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 1 Legendary Food Path Support Gu. Ingests crude primeval essence from the host aperture and regurgitates it refined by one sub-stage, effectively doubling combat output efficiency.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_four_liquors_worm_r2",
+        "required_materials": [
+          "gu_liquor_worm_r1",
+          "gu_liquor_worm_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_150",
+          "four_seasons_distilled_liquor_barrel"
+        ],
+        "base_success_rate": 0.6
+      }
+    ]
+  },
+  {
+    "id": "gu_four_liquors_worm_r2",
+    "canonical_name": "Four Liquors Worm",
+    "chinese_name": "四味酒虫",
+    "path": "Food",
+    "rank": 2,
+    "slot_category": 6,
+    "base_beu_cost": 40.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 3,
+      "feed_frequency_days": 6,
+      "ration_amount": 2,
+      "starvation_grace_days": 6
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Food",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 2 Support Gu. Requires spicy, sweet, sour, and bitter vintages to refine. Purifies Rank 2 Red Iron primeval essence up to a higher sub-stage.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_seven_fragrances_liquor_worm_r3",
+        "required_materials": [
+          "gu_four_liquors_worm_r2",
+          "gu_nine_fragrances_bug_r1"
+        ],
+        "catalysts": [
+          "primeval_stones_350",
+          "seven_fragrance_aged_nectar"
+        ],
+        "base_success_rate": 0.45
+      }
+    ]
+  },
+  {
+    "id": "gu_seven_fragrances_liquor_worm_r3",
+    "canonical_name": "Seven Fragrances Liquor Worm",
+    "chinese_name": "七香酒虫",
+    "path": "Food",
+    "rank": 3,
+    "slot_category": 6,
+    "base_beu_cost": 75.0,
+    "cooldown_seconds": 0.0,
+    "diet": {
+      "diet_type": 3,
+      "feed_frequency_days": 5,
+      "ration_amount": 3,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "None",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Food",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 3 Sublime Food Path Gu. Purifies White Silver primeval essence, allowing Rank 3 Gu Masters to wield Upper or Peak stage combat intensity prematurely.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_nine_revolutions_liquor_worm_r4",
+        "required_materials": [
+          "gu_seven_fragrances_liquor_worm_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_2000",
+          "hundred_flower_immortal_dew"
+        ],
+        "base_success_rate": 0.25
+      }
+    ]
+  },
+  {
+    "id": "gu_lifespan_10yr_r4",
+    "canonical_name": "Ten-Year Lifespan Gu",
+    "chinese_name": "十年寿蛊",
+    "path": "Time",
+    "rank": 4,
+    "slot_category": 6,
+    "base_beu_cost": 50.0,
+    "cooldown_seconds": 5.0,
+    "diet": {
+      "diet_type": 8,
+      "feed_frequency_days": 15,
+      "ration_amount": 1,
+      "starvation_grace_days": 10
+    },
+    "combat_stats": {
+      "projectile_prefab": "TimeAura",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Time",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Time Path Gu. Consuming this legendary Gu permanently extends mortal lifespan by 10 years.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_lifespan_20yr_r5",
+        "required_materials": [
+          "gu_lifespan_10yr_r4",
+          "gu_spring_autumn_cicada_r4"
+        ],
+        "catalysts": [
+          "primeval_stones_500"
+        ],
+        "base_success_rate": 0.45
+      }
+    ]
+  },
+  {
+    "id": "gu_lifespan_20yr_r5",
+    "canonical_name": "Twenty-Year Lifespan Gu",
+    "chinese_name": "二十年寿蛊",
+    "path": "Time",
+    "rank": 5,
+    "slot_category": 6,
+    "base_beu_cost": 100.0,
+    "cooldown_seconds": 10.0,
+    "diet": {
+      "diet_type": 8,
+      "feed_frequency_days": 30,
+      "ration_amount": 2,
+      "starvation_grace_days": 15
+    },
+    "combat_stats": {
+      "projectile_prefab": "TimeAura",
+      "base_damage": 0.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Time",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Time Path Gu. A divine treasure of heaven and earth. Consuming this Gu permanently extends mortal lifespan by 20 years.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_spring_autumn_cicada_r4",
+    "canonical_name": "Spring Autumn Cicada (Pupal)",
+    "chinese_name": "春秋蝉(蜕变期)",
+    "path": "Time",
+    "rank": 4,
+    "slot_category": 6,
+    "base_beu_cost": 60.0,
+    "cooldown_seconds": 3.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 7,
+      "ration_amount": 5,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "CicadaWingFlash",
+      "base_damage": 40.0,
+      "speed": 14.0,
+      "range": 10.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Time",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Time Path Gu. The pupal slumbering stage of the legendary Spring Autumn Cicada, drinking the mystic water of the River of Time.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_spring_autumn_cicada_r5",
+        "required_materials": [
+          "gu_spring_autumn_cicada_r4",
+          "gu_time_flow_r4"
+        ],
+        "catalysts": [
+          "primeval_stones_800"
+        ],
+        "base_success_rate": 0.35
+      }
+    ]
+  },
+  {
+    "id": "gu_spring_autumn_cicada_r5",
+    "canonical_name": "Spring Autumn Cicada",
+    "chinese_name": "春秋蝉",
+    "path": "Time",
+    "rank": 5,
+    "slot_category": 6,
+    "base_beu_cost": 120.0,
+    "cooldown_seconds": 5.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 3,
+      "ration_amount": 10,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "TimeVortex",
+      "base_damage": 100.0,
+      "speed": 16.0,
+      "range": 12.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Time",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Time Path Gu. Fang Yuan's signature vital Gu, capable of carrying will and consciousness back into the past upstream the River of Time.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_time_flow_r4",
+    "canonical_name": "Time Flow Gu",
+    "chinese_name": "光阴流转蛊",
+    "path": "Time",
+    "rank": 4,
+    "slot_category": 6,
+    "base_beu_cost": 50.0,
+    "cooldown_seconds": 2.5,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 10,
+      "ration_amount": 3,
+      "starvation_grace_days": 7
+    },
+    "combat_stats": {
+      "projectile_prefab": "TimeRipples",
+      "base_damage": 35.0,
+      "speed": 10.0,
+      "range": 9.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Time",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Time Path Gu. Accelerates aperture time flow and technique recovery.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_year_gu_r5",
+        "required_materials": [
+          "gu_time_flow_r4",
+          "gu_month_gu_r4"
+        ],
+        "catalysts": [
+          "primeval_stones_300"
+        ],
+        "base_success_rate": 0.55
+      }
+    ]
+  },
+  {
+    "id": "gu_time_arrow_r4",
+    "canonical_name": "Time Arrow Gu",
+    "chinese_name": "时光之箭蛊",
+    "path": "Time",
+    "rank": 4,
+    "slot_category": 0,
+    "base_beu_cost": 55.0,
+    "cooldown_seconds": 1.2,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 8,
+      "ration_amount": 3,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "TimeArrow",
+      "base_damage": 75.0,
+      "speed": 18.0,
+      "range": 12.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Time",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Time Path Gu. Fires arrows woven from temporal essence that age enemy shields and flesh.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_day_gu_r4",
+    "canonical_name": "Day Gu",
+    "chinese_name": "日蛊",
+    "path": "Time",
+    "rank": 4,
+    "slot_category": 6,
+    "base_beu_cost": 45.0,
+    "cooldown_seconds": 2.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 10,
+      "ration_amount": 2,
+      "starvation_grace_days": 6
+    },
+    "combat_stats": {
+      "projectile_prefab": "TimeFlash",
+      "base_damage": 30.0,
+      "speed": 12.0,
+      "range": 8.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Time",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Time Path Gu. Harnesses diurnal temporal cycles to invigorate spirit and will.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_month_gu_r4",
+    "canonical_name": "Month Gu",
+    "chinese_name": "月令蛊",
+    "path": "Time",
+    "rank": 4,
+    "slot_category": 6,
+    "base_beu_cost": 50.0,
+    "cooldown_seconds": 2.5,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 12,
+      "ration_amount": 3,
+      "starvation_grace_days": 7
+    },
+    "combat_stats": {
+      "projectile_prefab": "MoonPhase",
+      "base_damage": 35.0,
+      "speed": 11.0,
+      "range": 9.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Time",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Time Path Gu. Accumulates month-phase cycles to refine temporal primeval essence.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_year_gu_r5",
+    "canonical_name": "Year Gu",
+    "chinese_name": "年蛊",
+    "path": "Time",
+    "rank": 5,
+    "slot_category": 6,
+    "base_beu_cost": 95.0,
+    "cooldown_seconds": 4.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 20,
+      "ration_amount": 5,
+      "starvation_grace_days": 10
+    },
+    "combat_stats": {
+      "projectile_prefab": "YearWheel",
+      "base_damage": 85.0,
+      "speed": 13.0,
+      "range": 11.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Time",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Time Path Gu. Commands annual river fluctuations, enabling grand temporal killer moves.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_iron_bear_r4",
+    "canonical_name": "Iron Bear Gu",
+    "chinese_name": "铁甲熊蛊",
+    "path": "Strength",
+    "rank": 4,
+    "slot_category": 1,
+    "base_beu_cost": 45.0,
+    "cooldown_seconds": 1.5,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 6,
+      "ration_amount": 4,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "BearArmor",
+      "base_damage": 40.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Strength Path Gu. Bestows the crushing defensive mass of an ancient iron bear.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_bear_strength_r5",
+        "required_materials": [
+          "gu_iron_bear_r4",
+          "gu_brown_bear_innate_strength_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_400"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_heavenly_boar_r4",
+    "canonical_name": "Heavenly Boar Gu",
+    "chinese_name": "天豕蛊",
+    "path": "Strength",
+    "rank": 4,
+    "slot_category": 6,
+    "base_beu_cost": 50.0,
+    "cooldown_seconds": 2.0,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 5,
+      "ration_amount": 5,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "BoarRoar",
+      "base_damage": 50.0,
+      "speed": 12.0,
+      "range": 6.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Strength Path Gu. Imbues boundless boar strength permanently into bones and muscles.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_mountain_pulling_r5",
+        "required_materials": [
+          "gu_heavenly_boar_r4",
+          "gu_golden_carp_r4"
+        ],
+        "catalysts": [
+          "primeval_stones_600"
+        ],
+        "base_success_rate": 0.4
+      }
+    ]
+  },
+  {
+    "id": "gu_golden_carp_r4",
+    "canonical_name": "Golden Carp Gu",
+    "chinese_name": "金鲤蛊",
+    "path": "Strength",
+    "rank": 4,
+    "slot_category": 6,
+    "base_beu_cost": 48.0,
+    "cooldown_seconds": 1.8,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 7,
+      "ration_amount": 3,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "CarpTailWave",
+      "base_damage": 45.0,
+      "speed": 11.0,
+      "range": 8.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Strength Path Gu. Surges strength momentum like a carp leaping over the Dragon Gate.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_all_out_effort_r4",
+    "canonical_name": "All-Out Effort Gu",
+    "chinese_name": "全力以赴蛊",
+    "path": "Strength",
+    "rank": 4,
+    "slot_category": 0,
+    "base_beu_cost": 55.0,
+    "cooldown_seconds": 1.0,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 4,
+      "ration_amount": 6,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "BeastPhantomBlast",
+      "base_damage": 80.0,
+      "speed": 14.0,
+      "range": 9.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Strength Path Gu. The supreme cornerstone of strength path, manifesting beast phantoms at will with 100% reliability.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_mountain_pulling_r5",
+        "required_materials": [
+          "gu_all_out_effort_r4",
+          "gu_heavenly_boar_r4"
+        ],
+        "catalysts": [
+          "primeval_stones_700"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_overlord_tiger_r4",
+    "canonical_name": "Overlord Tiger Gu",
+    "chinese_name": "霸王虎蛊",
+    "path": "Strength",
+    "rank": 4,
+    "slot_category": 0,
+    "base_beu_cost": 52.0,
+    "cooldown_seconds": 1.2,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 5,
+      "ration_amount": 5,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "TigerClawSwipe",
+      "base_damage": 70.0,
+      "speed": 15.0,
+      "range": 8.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Strength Path Gu. Strikes with the apex ferocity and tearing power of a mountain overlord tiger.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_bear_strength_r5",
+    "canonical_name": "Giant Bear Strength Gu",
+    "chinese_name": "巨熊巨力蛊",
+    "path": "Strength",
+    "rank": 5,
+    "slot_category": 6,
+    "base_beu_cost": 90.0,
+    "cooldown_seconds": 3.0,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 8,
+      "ration_amount": 6,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "ColossalPaws",
+      "base_damage": 95.0,
+      "speed": 10.0,
+      "range": 7.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Strength Path Gu. Engraves the permanent might of a primordial giant bear directly into the cultivator's physical physique.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_mountain_pulling_r5",
+    "canonical_name": "Pulling Mountain Gu",
+    "chinese_name": "拔山蛊",
+    "path": "Strength",
+    "rank": 5,
+    "slot_category": 0,
+    "base_beu_cost": 110.0,
+    "cooldown_seconds": 2.5,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 6,
+      "ration_amount": 8,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "MountainSlam",
+      "base_damage": 130.0,
+      "speed": 12.0,
+      "range": 8.5
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Strength",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Strength Path Gu. Wields gargantuan brute force capable of uprooting rocky mountain ranges.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_moon_raiment_r4",
+    "canonical_name": "Moon Raiment Gu",
+    "chinese_name": "月霓裳蛊",
+    "path": "Moon",
+    "rank": 4,
+    "slot_category": 1,
+    "base_beu_cost": 45.0,
+    "cooldown_seconds": 1.5,
+    "diet": {
+      "diet_type": 1,
+      "feed_frequency_days": 5,
+      "ration_amount": 4,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "MoonVeil",
+      "base_damage": 30.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Moon",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Moon Path Gu. Shrouds the cultivator in a translucent robe of pale moonlight that deflects blade and talisman arts.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_moon_frost_r5",
+        "required_materials": [
+          "gu_moon_raiment_r4",
+          "gu_golden_moon_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_500"
+        ],
+        "base_success_rate": 0.45
+      }
+    ]
+  },
+  {
+    "id": "gu_moonlight_shadow_r4",
+    "canonical_name": "Moonlight Shadow Gu",
+    "chinese_name": "月影蛊",
+    "path": "Moon",
+    "rank": 4,
+    "slot_category": 2,
+    "base_beu_cost": 40.0,
+    "cooldown_seconds": 1.0,
+    "diet": {
+      "diet_type": 1,
+      "feed_frequency_days": 6,
+      "ration_amount": 3,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "MoonShadowStep",
+      "base_damage": 25.0,
+      "speed": 16.0,
+      "range": 8.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Moon",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Moon Path Gu. Blends the cultivator's silhouette into moonlight, flickering across space like an ethereal phantom.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_curved_moon_r5",
+        "required_materials": [
+          "gu_moonlight_shadow_r4",
+          "gu_blood_moon_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_500"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_pale_moon_r4",
+    "canonical_name": "Pale Moon Gu",
+    "chinese_name": "冷月蛊",
+    "path": "Moon",
+    "rank": 4,
+    "slot_category": 0,
+    "base_beu_cost": 48.0,
+    "cooldown_seconds": 0.8,
+    "diet": {
+      "diet_type": 1,
+      "feed_frequency_days": 5,
+      "ration_amount": 3,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "PaleMoonblade",
+      "base_damage": 70.0,
+      "speed": 14.0,
+      "range": 9.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Moon",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Moon Path Gu. Unsheathes frigid silver crescent blades that freeze wounds upon impact.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_curved_moon_r5",
+    "canonical_name": "Curved Moon Gu",
+    "chinese_name": "弯月蛊",
+    "path": "Moon",
+    "rank": 5,
+    "slot_category": 0,
+    "base_beu_cost": 95.0,
+    "cooldown_seconds": 0.9,
+    "diet": {
+      "diet_type": 1,
+      "feed_frequency_days": 6,
+      "ration_amount": 6,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "CurvedMoonSlash",
+      "base_damage": 120.0,
+      "speed": 16.0,
+      "range": 10.5
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Moon",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Moon Path Gu. Unleashes immense curved beams of pure moonlight with devastating cleaving force.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_moon_frost_r5",
+    "canonical_name": "Moon Frost Gu",
+    "chinese_name": "月霜蛊",
+    "path": "Moon",
+    "rank": 5,
+    "slot_category": 1,
+    "base_beu_cost": 90.0,
+    "cooldown_seconds": 2.0,
+    "diet": {
+      "diet_type": 4,
+      "feed_frequency_days": 7,
+      "ration_amount": 4,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "FrostBarrier",
+      "base_damage": 50.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Moon",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Moon Path Gu. Generates a freezing crystalline dome of moonlit rime that blunts enemy attacks.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_blood_weep_r4",
+    "canonical_name": "Blood Weep Gu",
+    "chinese_name": "泣血蛊",
+    "path": "Blood",
+    "rank": 4,
+    "slot_category": 0,
+    "base_beu_cost": 50.0,
+    "cooldown_seconds": 1.1,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 4,
+      "ration_amount": 4,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "BloodWeepWail",
+      "base_damage": 68.0,
+      "speed": 13.0,
+      "range": 9.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Blood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Blood Path Gu. Releases an eerie crimson wail that ruptures enemy blood vessels and drains life essence.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_blood_frenzy_r5",
+        "required_materials": [
+          "gu_blood_weep_r4",
+          "gu_blood_drip_r4"
+        ],
+        "catalysts": [
+          "primeval_stones_600"
+        ],
+        "base_success_rate": 0.45
+      }
+    ]
+  },
+  {
+    "id": "gu_blood_drip_r4",
+    "canonical_name": "Blood Drip Gu",
+    "chinese_name": "滴血蛊",
+    "path": "Blood",
+    "rank": 4,
+    "slot_category": 3,
+    "base_beu_cost": 45.0,
+    "cooldown_seconds": 2.0,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 5,
+      "ration_amount": 3,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "BloodMend",
+      "base_damage": 30.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Blood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Blood Path Gu. Coagulates spilled blood to mend grievous aperture and organ wounds rapidly.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_blood_skull_r4",
+    "canonical_name": "Blood Skull Gu",
+    "chinese_name": "血颅蛊",
+    "path": "Blood",
+    "rank": 4,
+    "slot_category": 6,
+    "base_beu_cost": 60.0,
+    "cooldown_seconds": 5.0,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 7,
+      "ration_amount": 5,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "SkullMist",
+      "base_damage": 40.0,
+      "speed": 10.0,
+      "range": 6.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Blood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Blood Path Gu. Ancient demonic inheritance relic created by Blood Sea Ancestor to purify bloodlines.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_blood_sea_relic_r5",
+        "required_materials": [
+          "gu_blood_skull_r4",
+          "gu_blood_weep_r4"
+        ],
+        "catalysts": [
+          "primeval_stones_800"
+        ],
+        "base_success_rate": 0.4
+      }
+    ]
+  },
+  {
+    "id": "gu_blood_wing_r4",
+    "canonical_name": "Blood Wing Gu",
+    "chinese_name": "血翼蛊",
+    "path": "Blood",
+    "rank": 4,
+    "slot_category": 2,
+    "base_beu_cost": 46.0,
+    "cooldown_seconds": 1.0,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 5,
+      "ration_amount": 3,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "BloodWingsGust",
+      "base_damage": 35.0,
+      "speed": 16.0,
+      "range": 8.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Blood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Blood Path Gu. Sprouts crimson blood wings from the cultivator's back for high-speed aerial flight.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_blood_frenzy_r5",
+    "canonical_name": "Blood Frenzy Gu",
+    "chinese_name": "血狂蛊",
+    "path": "Blood",
+    "rank": 5,
+    "slot_category": 0,
+    "base_beu_cost": 100.0,
+    "cooldown_seconds": 1.2,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 4,
+      "ration_amount": 6,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "FrenzyWave",
+      "base_damage": 125.0,
+      "speed": 14.0,
+      "range": 10.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Blood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Blood Path Gu. Incites frenzied blood surges in surrounding foes, causing sudden hemoptysis and heart ruptures.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_blood_torrent_r5",
+    "canonical_name": "Blood Torrent Gu",
+    "chinese_name": "血潮蛊",
+    "path": "Blood",
+    "rank": 5,
+    "slot_category": 0,
+    "base_beu_cost": 105.0,
+    "cooldown_seconds": 1.5,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 5,
+      "ration_amount": 8,
+      "starvation_grace_days": 3
+    },
+    "combat_stats": {
+      "projectile_prefab": "BloodTsunami",
+      "base_damage": 135.0,
+      "speed": 13.0,
+      "range": 11.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Blood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Blood Path Gu. Summons a torrential wave of caustic crimson blood that submerges the battlefield.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_blood_sea_relic_r5",
+    "canonical_name": "Blood Sea Relic Gu",
+    "chinese_name": "血海遗宝蛊",
+    "path": "Blood",
+    "rank": 5,
+    "slot_category": 6,
+    "base_beu_cost": 110.0,
+    "cooldown_seconds": 3.0,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 8,
+      "ration_amount": 6,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "BloodOrb",
+      "base_damage": 80.0,
+      "speed": 12.0,
+      "range": 8.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Blood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Blood Path Gu. Legendary relic inherited from the Blood Sea, commanding blood essence with sovereign authority.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_bone_spear_r4",
+    "canonical_name": "Bone Spear Gu",
+    "chinese_name": "骨枪蛊",
+    "path": "Bone",
+    "rank": 4,
+    "slot_category": 0,
+    "base_beu_cost": 46.0,
+    "cooldown_seconds": 0.8,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 6,
+      "ration_amount": 3,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "BoneSpear",
+      "base_damage": 72.0,
+      "speed": 17.0,
+      "range": 10.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Bone",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Bone Path Gu. Ejects calcified white bone javelins from palms that pierce through heavy armor.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_white_bone_chariot_r5",
+        "required_materials": [
+          "gu_bone_spear_r4",
+          "gu_bone_armor_r4"
+        ],
+        "catalysts": [
+          "primeval_stones_650"
+        ],
+        "base_success_rate": 0.4
+      }
+    ]
+  },
+  {
+    "id": "gu_white_bone_chariot_r5",
+    "canonical_name": "White Bone Chariot Gu",
+    "chinese_name": "白骨战车蛊",
+    "path": "Bone",
+    "rank": 5,
+    "slot_category": 1,
+    "base_beu_cost": 115.0,
+    "cooldown_seconds": 3.0,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 8,
+      "ration_amount": 8,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "ChariotRam",
+      "base_damage": 110.0,
+      "speed": 8.0,
+      "range": 6.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Bone",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Bone Path Gu. Manifests a majestic ivory battle chariot providing fortress-grade defense and crushing ramming power.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_bone_wings_r4",
+    "canonical_name": "Bone Wings Gu",
+    "chinese_name": "骨翼蛊",
+    "path": "Bone",
+    "rank": 4,
+    "slot_category": 2,
+    "base_beu_cost": 44.0,
+    "cooldown_seconds": 1.0,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 5,
+      "ration_amount": 4,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "BoneWingFlap",
+      "base_damage": 30.0,
+      "speed": 15.0,
+      "range": 8.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Bone",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Bone Path Gu. Unfurls segmented bone wings grafted onto the shoulder blades for high-speed evasion.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_bone_spike_r4",
+    "canonical_name": "Bone Spike Gu",
+    "chinese_name": "骨刺蛊",
+    "path": "Bone",
+    "rank": 4,
+    "slot_category": 0,
+    "base_beu_cost": 45.0,
+    "cooldown_seconds": 0.7,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 5,
+      "ration_amount": 3,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "BoneSpikesBurst",
+      "base_damage": 65.0,
+      "speed": 15.0,
+      "range": 9.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Bone",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Bone Path Gu. Fires deadly volleys of barbed calcified bone quills.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_bone_armor_r4",
+    "canonical_name": "Bone Armor Gu",
+    "chinese_name": "白骨甲蛊",
+    "path": "Bone",
+    "rank": 4,
+    "slot_category": 1,
+    "base_beu_cost": 48.0,
+    "cooldown_seconds": 1.5,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 6,
+      "ration_amount": 4,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "BonePlates",
+      "base_damage": 35.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Bone",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Bone Path Gu. Coats the cultivator's skin in an impenetrable layer of interlocking ivory ribplates.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_bone_shield_r5",
+        "required_materials": [
+          "gu_bone_armor_r4",
+          "gu_iron_bone_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_450"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_bone_shield_r5",
+    "canonical_name": "Bone Shield Gu",
+    "chinese_name": "骨盾蛊",
+    "path": "Bone",
+    "rank": 5,
+    "slot_category": 1,
+    "base_beu_cost": 90.0,
+    "cooldown_seconds": 2.0,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 7,
+      "ration_amount": 5,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "GiganticBoneShield",
+      "base_damage": 60.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Bone",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Bone Path Gu. Conjures a colossal tower shield forged from ancient dragon rib bone.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_beast_king_r4",
+    "canonical_name": "Beast King Gu",
+    "chinese_name": "兽王蛊",
+    "path": "Enslavement",
+    "rank": 4,
+    "slot_category": 6,
+    "base_beu_cost": 55.0,
+    "cooldown_seconds": 2.5,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 6,
+      "ration_amount": 5,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "EnslavementRune",
+      "base_damage": 40.0,
+      "speed": 10.0,
+      "range": 7.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Enslavement",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Enslavement Path Gu. Imposes master-servant soul brands over myriad beast kings.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_beast_king_r5",
+        "required_materials": [
+          "gu_beast_king_r4",
+          "gu_myriad_beast_token_r5"
+        ],
+        "catalysts": [
+          "primeval_stones_700"
+        ],
+        "base_success_rate": 0.45
+      }
+    ]
+  },
+  {
+    "id": "gu_beast_king_r5",
+    "canonical_name": "Myriad Beast King Gu",
+    "chinese_name": "万兽王蛊",
+    "path": "Enslavement",
+    "rank": 5,
+    "slot_category": 6,
+    "base_beu_cost": 110.0,
+    "cooldown_seconds": 4.0,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 8,
+      "ration_amount": 8,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "MyriadRune",
+      "base_damage": 70.0,
+      "speed": 11.0,
+      "range": 8.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Enslavement",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Enslavement Path Gu. Dominates entire mutant beast armies with sovereign soul pressure.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_wolf_enslavement_r4",
+    "canonical_name": "Wolf Enslavement Gu",
+    "chinese_name": "驭狼蛊",
+    "path": "Enslavement",
+    "rank": 4,
+    "slot_category": 6,
+    "base_beu_cost": 48.0,
+    "cooldown_seconds": 2.0,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 5,
+      "ration_amount": 4,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "WolfSoulMark",
+      "base_damage": 35.0,
+      "speed": 12.0,
+      "range": 8.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Enslavement",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Enslavement Path Gu. Chains the wills of ferocious northern wolf commanders.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_wolf_enslavement_r5",
+        "required_materials": [
+          "gu_wolf_enslavement_r4",
+          "gu_beast_king_r4"
+        ],
+        "catalysts": [
+          "primeval_stones_600"
+        ],
+        "base_success_rate": 0.45
+      }
+    ]
+  },
+  {
+    "id": "gu_wolf_enslavement_r5",
+    "canonical_name": "Myriad Wolf Enslavement Gu",
+    "chinese_name": "万狼统御蛊",
+    "path": "Enslavement",
+    "rank": 5,
+    "slot_category": 6,
+    "base_beu_cost": 105.0,
+    "cooldown_seconds": 3.5,
+    "diet": {
+      "diet_type": 6,
+      "feed_frequency_days": 7,
+      "ration_amount": 7,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "WolfEmperorAura",
+      "base_damage": 65.0,
+      "speed": 12.0,
+      "range": 8.5
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Enslavement",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Enslavement Path Gu. Sovereign command over countless wolf packs across entire plains.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_myriad_beast_token_r5",
+    "canonical_name": "Myriad Beast Token Gu",
+    "chinese_name": "万兽令蛊",
+    "path": "Enslavement",
+    "rank": 5,
+    "slot_category": 6,
+    "base_beu_cost": 115.0,
+    "cooldown_seconds": 4.0,
+    "diet": {
+      "diet_type": 2,
+      "feed_frequency_days": 8,
+      "ration_amount": 6,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "TokenAura",
+      "base_damage": 55.0,
+      "speed": 9.0,
+      "range": 7.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Enslavement",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Enslavement Path Gu. Commander token rallying all wild beasts under one unified will.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_divine_light_r4",
+    "canonical_name": "Divine Light Gu",
+    "chinese_name": "神光蛊",
+    "path": "Light",
+    "rank": 4,
+    "slot_category": 0,
+    "base_beu_cost": 50.0,
+    "cooldown_seconds": 0.8,
+    "diet": {
+      "diet_type": 8,
+      "feed_frequency_days": 8,
+      "ration_amount": 3,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "DivineRay",
+      "base_damage": 75.0,
+      "speed": 20.0,
+      "range": 11.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Light",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Light Path Gu. Emits searing beams of radiant light that pierce spiritual illusions.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_rainbow_light_r5",
+        "required_materials": [
+          "gu_divine_light_r4",
+          "gu_sky_canopy_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_550"
+        ],
+        "base_success_rate": 0.45
+      }
+    ]
+  },
+  {
+    "id": "gu_rainbow_light_r5",
+    "canonical_name": "Rainbow Light Gu",
+    "chinese_name": "虹光蛊",
+    "path": "Light",
+    "rank": 5,
+    "slot_category": 0,
+    "base_beu_cost": 100.0,
+    "cooldown_seconds": 1.0,
+    "diet": {
+      "diet_type": 8,
+      "feed_frequency_days": 10,
+      "ration_amount": 5,
+      "starvation_grace_days": 6
+    },
+    "combat_stats": {
+      "projectile_prefab": "RainbowBeam",
+      "base_damage": 125.0,
+      "speed": 22.0,
+      "range": 12.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Light",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Light Path Gu. Fires seven-colored prismatic rays that dissolve enemy matter and essence.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_iron_wood_r4",
+    "canonical_name": "Iron Wood Gu",
+    "chinese_name": "铁木蛊",
+    "path": "Wood",
+    "rank": 4,
+    "slot_category": 1,
+    "base_beu_cost": 45.0,
+    "cooldown_seconds": 1.5,
+    "diet": {
+      "diet_type": 4,
+      "feed_frequency_days": 6,
+      "ration_amount": 4,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "IronRoots",
+      "base_damage": 40.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Wood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Wood Path Gu. Causes iron-hard ancient roots to encase the body in protective living armor.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_divine_tree_r5",
+        "required_materials": [
+          "gu_iron_wood_r4",
+          "gu_undying_grass_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_600"
+        ],
+        "base_success_rate": 0.45
+      }
+    ]
+  },
+  {
+    "id": "gu_divine_tree_r5",
+    "canonical_name": "Divine Tree Gu",
+    "chinese_name": "建木神树蛊",
+    "path": "Wood",
+    "rank": 5,
+    "slot_category": 3,
+    "base_beu_cost": 95.0,
+    "cooldown_seconds": 3.0,
+    "diet": {
+      "diet_type": 7,
+      "feed_frequency_days": 10,
+      "ration_amount": 5,
+      "starvation_grace_days": 6
+    },
+    "combat_stats": {
+      "projectile_prefab": "TreeLifeAura",
+      "base_damage": 60.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Wood",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Wood Path Gu. Channels endless vital sap to restore wounds and nourish the aperture.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_earth_wall_r4",
+    "canonical_name": "Earth Wall Gu",
+    "chinese_name": "地脉之壁蛊",
+    "path": "Earth",
+    "rank": 4,
+    "slot_category": 1,
+    "base_beu_cost": 46.0,
+    "cooldown_seconds": 1.6,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 7,
+      "ration_amount": 4,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "EarthWall",
+      "base_damage": 45.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Earth",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Earth Path Gu. Raises thick subterranean stone ramparts to block enemy bombardments.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_golden_earth_r5",
+        "required_materials": [
+          "gu_earth_wall_r4",
+          "gu_subterranean_root_ear_r3"
+        ],
+        "catalysts": [
+          "primeval_stones_500"
+        ],
+        "base_success_rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "gu_golden_earth_r5",
+    "canonical_name": "Golden Earth Gu",
+    "chinese_name": "息壤金地蛊",
+    "path": "Earth",
+    "rank": 5,
+    "slot_category": 1,
+    "base_beu_cost": 105.0,
+    "cooldown_seconds": 2.5,
+    "diet": {
+      "diet_type": 5,
+      "feed_frequency_days": 10,
+      "ration_amount": 6,
+      "starvation_grace_days": 6
+    },
+    "combat_stats": {
+      "projectile_prefab": "GoldenBulwark",
+      "base_damage": 70.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Earth",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Earth Path Gu. Commands living golden soil that regenerates barriers indefinitely under earth vein presence.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_storm_wind_r4",
+    "canonical_name": "Storm Wind Gu",
+    "chinese_name": "狂暴罡风蛊",
+    "path": "Wind",
+    "rank": 4,
+    "slot_category": 0,
+    "base_beu_cost": 48.0,
+    "cooldown_seconds": 0.9,
+    "diet": {
+      "diet_type": 3,
+      "feed_frequency_days": 6,
+      "ration_amount": 3,
+      "starvation_grace_days": 4
+    },
+    "combat_stats": {
+      "projectile_prefab": "GaleScythe",
+      "base_damage": 68.0,
+      "speed": 18.0,
+      "range": 10.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Wind",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 4 Wind Path Gu. Unleashes tempestuous blades of gale-force astral wind.",
+    "refinement_paths": [
+      {
+        "result_gu_id": "gu_heavenly_wind_r5",
+        "required_materials": [
+          "gu_storm_wind_r4",
+          "gu_wind_pedal_r2"
+        ],
+        "catalysts": [
+          "primeval_stones_550"
+        ],
+        "base_success_rate": 0.45
+      }
+    ]
+  },
+  {
+    "id": "gu_heavenly_wind_r5",
+    "canonical_name": "Heavenly Astral Wind Gu",
+    "chinese_name": "天罡狂风蛊",
+    "path": "Wind",
+    "rank": 5,
+    "slot_category": 0,
+    "base_beu_cost": 100.0,
+    "cooldown_seconds": 1.2,
+    "diet": {
+      "diet_type": 3,
+      "feed_frequency_days": 8,
+      "ration_amount": 5,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "AstralTornado",
+      "base_damage": 120.0,
+      "speed": 19.0,
+      "range": 11.5
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Wind",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Wind Path Gu. Summons heavenly astral cyclones that shred enemy flesh to ribbons.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_fixed_immortal_travel_r5",
+    "canonical_name": "Fixed Immortal Travel (Mortal Seed)",
+    "chinese_name": "定仙游(凡胚)",
+    "path": "Space",
+    "rank": 5,
+    "slot_category": 2,
+    "base_beu_cost": 125.0,
+    "cooldown_seconds": 8.0,
+    "diet": {
+      "diet_type": 3,
+      "feed_frequency_days": 10,
+      "ration_amount": 5,
+      "starvation_grace_days": 5
+    },
+    "combat_stats": {
+      "projectile_prefab": "SpatialFlash",
+      "base_damage": 40.0,
+      "speed": 25.0,
+      "range": 12.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Space",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Space Path Gu. The mortal embryonic form of the legendary Fixed Immortal Travel, teleporting across vast coordinates in a blink.",
+    "refinement_paths": []
+  },
+  {
+    "id": "gu_nine_fragrances_liquor_worm_r5",
+    "canonical_name": "Nine Fragrances Liquor Worm",
+    "chinese_name": "九香酒虫",
+    "path": "Food",
+    "rank": 5,
+    "slot_category": 6,
+    "base_beu_cost": 80.0,
+    "cooldown_seconds": 5.0,
+    "diet": {
+      "diet_type": 3,
+      "feed_frequency_days": 10,
+      "ration_amount": 4,
+      "starvation_grace_days": 6
+    },
+    "combat_stats": {
+      "projectile_prefab": "LiquorMist",
+      "base_damage": 30.0,
+      "speed": 0.0,
+      "range": 0.0
+    },
+    "passive_modifiers": {
+      "dao_mark_affinity": "Food",
+      "essence_leak_rate": 0.0
+    },
+    "description": "Rank 5 Food Path Gu. The ultimate distillation of the Liquor Worm lineage, purifying primeval essence to crystal clarity.",
+    "refinement_paths": []
+  }
 ]

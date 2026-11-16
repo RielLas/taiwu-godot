@@ -232,5 +232,58 @@ namespace TaiwuGu.Systems
             aperture.ApertureWallDurability = aperture.MaxWallDurability;
             aperture.CurrentEssenceSea = cult.AptitudePercent;
         }
+
+        /// <summary>
+        /// Consumes a Lifespan Gu to permanently extend the target cultivator's lifespan by 10 or 20 years.
+        /// Consumes and destroys the Gu entity upon use.
+        /// </summary>
+        public static bool ConsumeLifespanGu(WorldStore world, EntityId guEntityId, EntityId? target = null)
+        {
+            EntityId eid = target ?? world.PlayerEntity;
+            if (!world.TryGet<CultivatorComponent>(eid, out var cult) || !cult.IsAlive) return false;
+            if (!world.TryGet<GuWormComponent>(guEntityId, out var gu)) return false;
+
+            int yearsToAdd = 10;
+            if (gu.GuID.Contains("20", StringComparison.OrdinalIgnoreCase) || gu.Rank >= 5)
+            {
+                yearsToAdd = 20;
+            }
+            else if (gu.GuID.Contains("10", StringComparison.OrdinalIgnoreCase) || gu.Rank == 4)
+            {
+                yearsToAdd = 10;
+            }
+
+            cult.LifespanYears += yearsToAdd;
+            world.DestroyEntity(guEntityId);
+
+            WorldSignals.EmitSound(HalalSoundType.CauldronSteam);
+            WorldSignals.EmitTopics(DirtyTopic.Cultivator);
+            Debug.Log($"[CultivationSystem] {cult.Name} consumed Lifespan Gu ({gu.Name}). Lifespan extended by +{yearsToAdd} years! Total Lifespan: {cult.LifespanYears} years.");
+            return true;
+        }
+
+        public static bool ConsumeLifespanGu(WorldStore world, string guCatalogId, EntityId? target = null)
+        {
+            EntityId eid = target ?? world.PlayerEntity;
+            foreach (var (guEid, gu) in world.GetOwned<GuWormComponent>(eid))
+            {
+                if (string.Equals(gu.GuID, guCatalogId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return ConsumeLifespanGu(world, guEid, eid);
+                }
+            }
+            return false;
+        }
+
+        public static bool ConsumeLifespanGu(WorldStore world, int years = 10, EntityId? target = null)
+        {
+            EntityId eid = target ?? world.PlayerEntity;
+            if (!world.TryGet<CultivatorComponent>(eid, out var cult) || !cult.IsAlive) return false;
+
+            cult.LifespanYears += years;
+            WorldSignals.EmitSound(HalalSoundType.CauldronSteam);
+            WorldSignals.EmitTopics(DirtyTopic.Cultivator);
+            return true;
+        }
     }
 }

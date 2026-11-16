@@ -21,11 +21,33 @@ namespace Taiwu_Godot.Scripts.UI
     {
         private TaiwuModalStack? _modalStack;
         private IWorldStateProvider? _stateProvider;
+        private WorldAtlasModalView? _atlasModal;
 
         public void Initialize(TaiwuModalStack modalStack, IWorldStateProvider stateProvider)
         {
             _modalStack = modalStack;
             _stateProvider = stateProvider;
+
+            // Consume pending NewRunConfig or save load from Title Screen
+            if (stateProvider is WorldStateProvider provider)
+            {
+                if (TaiwuTitleScreenView.PendingRunConfig != null)
+                {
+                    var config = TaiwuTitleScreenView.PendingRunConfig;
+                    TaiwuTitleScreenView.PendingRunConfig = null;
+                    GD.Print($"[TaiwuHUDView] Applying PendingRunConfig: {config.PlayerName} (Aptitude: {config.AptitudePercent}%, Sector: {config.StartingSectorKey}, Vital Gu: {config.VitalGuId})");
+                    provider.Replace(WorldFactory.CreateFromConfig(config));
+                    WorldSignals.EmitTopics(DirtyTopic.All);
+                }
+                else if (!string.IsNullOrEmpty(TaiwuTitleScreenView.PendingLoadSlot))
+                {
+                    string slot = TaiwuTitleScreenView.PendingLoadSlot;
+                    TaiwuTitleScreenView.PendingLoadSlot = null;
+                    GD.Print($"[TaiwuHUDView] Applying PendingLoadSlot: [{slot}]");
+                    SaveSystem.LoadAndSwap(slot, provider);
+                }
+            }
+
             RefreshFromStore();
         }
 
@@ -43,6 +65,12 @@ namespace Taiwu_Godot.Scripts.UI
         private Label? _lblScenicToast;
         private Tween? _toastTween;
 
+        // Seal-Stamp Event Banner (Ink-Crimson Animation)
+        private PanelContainer? _eventBannerPanel;
+        private Label? _lblBannerSeal;
+        private Label? _lblBannerDetail;
+        private Tween? _bannerTween;
+
         public override void _Ready()
         {
             SetAnchorsPreset(LayoutPreset.FullRect);
@@ -56,6 +84,9 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.OnRoadAmbushOccurred += HandleRoadAmbush;
             WorldSignals.OnBattleStageChanged += HandleBattleStageChanged;
             WorldSignals.OnCombatResolved += HandleCombatResolved;
+            WorldSignals.OnWorldCalamityUpdated += HandleWorldCalamityUpdated;
+            WorldSignals.OnBountyHunterAmbush += HandleBountyHunterAmbush;
+            WorldSignals.OnBreakthroughResolved += HandleBreakthroughResolved;
 
             RefreshFromStore();
         }
@@ -68,8 +99,12 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.OnRoadAmbushOccurred -= HandleRoadAmbush;
             WorldSignals.OnBattleStageChanged -= HandleBattleStageChanged;
             WorldSignals.OnCombatResolved -= HandleCombatResolved;
+            WorldSignals.OnWorldCalamityUpdated -= HandleWorldCalamityUpdated;
+            WorldSignals.OnBountyHunterAmbush -= HandleBountyHunterAmbush;
+            WorldSignals.OnBreakthroughResolved -= HandleBreakthroughResolved;
 
             _toastTween?.Kill();
+            _bannerTween?.Kill();
         }
 
         private void BuildUIHierarchy()
@@ -127,6 +162,15 @@ namespace Taiwu_Godot.Scripts.UI
             };
             lblLedgerHint.AddThemeFontSizeOverride("font_size", 10);
             hotkeysVBox.AddChild(lblLedgerHint);
+
+            var lblMapHint = new Label
+            {
+                Text = "[M] World Map",
+                Modulate = new Color(0.58f, 0.64f, 0.72f, 0.75f),
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            lblMapHint.AddThemeFontSizeOverride("font_size", 10);
+            hotkeysVBox.AddChild(lblMapHint);
 
             var lblCauldronHint = new Label
             {
@@ -455,6 +499,23 @@ namespace Taiwu_Godot.Scripts.UI
             btnLedger.Pressed += () => WorldSignals.EmitToggleLedger();
             buttonsHBox.AddChild(btnLedger);
 
+            // Five-Regions World Map Button
+            var btnMap = new Button
+            {
+                Name = "BtnMap",
+                Text = "【图】 Map [M]",
+                CustomMinimumSize = new Vector2(100f, 28f),
+                MouseFilter = MouseFilterEnum.Stop,
+                FocusMode = FocusModeEnum.None
+            };
+            btnMap.AddThemeStyleboxOverride("normal", (StyleBox)slateNormal.Duplicate());
+            btnMap.AddThemeStyleboxOverride("hover", (StyleBox)slateHover.Duplicate());
+            btnMap.AddThemeStyleboxOverride("pressed", (StyleBox)slateHover.Duplicate());
+            btnMap.AddThemeColorOverride("font_color", new Color(0.984f, 0.749f, 0.141f, 1f)); // Amber gold #FBBF24
+            btnMap.AddThemeFontSizeOverride("font_size", 11);
+            btnMap.Pressed += ToggleAtlasModal;
+            buttonsHBox.AddChild(btnMap);
+
             // Alchemical Refinement Cauldron Button
             var btnCauldron = new Button
             {
@@ -575,6 +636,188 @@ namespace Taiwu_Godot.Scripts.UI
             _lblScenicToast.AddThemeFontSizeOverride("font_size", 11);
             _lblScenicToast.AddThemeColorOverride("font_color", new Color(0.92f, 0.95f, 0.92f, 1f));
             toastPad.AddChild(_lblScenicToast);
+
+            // =========================================================================
+            // SEAL-STAMP EVENT BANNER (Top Center below TopBar, Ink-Crimson Animation)
+            // =========================================================================
+            var bannerMargin = new MarginContainer
+            {
+                Name = "EventBannerMargin",
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            bannerMargin.SetAnchorsPreset(LayoutPreset.TopWide);
+            bannerMargin.OffsetTop = 76f;
+            bannerMargin.OffsetBottom = 136f;
+            bannerMargin.OffsetLeft = 240f;
+            bannerMargin.OffsetRight = -240f;
+            AddChild(bannerMargin);
+
+            var bannerCenter = new CenterContainer
+            {
+                Name = "BannerCenter",
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            bannerMargin.AddChild(bannerCenter);
+
+            var bannerStyle = new StyleBoxFlat
+            {
+                BgColor = new Color(0.32f, 0.05f, 0.07f, 0.96f), // Rich lacquer ink-crimson #520D12
+                BorderColor = new Color(0.984f, 0.749f, 0.141f, 0.95f), // Imperial gold #FBBF24
+                BorderWidthBottom = 2,
+                BorderWidthTop = 2,
+                BorderWidthLeft = 2,
+                BorderWidthRight = 2,
+                CornerRadiusBottomLeft = 3,
+                CornerRadiusBottomRight = 3,
+                CornerRadiusTopLeft = 3,
+                CornerRadiusTopRight = 3
+            };
+
+            _eventBannerPanel = new PanelContainer
+            {
+                Name = "EventBannerPanel",
+                CustomMinimumSize = new Vector2(480f, 52f),
+                MouseFilter = MouseFilterEnum.Ignore,
+                Visible = false,
+                Modulate = new Color(1f, 1f, 1f, 0f),
+                PivotOffset = new Vector2(240f, 26f)
+            };
+            _eventBannerPanel.AddThemeStyleboxOverride("panel", bannerStyle);
+            bannerCenter.AddChild(_eventBannerPanel);
+
+            var eventBannerPad = new MarginContainer();
+            eventBannerPad.AddThemeConstantOverride("margin_left", 16);
+            eventBannerPad.AddThemeConstantOverride("margin_right", 16);
+            eventBannerPad.AddThemeConstantOverride("margin_top", 6);
+            eventBannerPad.AddThemeConstantOverride("margin_bottom", 6);
+            _eventBannerPanel.AddChild(eventBannerPad);
+
+            var eventBannerVBox = new VBoxContainer
+            {
+                Alignment = BoxContainer.AlignmentMode.Center
+            };
+            eventBannerPad.AddChild(eventBannerVBox);
+
+            _lblBannerSeal = new Label
+            {
+                Name = "LblBannerSeal",
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Modulate = new Color(0.984f, 0.749f, 0.141f, 1f) // Amber gold
+            };
+            _lblBannerSeal.AddThemeFontSizeOverride("font_size", 14);
+            eventBannerVBox.AddChild(_lblBannerSeal);
+
+            _lblBannerDetail = new Label
+            {
+                Name = "LblBannerDetail",
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Modulate = new Color(0.92f, 0.95f, 0.92f, 1f) // Ivory white
+            };
+            _lblBannerDetail.AddThemeFontSizeOverride("font_size", 11);
+            eventBannerVBox.AddChild(_lblBannerDetail);
+        }
+
+        public override void _UnhandledInput(InputEvent @event)
+        {
+            if (@event is InputEventKey key && key.Pressed && !key.Echo)
+            {
+                if (key.Keycode == Key.M || key.PhysicalKeycode == Key.M || key.IsActionPressed("toggle_atlas"))
+                {
+                    if (key.CtrlPressed || key.AltPressed || key.MetaPressed || key.ShiftPressed) return;
+                    Control? focusOwner = GetViewport().GuiGetFocusOwner();
+                    if (focusOwner is LineEdit || focusOwner is TextEdit) return;
+
+                    ToggleAtlasModal();
+                    GetViewport().SetInputAsHandled();
+                }
+            }
+        }
+
+        private void ToggleAtlasModal()
+        {
+            if (_atlasModal == null)
+            {
+                _atlasModal = WorldAtlasModalView.Instance;
+                if (_atlasModal == null)
+                {
+                    _atlasModal = GetTree().Root.FindChild("WorldAtlasModal", true, false) as WorldAtlasModalView;
+                    if (_atlasModal == null)
+                    {
+                        var packed = GD.Load<PackedScene>("res://Scenes/UI/WorldAtlasModal.tscn");
+                        if (packed != null)
+                        {
+                            _atlasModal = packed.Instantiate<WorldAtlasModalView>();
+                            var uiRoot = GetParent() ?? this;
+                            uiRoot.AddChild(_atlasModal);
+                        }
+                    }
+                }
+
+                if (_atlasModal != null && _modalStack != null && _stateProvider != null)
+                {
+                    _atlasModal.Initialize(_modalStack, _stateProvider);
+                }
+            }
+
+            if (_atlasModal != null)
+            {
+                _atlasModal.Toggle();
+            }
+        }
+
+        private void ShowSealStampBanner(string seal, string detail)
+        {
+            if (_eventBannerPanel == null || _lblBannerSeal == null || _lblBannerDetail == null) return;
+
+            _lblBannerSeal.Text = seal;
+            _lblBannerDetail.Text = detail;
+            _eventBannerPanel.Visible = true;
+
+            _bannerTween?.Kill();
+            _eventBannerPanel.Modulate = new Color(1f, 1f, 1f, 0f);
+            _eventBannerPanel.Scale = new Vector2(1.15f, 1.15f);
+
+            _bannerTween = CreateTween();
+            _bannerTween.SetParallel(true);
+            _bannerTween.TweenProperty(_eventBannerPanel, "modulate:a", 1.0f, 0.22f);
+            _bannerTween.TweenProperty(_eventBannerPanel, "scale", Vector2.One, 0.22f).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            _bannerTween.Chain().TweenInterval(4.0f);
+            _bannerTween.Chain().TweenProperty(_eventBannerPanel, "modulate:a", 0.0f, 0.5f);
+            _bannerTween.TweenCallback(Callable.From(() =>
+            {
+                if (_eventBannerPanel != null) _eventBannerPanel.Visible = false;
+            }));
+        }
+
+        private void HandleWorldCalamityUpdated(WorldEventEntry entry)
+        {
+            if (entry == null) return;
+            string seal = entry.Kind switch
+            {
+                WorldCalamityKind.BeastTide => "【兽潮降临】",
+                WorldCalamityKind.InterClanSkirmish => "【宗门征伐】",
+                WorldCalamityKind.InheritanceRuins => "【仙府出世】",
+                WorldCalamityKind.GrandCaravanAuction => "【万商大集】",
+                _ => "【天地灾异】"
+            };
+            string detail = $"{entry.Title} (Phase: {entry.Phase}) — {entry.Description}";
+            ShowSealStampBanner(seal, detail);
+        }
+
+        private void HandleBountyHunterAmbush(BountyHunterRecord hunter, GridCoord pos)
+        {
+            if (hunter == null) return;
+            string seal = hunter.IssuingFaction == FactionID.TieClan ? "【铁家追捕】" : $"【{hunter.IssuingFaction}追捕】";
+            string detail = $"{hunter.HunterName} (Threat Rank {hunter.ThreatRank}) closing in at {pos}!";
+            ShowSealStampBanner(seal, detail);
+        }
+
+        private void HandleBreakthroughResolved(BreakthroughState state, int newRank)
+        {
+            if (state == BreakthroughState.Succeeded)
+            {
+                ShowSealStampBanner("【破境大成】", $"Ascended to Rank {newRank} Supreme Aperture Realm!");
+            }
         }
 
         private void OnPassMonthPressed()

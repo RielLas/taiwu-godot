@@ -9,7 +9,9 @@ namespace TaiwuGu.Core
         RefinementPath,
         EnslavementPath,
         BloodPath,
-        HumanPath
+        HumanPath,
+        TimePath,
+        BonePath
     }
 
     /// <summary>
@@ -27,6 +29,8 @@ namespace TaiwuGu.Core
         public int RefinementPathMarks = 0;
         public int EnslavementPathMarks = 0;
         public int BloodPathMarks = 0;
+        public int TimePathMarks = 0;
+        public int BonePathMarks = 0;
 
         /// <summary>
         /// Each Dao mark provides +0.1% amplification to path techniques (1000 marks = +100%).
@@ -42,10 +46,25 @@ namespace TaiwuGu.Core
                 DaoPathType.RefinementPath => RefinementPathMarks,
                 DaoPathType.EnslavementPath => EnslavementPathMarks,
                 DaoPathType.BloodPath => BloodPathMarks,
+                DaoPathType.TimePath => TimePathMarks,
+                DaoPathType.BonePath => BonePathMarks,
                 _ => 0
             };
 
             return 1.0f + (marks * 0.001f);
+        }
+
+        /// <summary>
+        /// Dao marks provide innate physical and essence resistance to incoming damage.
+        /// Each Strength mark provides 0.2% reduction; each Human path mark provides 0.1% reduction.
+        /// Capped at 0.50 (50% maximum mortal damage mitigation).
+        /// Returns multiplier to apply to incoming damage (e.g. 0.95 for 5% reduction).
+        /// </summary>
+        public float GetDamageMitigationMultiplier()
+        {
+            float reduction = (StrengthPathMarks * 0.002f) + (HumanPathMarks * 0.001f);
+            reduction = Math.Clamp(reduction, 0f, 0.50f);
+            return 1.0f - reduction;
         }
 
         public void AddMarks(DaoPathType path, int count)
@@ -58,6 +77,8 @@ namespace TaiwuGu.Core
                 case DaoPathType.RefinementPath: RefinementPathMarks += count; break;
                 case DaoPathType.EnslavementPath: EnslavementPathMarks += count; break;
                 case DaoPathType.BloodPath: BloodPathMarks += count; break;
+                case DaoPathType.TimePath: TimePathMarks += count; break;
+                case DaoPathType.BonePath: BonePathMarks += count; break;
             }
         }
     }

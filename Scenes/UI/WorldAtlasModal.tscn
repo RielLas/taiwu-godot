@@ -1,0 +1,260 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/WorldAtlasModalView.cs" id="1_atlas"]
+[ext_resource type="PackedScene" path="res://Scenes/UI/ModalScaffold.tscn" id="2_scaffold"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_detail_panel"]
+bg_color = Color(0.025, 0.04, 0.045, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.28, 0.35, 0.7)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_gold"]
+bg_color = Color(0.18, 0.12, 0.06, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.984, 0.749, 0.141, 0.8)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="WorldAtlasModal" type="Control" node_paths=PackedStringArray("Scaffold", "CentralContinentNodes", "SouthernBorderNodes", "NorthernPlainsNodes", "WesternDesertNodes", "EasternSeaNodes", "LblSectorTitle", "LblRegionAndBiome", "LblDangerFloor", "LblNativeFaction", "LblNativePaths", "LblCalamityBeacon", "LblBountyHunters", "LblBacklashPreview", "ChkSealAperture", "BtnTravel", "LblTransitCost", "LblFeedback")]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_atlas")
+Scaffold = NodePath("ModalScaffold")
+CentralContinentNodes = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/CentralBox/CentralNodes")
+SouthernBorderNodes = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/SouthernBox/SouthernNodes")
+NorthernPlainsNodes = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/NorthernBox/NorthernNodes")
+WesternDesertNodes = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/WesternBox/WesternNodes")
+EasternSeaNodes = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/EasternBox/EasternNodes")
+LblSectorTitle = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/Title")
+LblRegionAndBiome = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/RegionBiome")
+LblDangerFloor = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/DangerFloor")
+LblNativeFaction = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/NativeFaction")
+LblNativePaths = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/NativePaths")
+LblCalamityBeacon = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/CalamityBeacon")
+LblBountyHunters = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/BountyHunters")
+LblBacklashPreview = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/BacklashPreview")
+ChkSealAperture = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/ChkSeal")
+BtnTravel = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/BtnTravel")
+LblTransitCost = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/Cost")
+LblFeedback = NodePath("ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox/Feedback")
+
+[node name="ModalScaffold" parent="." instance=ExtResource("2_scaffold")]
+layout_mode = 1
+
+[node name="AtlasHBox" type="HBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="GraphScroll" type="ScrollContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox"]
+custom_minimum_size = Vector2(540, 0)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="GraphVBox" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="HeaderNote" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 0.85)
+theme_override_font_sizes/font_size = 11
+text = "★ Current Sector | ⚠ Active Calamity | ⚔ Closing Bounty Hunters"
+
+[node name="Grid" type="GridContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 2
+
+[node name="SouthernBox" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/SouthernBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.5, 0.2, 1)
+theme_override_font_sizes/font_size = 11
+text = "【南疆】 Southern Border (Miasma Wall)"
+
+[node name="SouthernNodes" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/SouthernBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="NorthernBox" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/NorthernBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.7, 0.95, 1)
+theme_override_font_sizes/font_size = 11
+text = "【北原】 Northern Plains (Licorice Wall)"
+
+[node name="NorthernNodes" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/NorthernBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="WesternBox" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/WesternBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.8, 0.3, 1)
+theme_override_font_sizes/font_size = 11
+text = "【西漠】 Western Desert (Feather Wall)"
+
+[node name="WesternNodes" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/WesternBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="EasternBox" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/EasternBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.85, 0.7, 1)
+theme_override_font_sizes/font_size = 11
+text = "【东海】 Eastern Sea (Blue Water Wall)"
+
+[node name="EasternNodes" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/EasternBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="CentralBox" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/CentralBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 11
+text = "【中洲】 Central Continent (Saint Wall)"
+
+[node name="CentralNodes" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/GraphScroll/GraphVBox/Grid/CentralBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="DetailPanel" type="PanelContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_detail_panel")
+
+[node name="Margin" type="MarginContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Title" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 14
+text = "【古月山寨】"
+
+[node name="RegionBiome" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
+theme_override_font_sizes/font_size = 10
+text = "Region: Southern Border | Biome: BambooMountain"
+
+[node name="DangerFloor" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 10
+text = "Danger Floor: Rank 1+ (Max Wild Gu: Rank 1)"
+
+[node name="NativeFaction" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.75, 0.8, 1)
+theme_override_font_sizes/font_size = 10
+text = "Governing Clan: GuYueClan"
+
+[node name="NativePaths" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.8, 0.75, 1)
+theme_override_font_sizes/font_size = 10
+text = "Native Gu Dao Marks: Moonlight, Moon"
+autowrap_mode = 3
+
+[node name="CalamityBeacon" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.45, 0.25, 1)
+theme_override_font_sizes/font_size = 10
+text = "Active Calamity Beacon: None"
+autowrap_mode = 3
+
+[node name="BountyHunters" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 10
+text = "Closing Bounty Hunters: None"
+autowrap_mode = 3
+
+[node name="BacklashPreview" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.75, 0.8, 0.85, 1)
+theme_override_font_sizes/font_size = 10
+text = "Transit preview..."
+autowrap_mode = 3
+
+[node name="ChkSeal" type="CheckBox" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
+theme_override_font_sizes/font_size = 10
+text = "Seal Aperture 封印空窍 (Minimize Wall Backlash)"
+
+[node name="Cost" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 10
+text = "Transit Cost: 25 Stones | 6 AP"
+
+[node name="Feedback" type="Label" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.204, 0.827, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+text = "Ready to embark."
+
+[node name="BtnTravel" type="Button" parent="ModalScaffold/CenterContainer/Panel/Margin/VBox/Content/AtlasHBox/DetailPanel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_gold")
+text = "【启程前往】 Embark to Sector"

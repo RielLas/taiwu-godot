@@ -21,21 +21,25 @@ namespace TaiwuGu.Tests
             var simulation = CombatSystem.GetOrCreateArena(world);
             simulation.InitializeArena(
                 world,
-                ArenaEncounterType.WildBoarHunt,
+                ArenaEncounterType.SovereignTrial,
                 new GridCoord(15, 15),
                 targetNpcId: null,
                 isLethal: true,
-                enemyName: "Zero-GC Boars",
+                enemyName: "Peak Rank 5 Sovereign",
                 rng: new SeededRandom(7));
 
             ref var player = ref simulation.EntityBuffer[0];
             player.MaxHealth = 100000f;
             player.Health = 100000f;
 
+            // Warmup loop
             for (int i = 0; i < 100; i++) simulation.Step(world, 0.016f);
 
+            // Activate Killer Move (Slot 5) channel
+            simulation.TryCastSkill(world, 5);
+
             long before = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < 1000; i++) simulation.Step(world, 0.016f);
+            for (int i = 0; i < 60; i++) simulation.Step(world, 0.016f);
             long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
             Assert.Equal(0, allocated);

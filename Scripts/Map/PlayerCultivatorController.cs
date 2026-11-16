@@ -138,7 +138,7 @@ namespace Taiwu_Godot.Scripts.Map
             if (_medallion == null)
             {
                 var jadeTex = ResourceLoader.Load<Texture2D>("res://Resources/Tokens/token_player_jade.png");
-                _medallion = new TileLandmarkVisualManager.TalismanMedallionToken(jadeTex, "道", 0.75f)
+                _medallion = new TileLandmarkVisualManager.TalismanMedallionToken(jadeTex, string.Empty, 0.75f)
                 {
                     Name = "PlayerMedallion"
                 };

@@ -116,7 +116,8 @@ namespace Taiwu_Godot.Scripts.Input
             if (_isBattleLocked &&
                 (key.IsActionPressed("open_cauldron") ||
                  key.IsActionPressed("open_breakthrough") ||
-                 key.IsActionPressed("recenter_camera")))
+                 key.IsActionPressed("recenter_camera") ||
+                 key.IsActionPressed("toggle_atlas")))
             {
                 GetViewport().SetInputAsHandled();
                 return;

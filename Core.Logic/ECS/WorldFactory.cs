@@ -14,10 +14,28 @@ namespace TaiwuGu.Entities
 
         public static WorldStore CreateDefault(int runSeed = 1, GridCoord? playerStart = null)
         {
+            return CreateFromConfig(new NewRunConfig
+            {
+                RunSeed = runSeed,
+                PlayerName = "Gu Yue Fang Yuan",
+                OriginClan = "Gu Yue Clan (古月氏)",
+                StartingSectorKey = DefaultSectorKey,
+                AptitudePercent = 44.0f,
+                Disposition = TaiwuDisposition.Egoist,
+                VitalGuId = "gu_moonlight_01"
+            }, playerStart);
+        }
+
+        public static WorldStore CreateFromConfig(NewRunConfig config, GridCoord? playerStart = null)
+        {
+            config ??= new NewRunConfig();
+            int runSeed = config.RunSeed;
+            string sectorKey = !string.IsNullOrWhiteSpace(config.StartingSectorKey) ? config.StartingSectorKey : DefaultSectorKey;
+
             var store = new WorldStore
             {
                 RunSeed = runSeed,
-                CurrentSectorKey = DefaultSectorKey
+                CurrentSectorKey = sectorKey
             };
 
             // 1. World Singleton Entity (Clock + Kinship/Bounty Ledger)
@@ -35,14 +53,17 @@ namespace TaiwuGu.Entities
             store.Set(worldId, kinship);
 
             // 2. Starting Sector Map Entity
-            var startBp = WorldAtlasRegistry.Get(DefaultSectorKey);
-            EntityId sectorEntity = store.CreateEntity(DefaultSectorKey);
+            var startBp = WorldAtlasRegistry.TryGet(sectorKey, out var foundBp) && foundBp != null
+                ? foundBp
+                : WorldAtlasRegistry.Get(DefaultSectorKey);
+
+            EntityId sectorEntity = store.CreateEntity(startBp.SectorKey);
             var sector = new SectorGridComponent
             {
                 SectorKey = startBp.SectorKey,
                 Seed = startBp.Seed,
                 Region = startBp.Region,
-                MountainId = SouthernMountainID.GuYueVillage,
+                MountainId = startBp.MountainId ?? SouthernMountainID.GuYueVillage,
                 Biome = startBp.Biome,
                 DisplayName = startBp.DisplayName,
                 GridWidth = startBp.Width,
@@ -51,20 +72,24 @@ namespace TaiwuGu.Entities
             sector.HydrateTiles();
             store.Set(sectorEntity, sector);
 
-            // 3. Player Cultivator Entity (Gu Yue Fang Yuan)
+            // 3. Player Cultivator Entity
             GridCoord startPos = playerStart ?? new GridCoord(15, 15);
             EntityId playerId = store.CreateEntity("player_fang_yuan");
             store.PlayerId = playerId.Value;
             store.Set(playerId, new PlayerTagComponent());
-            store.Set(playerId, new PositionComponent(startPos, DefaultSectorKey));
+            store.Set(playerId, new PositionComponent(startPos, startBp.SectorKey));
+
+            AptitudeGrade grade = DeriveAptitudeGrade(config.AptitudePercent);
+            float sea = Math.Clamp(config.AptitudePercent, 20f, 100f);
+
             store.Set(playerId, new CultivatorComponent
             {
                 ExternalId = "player_fang_yuan",
-                Name = "Gu Yue Fang Yuan",
-                Clan = "Gu Yue Clan (古月氏)",
-                Disposition = TaiwuDisposition.Egoist,
-                Aptitude = AptitudeGrade.C_Grade,
-                AptitudePercent = 44.0f,
+                Name = string.IsNullOrWhiteSpace(config.PlayerName) ? "Gu Yue Fang Yuan" : config.PlayerName,
+                Clan = string.IsNullOrWhiteSpace(config.OriginClan) ? "Gu Yue Clan (古月氏)" : config.OriginClan,
+                Disposition = config.Disposition,
+                Aptitude = grade,
+                AptitudePercent = sea,
                 Age = 15,
                 LifespanYears = 100,
                 PrimevalStones = 250
@@ -73,7 +98,7 @@ namespace TaiwuGu.Entities
             {
                 Rank = 1,
                 Substage = 1,
-                CurrentEssenceSea = 44.0f,
+                CurrentEssenceSea = sea,
                 CurrentNurtureProgress = 0f,
                 WallWashingProgress = 0f,
                 MaxWallDurability = 100f,
@@ -83,7 +108,7 @@ namespace TaiwuGu.Entities
             });
             store.Set(playerId, new DaoMarksComponent
             {
-                Ledger = new DaoMarksLedger { HumanPathMarks = ApertureComponent.DeriveInnateHumanPathMarks(44.0f) }
+                Ledger = new DaoMarksLedger { HumanPathMarks = ApertureComponent.DeriveInnateHumanPathMarks(sea) }
             });
 
             var inv = new InventoryComponent();
@@ -93,29 +118,53 @@ namespace TaiwuGu.Entities
             store.Set(playerId, inv);
 
             // Starter Gu Entities owned by Player
-            SpawnGuForOwner(store, playerId, new GuWormComponent
+            string vitalId = !string.IsNullOrWhiteSpace(config.VitalGuId) ? config.VitalGuId : "gu_moonlight_01";
+            GuWormComponent? vitalGu = null;
+            if (GuDatabase.TryGet(vitalId, out var def) && def != null)
             {
-                GuID = "gu_moonlight_01",
-                Name = "Moonlight Gu (月光蛊)",
+                vitalGu = GuDatabase.CreateGuWormComponent(vitalId, isWild: false);
+            }
+            vitalGu ??= new GuWormComponent
+            {
+                GuID = vitalId,
+                Name = vitalId.Contains("boar", StringComparison.OrdinalIgnoreCase) ? "White Boar Gu (白豕蛊)" : "Moonlight Gu (月光蛊)",
                 Rank = 1,
-                Slot = GuSlotCategory.Attack,
-                Diet = GuDietType.MoonOrchidPetals,
+                Slot = vitalId.Contains("boar", StringComparison.OrdinalIgnoreCase) ? GuSlotCategory.Support : GuSlotCategory.Attack,
+                Diet = vitalId.Contains("boar", StringComparison.OrdinalIgnoreCase) ? GuDietType.FreshBoarFlesh : GuDietType.MoonOrchidPetals,
                 BaseEssenceCost = 10f,
-                Satiety = 100f,
-                IsVitalGu = true
-            }, isEquipped: true, equipSlot: 0);
+                Satiety = 100f
+            };
+            vitalGu.IsVitalGu = true;
+            SpawnGuForOwner(store, playerId, vitalGu, isEquipped: true, equipSlot: 0);
 
-            SpawnGuForOwner(store, playerId, new GuWormComponent
+            if (!vitalId.Contains("boar", StringComparison.OrdinalIgnoreCase))
             {
-                GuID = "gu_white_boar_01",
-                Name = "White Boar Gu (白豕蛊)",
-                Rank = 1,
-                Slot = GuSlotCategory.Support,
-                Diet = GuDietType.FreshBoarFlesh,
-                BaseEssenceCost = 15f,
-                Satiety = 100f,
-                IsVitalGu = false
-            }, isEquipped: true, equipSlot: 1);
+                SpawnGuForOwner(store, playerId, new GuWormComponent
+                {
+                    GuID = "gu_white_boar_01",
+                    Name = "White Boar Gu (白豕蛊)",
+                    Rank = 1,
+                    Slot = GuSlotCategory.Support,
+                    Diet = GuDietType.FreshBoarFlesh,
+                    BaseEssenceCost = 15f,
+                    Satiety = 100f,
+                    IsVitalGu = false
+                }, isEquipped: true, equipSlot: 1);
+            }
+            else
+            {
+                SpawnGuForOwner(store, playerId, new GuWormComponent
+                {
+                    GuID = "gu_moonlight_01",
+                    Name = "Moonlight Gu (月光蛊)",
+                    Rank = 1,
+                    Slot = GuSlotCategory.Attack,
+                    Diet = GuDietType.MoonOrchidPetals,
+                    BaseEssenceCost = 10f,
+                    Satiety = 100f,
+                    IsVitalGu = false
+                }, isEquipped: true, equipSlot: 1);
+            }
 
             // 4. Seed 6 Autonomous Faction Entities
             SeedFactions(store);
@@ -128,6 +177,14 @@ namespace TaiwuGu.Entities
             sector.CommitTilesToSnapshot();
 
             return store;
+        }
+
+        public static AptitudeGrade DeriveAptitudeGrade(float aptitudePercent)
+        {
+            if (aptitudePercent >= 80f) return AptitudeGrade.A_Grade;
+            if (aptitudePercent >= 60f) return AptitudeGrade.B_Grade;
+            if (aptitudePercent >= 40f) return AptitudeGrade.C_Grade;
+            return AptitudeGrade.D_Grade;
         }
 
         public static EntityId SpawnGuForOwner(WorldStore store, EntityId ownerId, GuWormComponent gu, bool isEquipped, int equipSlot = -1)

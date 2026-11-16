@@ -112,6 +112,25 @@ namespace Taiwu_Godot.Scripts.Map
                         Vector2I gridPos = pos.Coord.ToGodot();
                         Vector2 worldPos = TileManager.GridToWorld(gridPos);
 
+                        // Slightly offset NPC tokens when sharing a tile with ClanPost so they don't sit on the watchtower roof
+                        TileNode tile = TileManager.GetTile(gridPos.X, gridPos.Y);
+                        if (tile.POI == TilePOIType.ClanPost)
+                        {
+                            worldPos += new Vector2(0.55f, 0.38f);
+                        }
+
+                        // Differentiate / tint NPC token by FactionComponent color
+                        FactionID? factionId = null;
+                        if (world.TryGet<FactionComponent>(eid, out var fc))
+                        {
+                            factionId = fc.ID;
+                        }
+                        else if (!string.IsNullOrEmpty(cult.Clan))
+                        {
+                            factionId = FactionComponent.ResolveFactionFromClan(cult.Clan);
+                        }
+                        Color factionTint = GetFactionTint(factionId);
+
                         if (_activeTokens.TryGetValue(id, out var tokenNode))
                         {
                             if (GodotObject.IsInstanceValid(tokenNode))
@@ -121,6 +140,11 @@ namespace Taiwu_Godot.Scripts.Map
                                     tokenNode.Position = worldPos;
                                 }
                                 tokenNode.Visible = true;
+                                var medallion = tokenNode.GetNodeOrNull<TalismanMedallionToken>("ClanMedallion");
+                                if (medallion != null)
+                                {
+                                    medallion.Modulate = factionTint;
+                                }
                             }
                         }
                         else
@@ -140,10 +164,18 @@ namespace Taiwu_Godot.Scripts.Map
                             {
                                 token.Position = worldPos;
                                 token.Visible = true;
+                                var medallion = token.GetNodeOrNull<TalismanMedallionToken>("ClanMedallion");
+                                if (medallion != null)
+                                {
+                                    medallion.Modulate = factionTint;
+                                }
                             }
                             else
                             {
-                                token = CreateCultivatorTokenObject(worldPos, gridPos);
+                                Texture2D? tokenTex = (factionId == FactionID.JiaConsortium)
+                                    ? (caravanBrassTex ?? clanBronzeTex ?? jadeMedallionTex)
+                                    : (clanBronzeTex ?? jadeMedallionTex);
+                                token = CreateCultivatorTokenObject(worldPos, gridPos, tokenTex, factionTint);
                                 if (token != null)
                                 {
                                     AddChild(token);
@@ -299,10 +331,10 @@ namespace Taiwu_Godot.Scripts.Map
         }
 
         /// <summary>
-        /// Spawns a Halal-compliant carved bronze clan talisman medallion token with grounding shadow and 【修】 seal calligraphy.
+        /// Spawns a Halal-compliant carved clan talisman medallion token with grounding shadow and faction differentiation.
         /// Zero depictions of living human/animal bodies, faces, or eyes.
         /// </summary>
-        private Node2D? CreateCultivatorTokenObject(Vector2 worldPos, Vector2I gridPos)
+        private Node2D? CreateCultivatorTokenObject(Vector2 worldPos, Vector2I gridPos, Texture2D? tokenTex = null, Color? tint = null)
         {
             Node2D container = new()
             {
@@ -319,15 +351,27 @@ namespace Taiwu_Godot.Scripts.Map
             };
             container.AddChild(shadow);
 
-            // 2. Halal Carved Bronze Clan Medallion with Radiant Gold Seal Calligraphy 【修】
-            var talismanToken = new TalismanMedallionToken(clanBronzeTex ?? jadeMedallionTex, "修", 0.70f)
+            // 2. Halal Carved Talisman Medallion differentiated by faction tint
+            var talismanToken = new TalismanMedallionToken(tokenTex ?? clanBronzeTex ?? jadeMedallionTex, "修", 0.70f)
             {
-                Name = "ClanMedallion"
+                Name = "ClanMedallion",
+                Modulate = tint ?? Colors.White
             };
             container.AddChild(talismanToken);
 
             return container;
         }
+
+        public static Color GetFactionTint(FactionID? factionId) => factionId switch
+        {
+            FactionID.GuYueClan     => new Color(0.20f, 0.85f, 0.55f, 1f), // Viridian Jade Green
+            FactionID.BaiClan       => new Color(0.88f, 0.92f, 0.98f, 1f), // Bone Silver White
+            FactionID.XiongClan     => new Color(0.92f, 0.60f, 0.22f, 1f), // Ferocious Bear Amber/Ochre
+            FactionID.JiaConsortium => new Color(0.98f, 0.82f, 0.25f, 1f), // Caravan Merchant Gold
+            FactionID.TieClan       => new Color(0.35f, 0.70f, 0.95f, 1f), // Tie Divine Enforcers Steel Blue
+            FactionID.DemonicRogues => new Color(0.92f, 0.28f, 0.38f, 1f), // Demonic Crimson
+            _                       => new Color(0.85f, 0.75f, 0.65f, 1f)  // Neutral Mortal Sand Bronze
+        };
 
         public void UpdateLandmarkFogVisibility()
         {
@@ -430,7 +474,8 @@ namespace Taiwu_Godot.Scripts.Map
                 }
 
                 // Authentic Radiant Gold Seal Calligraphy with soft drop shadow
-                if (!string.IsNullOrEmpty(_sealText))
+                // Only drawn when _tokenTexture is null (fallback procedural body), avoiding double-stamped calligraphy
+                if (_tokenTexture == null && !string.IsNullOrEmpty(_sealText))
                 {
                     var font = ThemeDB.FallbackFont;
                     int fontSize = 24;

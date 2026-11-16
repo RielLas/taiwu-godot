@@ -14,7 +14,7 @@ namespace TaiwuGu.Combat
     {
         public const int MAX_ENTITIES = 64;
         public const int MAX_PROJECTILES = 128;
-        public const int MAX_SKILLS = 5;
+        public const int MAX_SKILLS = 6;
 
         public const float ARENA_HALF_W = 9.5f;
         public const float ARENA_HALF_H = 5.2f;
@@ -25,6 +25,8 @@ namespace TaiwuGu.Combat
 
         private readonly EntityId[] _skillGuEntityIds = new EntityId[MAX_SKILLS];
         private EntityId _playerEntity;
+        private DaoMarksLedger? _playerDaoMarks;
+        private WorldStore? _lastWorld;
 
         public bool IsActive;
         public CombatOutcome Outcome;
@@ -74,6 +76,8 @@ namespace TaiwuGu.Combat
             EnemyDisplayName = enemyName ?? GetDefaultEnemyName(encounter);
 
             _playerEntity = world.PlayerEntity;
+            _lastWorld = world;
+            _playerDaoMarks = world.Get<DaoMarksComponent>(_playerEntity)?.Ledger;
             ApertureComponent? aperture = world.Get<ApertureComponent>(_playerEntity);
 
             ref CombatEntityData player = ref EntityBuffer[0];
@@ -91,6 +95,8 @@ namespace TaiwuGu.Combat
             if (player.Health > player.MaxHealth) player.Health = player.MaxHealth;
             player.MoveSpeed = 4.8f;
             player.Rank = aperture?.Rank ?? 1;
+            player.ChannelTimer = 0f;
+            player.StunTimer = 0f;
 
             PopulateSkills(world);
             SeedEnemies(world, rng);
@@ -133,9 +139,32 @@ namespace TaiwuGu.Combat
             if (!skill.IsPopulated || skill.CooldownRemaining > 0f) return false;
 
             ref CombatEntityData player = ref EntityBuffer[0];
-            if (!player.Active) return false;
+            if (!player.Active || player.StunTimer > 0f || player.ChannelTimer > 0f) return false;
 
             if (!world.TryGet<ApertureComponent>(_playerEntity, out var aperture) || aperture == null) return false;
+
+            // Slot 5 is dedicated Killer Move [R]
+            if (slotIndex == 5)
+            {
+                double density = aperture.GetDensityCoefficient();
+                float realCostPct = (float)(skill.BaseBeuCost / density);
+                if (aperture.CurrentEssenceSea < realCostPct)
+                {
+                    WorldSignals.EmitSound(HalalSoundType.WoodenKnock);
+                    return false;
+                }
+
+                aperture.CurrentEssenceSea -= realCostPct;
+                WorldSignals.EmitTopics(DirtyTopic.Aperture);
+
+                skill.CooldownRemaining = skill.CooldownDuration;
+                player.ChannelTimer = 1.0f;
+                player.VelX = 0f;
+                player.VelY = 0f;
+                WorldSignals.EmitSound(HalalSoundType.CauldronFire);
+                return true;
+            }
+
             if (!world.TryGet<GuWormComponent>(_skillGuEntityIds[slotIndex], out var gu) || gu == null) return false;
 
             GuStarvationStage stage = gu.GetStarvationStage();
@@ -145,17 +174,18 @@ namespace TaiwuGu.Combat
                 return false;
             }
 
-            float realCostPct = gu.GetRealEssenceCost(aperture.Rank, aperture.Substage);
-            if (aperture.CurrentEssenceSea < realCostPct)
+            float realCost = gu.GetRealEssenceCost(aperture.Rank, aperture.Substage);
+            if (aperture.CurrentEssenceSea < realCost)
             {
                 WorldSignals.EmitSound(HalalSoundType.WoodenKnock);
                 return false;
             }
 
-            aperture.CurrentEssenceSea -= realCostPct;
+            aperture.CurrentEssenceSea -= realCost;
             WorldSignals.EmitTopics(DirtyTopic.Aperture);
 
             float mult = gu.GetPowerMultiplier();
+            float daoAmp = _playerDaoMarks != null ? _playerDaoMarks.GetPathAmplificationMultiplier(skill.PathType) : 1.0f;
             skill.CooldownRemaining = skill.CooldownDuration;
 
             switch (skill.EffectKind)
@@ -170,14 +200,14 @@ namespace TaiwuGu.Combat
                         player.PosY + player.AimY * (player.Radius + 0.15f),
                         player.AimX * speed,
                         player.AimY * speed,
-                        skill.BaseDamage * mult,
+                        skill.BaseDamage * mult * daoAmp,
                         skill.Range > 0f ? skill.Range : 8f,
                         style);
                     WorldSignals.EmitSound(HalalSoundType.BladeSlash);
                     break;
                 }
                 case GuSkillEffectKind.Shield:
-                    player.ShieldHP = (25f + skill.Rank * 15f) * mult;
+                    player.ShieldHP = (25f + skill.Rank * 15f) * mult * daoAmp;
                     player.ShieldTimer = 4.0f;
                     WorldSignals.EmitSound(HalalSoundType.WoodenKnock);
                     break;
@@ -197,7 +227,7 @@ namespace TaiwuGu.Combat
                     break;
                 }
                 case GuSkillEffectKind.Heal:
-                    player.Health = MathF.Min(player.MaxHealth, player.Health + 20f * skill.Rank * mult);
+                    player.Health = MathF.Min(player.MaxHealth, player.Health + 20f * skill.Rank * mult * daoAmp);
                     aperture.CurrentHealth = player.Health;
                     WorldSignals.EmitSound(HalalSoundType.CauldronSteam);
                     break;
@@ -214,7 +244,7 @@ namespace TaiwuGu.Combat
                         float distSq = dx * dx + dy * dy;
                         if (distSq > pulseRadius * pulseRadius) continue;
 
-                        enemy.Health -= 18f * skill.Rank * mult;
+                        enemy.Health -= 18f * skill.Rank * mult * daoAmp;
                         enemy.HitFlashTimer = 0.15f;
                         if (enemy.Health <= 0f) enemy.Active = false;
 
@@ -271,6 +301,7 @@ namespace TaiwuGu.Combat
                 }
             }
 
+            _lastWorld = world;
             ref CombatEntityData player = ref EntityBuffer[0];
             if (!player.Active)
             {
@@ -281,8 +312,47 @@ namespace TaiwuGu.Combat
 
             TickTimers(ref player, dt);
 
-            // Responsive acceleration & deceleration smoothing (18/s accel, 22/s decel)
-            if (player.DashTimer <= 0f)
+            // ChannelTimer processing: Killer Move charging and execution
+            if (player.ChannelTimer > 0f)
+            {
+                player.ChannelTimer = MathF.Max(0f, player.ChannelTimer - dt);
+                if (player.ChannelTimer <= 0f)
+                {
+                    // Channel succeeded! Unleash Killer Move resonance blast!
+                    ref CombatSkillSlot km = ref PlayerSkills[5];
+                    float kmDaoAmp = _playerDaoMarks != null ? _playerDaoMarks.GetPathAmplificationMultiplier(km.PathType) : 1.0f;
+                    float kmDamage = km.BaseDamage * kmDaoAmp;
+                    float burstRange = km.Range > 0f ? km.Range : 6.0f;
+
+                    for (int j = 1; j < MAX_ENTITIES; j++)
+                    {
+                        ref CombatEntityData enemy = ref EntityBuffer[j];
+                        if (!enemy.Active || enemy.Team != CombatEntityTeam.Hostile) continue;
+
+                        float edx = enemy.PosX - player.PosX;
+                        float edy = enemy.PosY - player.PosY;
+                        float distSq = edx * edx + edy * edy;
+                        if (distSq <= burstRange * burstRange)
+                        {
+                            enemy.Health -= kmDamage;
+                            enemy.HitFlashTimer = 0.25f;
+                            enemy.StunTimer = 1.2f;
+                            if (enemy.Health <= 0f) enemy.Active = false;
+                        }
+                    }
+
+                    HitStopTimer = 0.12f;
+                    WorldSignals.EmitSound(HalalSoundType.CauldronFire);
+                }
+            }
+
+            // Stun or active channel restricts voluntary movement
+            if (player.StunTimer > 0f || player.ChannelTimer > 0f)
+            {
+                player.VelX = 0f;
+                player.VelY = 0f;
+            }
+            else if (player.DashTimer <= 0f)
             {
                 bool isDecel = (TargetVelX == 0f && TargetVelY == 0f);
                 float rate = isDecel ? 22f : 18f;
@@ -310,6 +380,14 @@ namespace TaiwuGu.Combat
                     continue;
                 }
 
+                // Stunned enemy cannot move or attack
+                if (enemy.StunTimer > 0f)
+                {
+                    enemy.VelX = 0f;
+                    enemy.VelY = 0f;
+                    continue;
+                }
+
                 float dx = player.PosX - enemy.PosX;
                 float dy = player.PosY - enemy.PosY;
                 float distSq = dx * dx + dy * dy;
@@ -328,41 +406,116 @@ namespace TaiwuGu.Combat
                     }
                     else if (enemy.AttackCooldown <= 0f)
                     {
-                        DamagePlayer(ref player, 10f);
+                        DamagePlayer(world, ref player, 10f);
                         enemy.AttackCooldown = 1.8f;
                     }
                     ClampToArena(ref enemy);
                 }
-                else
+                else if (enemy.Archetype == CombatEntityArchetype.SovereignElder)
                 {
-                    if (dist < 3.2f && dist > 0.0001f)
+                    // Peak Rank 5 Sovereign Boss AI: strafes, keeps mid range, fires 5-way spread
+                    float strafeX = dist > 0.0001f ? -dy / dist : 0f;
+                    float strafeY = dist > 0.0001f ? dx / dist : 1f;
+
+                    if (dist < 3.5f && dist > 0.0001f)
                     {
-                        enemy.PosX -= dx / dist * enemy.MoveSpeed * dt;
-                        enemy.PosY -= dy / dist * enemy.MoveSpeed * dt;
+                        enemy.PosX -= (dx / dist * 0.7f + strafeX * 0.7f) * enemy.MoveSpeed * dt;
+                        enemy.PosY -= (dy / dist * 0.7f + strafeY * 0.7f) * enemy.MoveSpeed * dt;
                     }
-                    else if (dist > 5.5f && dist > 0.0001f)
+                    else if (dist > 6.0f && dist > 0.0001f)
                     {
-                        enemy.PosX += dx / dist * enemy.MoveSpeed * dt;
-                        enemy.PosY += dy / dist * enemy.MoveSpeed * dt;
+                        enemy.PosX += (dx / dist * 0.7f + strafeX * 0.7f) * enemy.MoveSpeed * dt;
+                        enemy.PosY += (dy / dist * 0.7f + strafeY * 0.7f) * enemy.MoveSpeed * dt;
+                    }
+                    else
+                    {
+                        enemy.PosX += strafeX * enemy.MoveSpeed * dt;
+                        enemy.PosY += strafeY * enemy.MoveSpeed * dt;
                     }
                     ClampToArena(ref enemy);
 
-                    if (enemy.AttackCooldown <= 0f && dist < 9.0f)
+                    if (enemy.AttackCooldown <= 0f && dist < 11.0f)
                     {
-                        float aimX = dist > 0.0001f ? dx / dist : 1f;
-                        float aimY = dist > 0.0001f ? dy / dist : 0f;
+                        float baseAimX = dist > 0.0001f ? dx / dist : 1f;
+                        float baseAimY = dist > 0.0001f ? dy / dist : 0f;
+                        float baseAngle = MathF.Atan2(baseAimY, baseAimX);
+                        float damage = 22f + enemy.Rank * 4f;
+
+                        for (int spread = -2; spread <= 2; spread++)
+                        {
+                            float angle = baseAngle + spread * 0.16f;
+                            float vx = MathF.Cos(angle) * 10.5f;
+                            float vy = MathF.Sin(angle) * 10.5f;
+                            SpawnProjectile(
+                                CombatEntityTeam.Hostile,
+                                enemy.PosX + MathF.Cos(angle) * enemy.Radius,
+                                enemy.PosY + MathF.Sin(angle) * enemy.Radius,
+                                vx, vy, damage, 14f, 3);
+                        }
+                        enemy.AttackCooldown = 0.95f;
+                    }
+                }
+                else
+                {
+                    // ClanPatrol and DemonicCultivator
+                    float strafeFactor = enemy.Rank >= 4 ? 0.45f : 0.0f;
+                    float strafeX = dist > 0.0001f ? -dy / dist : 0f;
+                    float strafeY = dist > 0.0001f ? dx / dist : 1f;
+
+                    if (dist < 3.2f && dist > 0.0001f)
+                    {
+                        enemy.PosX -= (dx / dist - strafeX * strafeFactor) * enemy.MoveSpeed * dt;
+                        enemy.PosY -= (dy / dist - strafeY * strafeFactor) * enemy.MoveSpeed * dt;
+                    }
+                    else if (dist > 5.5f && dist > 0.0001f)
+                    {
+                        enemy.PosX += (dx / dist + strafeX * strafeFactor) * enemy.MoveSpeed * dt;
+                        enemy.PosY += (dy / dist + strafeY * strafeFactor) * enemy.MoveSpeed * dt;
+                    }
+                    else if (strafeFactor > 0f)
+                    {
+                        enemy.PosX += strafeX * enemy.MoveSpeed * strafeFactor * dt;
+                        enemy.PosY += strafeY * enemy.MoveSpeed * strafeFactor * dt;
+                    }
+                    ClampToArena(ref enemy);
+
+                    if (enemy.AttackCooldown <= 0f && dist < 9.5f)
+                    {
+                        float baseAimX = dist > 0.0001f ? dx / dist : 1f;
+                        float baseAimY = dist > 0.0001f ? dy / dist : 0f;
                         int style = enemy.Archetype == CombatEntityArchetype.ClanPatrol ? 3 : 2;
-                        float damage = 8f + enemy.Rank * 3f;
-                        SpawnProjectile(
-                            CombatEntityTeam.Hostile,
-                            enemy.PosX + aimX * enemy.Radius,
-                            enemy.PosY + aimY * enemy.Radius,
-                            aimX * 8.5f,
-                            aimY * 8.5f,
-                            damage,
-                            12f,
-                            style);
-                        enemy.AttackCooldown = enemy.Archetype == CombatEntityArchetype.ClanPatrol ? 1.3f : 1.15f;
+
+                        if (enemy.Rank >= 4)
+                        {
+                            float baseAngle = MathF.Atan2(baseAimY, baseAimX);
+                            float damage = 10f + enemy.Rank * 3f;
+                            for (int spread = -1; spread <= 1; spread++)
+                            {
+                                float angle = baseAngle + spread * 0.20f;
+                                float vx = MathF.Cos(angle) * 9.0f;
+                                float vy = MathF.Sin(angle) * 9.0f;
+                                SpawnProjectile(
+                                    CombatEntityTeam.Hostile,
+                                    enemy.PosX + MathF.Cos(angle) * enemy.Radius,
+                                    enemy.PosY + MathF.Sin(angle) * enemy.Radius,
+                                    vx, vy, damage, 12f, style);
+                            }
+                            enemy.AttackCooldown = enemy.Archetype == CombatEntityArchetype.ClanPatrol ? 1.2f : 1.0f;
+                        }
+                        else
+                        {
+                            float damage = 8f + enemy.Rank * 3f;
+                            SpawnProjectile(
+                                CombatEntityTeam.Hostile,
+                                enemy.PosX + baseAimX * enemy.Radius,
+                                enemy.PosY + baseAimY * enemy.Radius,
+                                baseAimX * 8.5f,
+                                baseAimY * 8.5f,
+                                damage,
+                                12f,
+                                style);
+                            enemy.AttackCooldown = enemy.Archetype == CombatEntityArchetype.ClanPatrol ? 1.3f : 1.15f;
+                        }
                     }
                 }
             }
@@ -393,7 +546,7 @@ namespace TaiwuGu.Combat
                     float hitRadius = player.Radius + projectile.Radius;
                     if (pdx * pdx + pdy * pdy <= hitRadius * hitRadius)
                     {
-                        DamagePlayer(ref player, projectile.Damage);
+                        DamagePlayer(world, ref player, projectile.Damage);
                         projectile.Active = false;
                         WorldSignals.EmitSound(HalalSoundType.BluntImpact);
                     }
@@ -473,7 +626,7 @@ namespace TaiwuGu.Combat
 
         private void PopulateSkills(WorldStore world)
         {
-            for (int equipSlot = 0; equipSlot < MAX_SKILLS; equipSlot++)
+            for (int equipSlot = 0; equipSlot < 5; equipSlot++)
             {
                 EntityId guEntity = EntityId.None;
                 GuWormComponent? gu = null;
@@ -517,10 +670,62 @@ namespace TaiwuGu.Combat
                     CooldownRemaining = 0f,
                     BaseDamage = damage > 0f ? damage : 25f,
                     ProjectileSpeed = speed > 0f ? speed : 12f,
-                    Range = range > 0f ? range : 8f
+                    Range = range > 0f ? range : 8f,
+                    PathType = ResolvePathType(def?.Path)
                 };
                 _skillGuEntityIds[equipSlot] = guEntity;
             }
+
+            // Synthesize dedicated Killer Move in Slot 5
+            bool hasAnyEquipped = false;
+            int totalRank = 0;
+            float maxDamage = 25f;
+            DaoPathType primaryPath = DaoPathType.HumanPath;
+
+            for (int s = 0; s < 5; s++)
+            {
+                if (PlayerSkills[s].IsPopulated)
+                {
+                    hasAnyEquipped = true;
+                    totalRank += PlayerSkills[s].Rank;
+                    if (PlayerSkills[s].BaseDamage > maxDamage) maxDamage = PlayerSkills[s].BaseDamage;
+                    if (s == 0) primaryPath = PlayerSkills[s].PathType;
+                }
+            }
+
+            if (hasAnyEquipped)
+            {
+                PlayerSkills[5] = new CombatSkillSlot
+                {
+                    IsPopulated = true,
+                    GuId = "killer_move_resonance",
+                    DisplayName = "Resonance Killer Move (杀招·天地共鸣)",
+                    Rank = Math.Max(1, totalRank / 2),
+                    SlotCategory = GuSlotCategory.Attack,
+                    EffectKind = GuSkillEffectKind.AoEPulse,
+                    BaseBeuCost = 35f,
+                    CooldownDuration = 8.0f,
+                    CooldownRemaining = 0f,
+                    BaseDamage = Math.Max(60f, maxDamage * 2.5f),
+                    ProjectileSpeed = 0f,
+                    Range = 6.0f,
+                    PathType = primaryPath
+                };
+                _skillGuEntityIds[5] = EntityId.None;
+            }
+        }
+
+        private static DaoPathType ResolvePathType(string? path)
+        {
+            if (string.IsNullOrEmpty(path)) return DaoPathType.HumanPath;
+            if (path.IndexOf("moon", StringComparison.OrdinalIgnoreCase) >= 0) return DaoPathType.MoonPath;
+            if (path.IndexOf("strength", StringComparison.OrdinalIgnoreCase) >= 0) return DaoPathType.StrengthPath;
+            if (path.IndexOf("blood", StringComparison.OrdinalIgnoreCase) >= 0) return DaoPathType.BloodPath;
+            if (path.IndexOf("bone", StringComparison.OrdinalIgnoreCase) >= 0) return DaoPathType.BonePath;
+            if (path.IndexOf("time", StringComparison.OrdinalIgnoreCase) >= 0) return DaoPathType.TimePath;
+            if (path.IndexOf("enslave", StringComparison.OrdinalIgnoreCase) >= 0) return DaoPathType.EnslavementPath;
+            if (path.IndexOf("refine", StringComparison.OrdinalIgnoreCase) >= 0) return DaoPathType.RefinementPath;
+            return DaoPathType.HumanPath;
         }
 
         private void SeedEnemies(WorldStore world, IRandomSource rng)
@@ -556,6 +761,13 @@ namespace TaiwuGu.Combat
                     }
                     break;
                 }
+                case ArenaEncounterType.SovereignTrial:
+                {
+                    SpawnHostile(1, CombatEntityArchetype.SovereignElder, 5.0f, 0f, 650f, 4.0f, 0.75f, 5, 1.0f);
+                    SpawnHostile(2, CombatEntityArchetype.DemonicCultivator, 6.5f, -2.2f, 220f, 3.8f, 0.60f, 4, 1.2f);
+                    SpawnHostile(3, CombatEntityArchetype.ClanPatrol, 6.5f, 2.2f, 220f, 3.8f, 0.60f, 4, 1.2f);
+                    break;
+                }
             }
         }
 
@@ -589,6 +801,8 @@ namespace TaiwuGu.Combat
             enemy.MoveSpeed = speed;
             enemy.AttackCooldown = attackCooldown;
             enemy.Rank = rank;
+            enemy.ChannelTimer = 0f;
+            enemy.StunTimer = 0f;
         }
 
         private void SpawnProjectile(
@@ -625,6 +839,7 @@ namespace TaiwuGu.Combat
             if (entity.AttackCooldown > 0f) entity.AttackCooldown = MathF.Max(0f, entity.AttackCooldown - dt);
             if (entity.HitFlashTimer > 0f) entity.HitFlashTimer = MathF.Max(0f, entity.HitFlashTimer - dt);
             if (entity.DashTimer > 0f) entity.DashTimer = MathF.Max(0f, entity.DashTimer - dt);
+            if (entity.StunTimer > 0f) entity.StunTimer = MathF.Max(0f, entity.StunTimer - dt);
             if (entity.ShieldTimer > 0f)
             {
                 entity.ShieldTimer = MathF.Max(0f, entity.ShieldTimer - dt);
@@ -632,25 +847,87 @@ namespace TaiwuGu.Combat
             }
         }
 
-        private static void DamagePlayer(ref CombatEntityData player, float damage)
+        public void DamagePlayer(WorldStore world, ref CombatEntityData player, float damage)
         {
             if (!player.Active || damage <= 0f || player.DashTimer > 0f) return;
 
+            // Killer Move channel interrupt + resonance backlash
+            if (player.ChannelTimer > 0f)
+            {
+                player.ChannelTimer = 0f;
+                float backlashDamage = 25f;
+                player.Health -= backlashDamage;
+                player.StunTimer = 1.5f;
+                player.HitFlashTimer = 0.25f;
+
+                // Deduct satiety on participating Gu
+                for (int s = 0; s < 5; s++)
+                {
+                    EntityId guEid = _skillGuEntityIds[s];
+                    if (guEid.IsValid && world.TryGet<GuWormComponent>(guEid, out var gu) && gu != null)
+                    {
+                        gu.Satiety = MathF.Max(0f, gu.Satiety - 20f);
+                    }
+                }
+
+                WorldSignals.EmitSound(HalalSoundType.BluntImpact);
+                WorldSignals.EmitTopics(DirtyTopic.Inventory);
+            }
+
+            // Apply DaoMarks mitigation
+            float mitigation = _playerDaoMarks != null ? _playerDaoMarks.GetDamageMitigationMultiplier() : 1.0f;
+            float effectiveDamage = damage * mitigation;
+
             if (player.ShieldHP > 0f)
             {
-                player.ShieldHP -= damage;
+                player.ShieldHP -= effectiveDamage;
                 if (player.ShieldHP > 0f)
                 {
                     player.HitFlashTimer = 0.12f;
                     return;
                 }
 
-                damage = -player.ShieldHP;
+                effectiveDamage = -player.ShieldHP;
                 player.ShieldHP = 0f;
             }
 
-            player.Health -= damage;
+            player.Health -= effectiveDamage;
             player.HitFlashTimer = 0.15f;
+        }
+
+        public void DamagePlayer(ref CombatEntityData player, float damage)
+        {
+            if (_lastWorld != null)
+            {
+                DamagePlayer(_lastWorld, ref player, damage);
+            }
+            else
+            {
+                if (player.ChannelTimer > 0f)
+                {
+                    player.ChannelTimer = 0f;
+                    player.Health -= 25f;
+                    player.StunTimer = 1.5f;
+                }
+
+                float mitigation = _playerDaoMarks != null ? _playerDaoMarks.GetDamageMitigationMultiplier() : 1.0f;
+                float effectiveDamage = damage * mitigation;
+
+                if (player.ShieldHP > 0f)
+                {
+                    player.ShieldHP -= effectiveDamage;
+                    if (player.ShieldHP > 0f)
+                    {
+                        player.HitFlashTimer = 0.12f;
+                        return;
+                    }
+                    effectiveDamage = -player.ShieldHP;
+                    player.ShieldHP = 0f;
+                }
+
+                player.Health -= effectiveDamage;
+                player.HitFlashTimer = 0.15f;
+            }
         }
 
         private static void ClampToArena(ref CombatEntityData entity)
@@ -668,6 +945,7 @@ namespace TaiwuGu.Combat
             ArenaEncounterType.WildBoarHunt => "Wild Boar Pack (野彘群)",
             ArenaEncounterType.ClanPatrolDuel => "Clan Patrol Duellist (卫队修士)",
             ArenaEncounterType.DemonicCultivator => "Demonic Cultivator (魔修)",
+            ArenaEncounterType.SovereignTrial => "Sovereign Patriarch (峰主大能)",
             _ => "Unknown Foe"
         };
     }

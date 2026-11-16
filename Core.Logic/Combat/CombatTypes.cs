@@ -4,7 +4,8 @@ namespace TaiwuGu.Combat
     {
         WildBoarHunt,       // Wild Beast Den
         ClanPatrolDuel,     // Righteous Clan Outpost
-        DemonicCultivator   // Ancient Cave Ambush
+        DemonicCultivator,  // Ancient Cave Ambush
+        SovereignTrial      // Peak Rank 5 Sovereign Trial Encounter
     }
 
     public enum CombatOutcome
@@ -26,7 +27,8 @@ namespace TaiwuGu.Combat
         PlayerCultivator = 0,
         WildBoarSwarm = 1,
         ClanPatrol = 2,
-        DemonicCultivator = 3
+        DemonicCultivator = 3,
+        SovereignElder = 4
     }
 
     public enum GuSkillEffectKind : byte
@@ -64,6 +66,8 @@ namespace TaiwuGu.Combat
         public float AttackCooldown;
         public float DashTimer;
         public float HitFlashTimer;
+        public float ChannelTimer;
+        public float StunTimer;
 
         public int Rank;
     }
@@ -106,5 +110,6 @@ namespace TaiwuGu.Combat
         public float BaseDamage;
         public float ProjectileSpeed;
         public float Range;
+        public Core.DaoPathType PathType;
     }
 }

@@ -83,7 +83,27 @@ namespace Taiwu_Godot.Scripts
 
             // Step 2: Create & seed ECS WorldStore
             var startPos = new GridCoord(StartingGridPosition.X, StartingGridPosition.Y);
-            StateProvider = new WorldStateProvider(WorldFactory.CreateDefault(runSeed: 1, playerStart: startPos));
+            if (TaiwuTitleScreenView.PendingRunConfig != null)
+            {
+                var cfg = TaiwuTitleScreenView.PendingRunConfig;
+                TaiwuTitleScreenView.PendingRunConfig = null;
+                StateProvider = new WorldStateProvider(WorldFactory.CreateFromConfig(cfg, startPos));
+                GD.Print($"[Bootstrapper] Created world from NewRunConfig: {cfg.PlayerName} ({cfg.OriginClan}).");
+            }
+            else
+            {
+                StateProvider = new WorldStateProvider(WorldFactory.CreateDefault(runSeed: 1, playerStart: startPos));
+            }
+
+            if (!string.IsNullOrEmpty(TaiwuTitleScreenView.PendingLoadSlot))
+            {
+                string slot = TaiwuTitleScreenView.PendingLoadSlot;
+                TaiwuTitleScreenView.PendingLoadSlot = null;
+                if (SaveSystem.LoadAndSwap(slot, StateProvider))
+                {
+                    GD.Print($"[Bootstrapper] Loaded save slot: {slot}.");
+                }
+            }
 
             var playerCult = World.Get<CultivatorComponent>(World.PlayerEntity);
             var playerAp = World.Get<ApertureComponent>(World.PlayerEntity);
@@ -221,8 +241,7 @@ namespace Taiwu_Godot.Scripts
         {
             ModalStack?.Dispose();
             AudioService?.Dispose();
-            WorldSignals.ClearAllSubscriptions();
-            GD.Print("[Bootstrapper] Clean shutdown complete. Subscriptions cleared.");
+            GD.Print("[Bootstrapper] Clean shutdown complete.");
         }
     }
 }

@@ -226,7 +226,7 @@ namespace TaiwuGu.Map
                     new AnchorPOISpec(22, 12, TilePOIType.WildBeastDen),
                     new AnchorPOISpec(10, 20, TilePOIType.SpiritVein)
                 },
-                NativeGuPaths = new[] { "Moon", "Recon", "Transformation" },
+                NativeGuPaths = new[] { "Blood", "Moon", "Transformation" },
                 MaxWildGuRank = 3,
                 LocalBeastVarieties = new[] { "GorgeBatSwarm", "ShadowPanther" },
                 InitialResidents = new[]
@@ -257,7 +257,7 @@ namespace TaiwuGu.Map
                     new AnchorPOISpec(12, 12, TilePOIType.SpiritVein),
                     new AnchorPOISpec(24, 20, TilePOIType.AncientGuCave)
                 },
-                NativeGuPaths = new[] { "Metal", "Wind", "Strength" },
+                NativeGuPaths = new[] { "Enslavement", "Wind", "Strength" },
                 MaxWildGuRank = 3,
                 LocalBeastVarieties = new[] { "SteppeWolf", "GoldenEagle" },
                 InitialResidents = new[]
@@ -310,7 +310,7 @@ namespace TaiwuGu.Map
                     new AnchorPOISpec(20, 10, TilePOIType.WildBeastDen),
                     new AnchorPOISpec(5, 20, TilePOIType.MountainPass)
                 },
-                NativeGuPaths = new[] { "Wind", "Lightning", "Space" },
+                NativeGuPaths = new[] { "Wind", "Enslavement", "Space" },
                 MaxWildGuRank = 3,
                 LocalBeastVarieties = new[] { "GaleWolfKing", "ThunderFalcon" },
                 InitialResidents = new[]
@@ -365,7 +365,7 @@ namespace TaiwuGu.Map
                     new AnchorPOISpec(10, 12, TilePOIType.ShatteredStele),
                     new AnchorPOISpec(20, 18, TilePOIType.WildBeastDen)
                 },
-                NativeGuPaths = new[] { "Light", "Metal", "Space" },
+                NativeGuPaths = new[] { "Blood", "Light", "Time" },
                 MaxWildGuRank = 3,
                 LocalBeastVarieties = new[] { "DunePhantom", "CrimsonSandViper" },
                 InitialResidents = new[]
@@ -521,7 +521,7 @@ namespace TaiwuGu.Map
                     new AnchorPOISpec(15, 8, TilePOIType.ShatteredStele),
                     new AnchorPOISpec(22, 15, TilePOIType.AncientGuCave)
                 },
-                NativeGuPaths = new[] { "Wood", "Water", "Qi" },
+                NativeGuPaths = new[] { "Wood", "Water", "Time" },
                 MaxWildGuRank = 3,
                 LocalBeastVarieties = new[] { "LotusCarp", "CelestialDeer" },
                 InitialResidents = Array.Empty<NpcSeedSpec>()
@@ -544,7 +544,7 @@ namespace TaiwuGu.Map
                     new AnchorPOISpec(20, 20, TilePOIType.SpiritVein),
                     new AnchorPOISpec(12, 12, TilePOIType.ShatteredStele)
                 },
-                NativeGuPaths = new[] { "Space", "Strength", "Transformation" },
+                NativeGuPaths = new[] { "Enslavement", "Time", "Space" },
                 MaxWildGuRank = 3,
                 LocalBeastVarieties = new[] { "FoxPack", "CelestialCrane" },
                 InitialResidents = Array.Empty<NpcSeedSpec>()
@@ -567,7 +567,7 @@ namespace TaiwuGu.Map
                     new AnchorPOISpec(18, 12, TilePOIType.BoulderPrecipice),
                     new AnchorPOISpec(12, 18, TilePOIType.WildBeastDen)
                 },
-                NativeGuPaths = new[] { "Qi", "Recon", "Bone" },
+                NativeGuPaths = new[] { "Bone", "Qi", "Time" },
                 MaxWildGuRank = 3,
                 LocalBeastVarieties = new[] { "SoulVulture", "NetherHound" },
                 InitialResidents = new[]
