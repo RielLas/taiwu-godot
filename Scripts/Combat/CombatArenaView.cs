@@ -279,13 +279,14 @@ namespace Taiwu_Godot.Scripts.Combat
                 }
             }
 
-            // 4. Calculate un-shaken mouse aim decoupled from camera trauma
-            Vector2 viewportCenter = GetViewportRect().Size * 0.5f;
-            Vector2 screenOffset = GetViewport().GetMousePosition() - viewportCenter;
-            float currentZoom = _camera?.Zoom.X > 0.01f ? _camera.Zoom.X : ArenaZoom;
-            Vector2 unShakenCursor = screenOffset / currentZoom;
-            float cursorX = Math.Clamp(unShakenCursor.X, -ArenaHalfW, ArenaHalfW);
-            float cursorY = Math.Clamp(unShakenCursor.Y, -ArenaHalfH, ArenaHalfH);
+            // 4. Calculate un-shaken mouse aim decoupled from camera trauma in local arena space
+            Vector2 localMouse = GetLocalMousePosition();
+            if (_camera != null)
+            {
+                localMouse -= _camera.Offset;
+            }
+            float cursorX = Math.Clamp(localMouse.X, -ArenaHalfW, ArenaHalfW);
+            float cursorY = Math.Clamp(localMouse.Y, -ArenaHalfH, ArenaHalfH);
             _arenaCursorPos = new Vector2(cursorX, cursorY);
 
             // Left-click hold-to-fire on cooldown

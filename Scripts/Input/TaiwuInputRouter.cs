@@ -106,21 +106,10 @@ namespace Taiwu_Godot.Scripts.Input
             }
 
             if (_isBattleLocked &&
-                (key.IsActionPressed("toggle_ledger") ||
-                 key.IsActionPressed("open_cauldron") ||
+                (key.IsActionPressed("open_cauldron") ||
                  key.IsActionPressed("open_breakthrough") ||
                  key.IsActionPressed("recenter_camera")))
             {
-                GetViewport().SetInputAsHandled();
-                return;
-            }
-
-            if (key.IsActionPressed("toggle_ledger"))
-            {
-                if (!IsModalActive || _modalStack?.IsModalOpen<TaiwuLedgerView>() == true)
-                {
-                    WorldSignals.EmitToggleLedger();
-                }
                 GetViewport().SetInputAsHandled();
                 return;
             }
