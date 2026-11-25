@@ -23,9 +23,19 @@ namespace Taiwu_Godot.Scripts.Map
         public const float TILE_HALF_HEIGHT = 1.2f;
         public const float TILE_CLIFF_THICKNESS = 0.28f;
 
+        // Normalized Taiwu V2 2:1 Isometric Tile Specs (512x384 canvas, 512x256 diamond, 128 headroom)
+        public const float V2_CANVAS_WIDTH = 512f;
+        public const float V2_CANVAS_HEIGHT = 384f;
+        public const float V2_DIAMOND_WIDTH = 512f;
+        public const float V2_DIAMOND_HEIGHT = 256f;
+        public const float V2_HEADROOM_HEIGHT = 128f;
+        public const float V2_WORLD_SCALE = (TILE_HALF_WIDTH * 2f) / V2_DIAMOND_WIDTH; // 4.8f / 512f = 0.009375f
+        public static readonly Vector2 V2_SPRITE_OFFSET = new(0f, -64f);
+
         [Export] public int GridWidth { get; set; } = 30;
         [Export] public int GridHeight { get; set; } = 30;
         [Export] public bool GenerateMeshVisuals { get; set; } = true;
+        [Export] public bool UseV2SpriteTiles { get; set; } = true;
 
         protected readonly List<Vector2I> activeGridCoords = new();
         private readonly List<int> activeTileVertexCounts = new();
@@ -34,6 +44,15 @@ namespace Taiwu_Godot.Scripts.Map
         protected MeshInstance2D? tileMeshInstance;
         protected ShaderMaterial? sharedTileMaterial;
         protected ArrayMesh? combinedMesh;
+
+        protected Node2D? _v2TileLayer;
+        protected readonly Dictionary<Vector2I, Sprite2D> _v2TileSprites = new();
+        protected readonly Stack<Sprite2D> _v2SpritePool = new();
+
+        private Texture2D? _v2TexMeadow;
+        private Texture2D? _v2TexBamboo;
+        private Texture2D? _v2TexClan;
+        private Texture2D? _v2TexCave;
 
         private readonly List<Vector2> _batchedVerts = new(900 * 8);
         private readonly List<Vector2> _batchedUvs = new(900 * 8);
@@ -71,6 +90,16 @@ namespace Taiwu_Godot.Scripts.Map
                 combinedMesh = null;
             }
             _cachedSurfaceArrays.Clear();
+
+            ClearV2Tiles();
+            if (_v2TileLayer != null)
+            {
+                if (GodotObject.IsInstanceValid(_v2TileLayer))
+                {
+                    _v2TileLayer.QueueFree();
+                }
+                _v2TileLayer = null;
+            }
         }
 
         private void HandleTopicsChanged(DirtyTopic topics)
@@ -102,8 +131,29 @@ namespace Taiwu_Godot.Scripts.Map
 
         public virtual void RebuildTileMesh()
         {
-            if (!GenerateMeshVisuals) return;
-            BuildProceduralDiamondMesh();
+            if (UseV2SpriteTiles)
+            {
+                if (tileMeshInstance != null)
+                {
+                    tileMeshInstance.Visible = false;
+                }
+                RebuildV2Tiles();
+            }
+            else
+            {
+                if (_v2TileLayer != null)
+                {
+                    _v2TileLayer.Visible = false;
+                }
+                if (GenerateMeshVisuals)
+                {
+                    if (tileMeshInstance != null)
+                    {
+                        tileMeshInstance.Visible = true;
+                    }
+                    BuildProceduralDiamondMesh();
+                }
+            }
         }
 
         public void BuildProceduralDiamondMesh()
@@ -476,6 +526,12 @@ namespace Taiwu_Godot.Scripts.Map
 
         public virtual void UpdateFogMeshColors()
         {
+            if (UseV2SpriteTiles)
+            {
+                UpdateFogV2Tiles();
+                return;
+            }
+
             if (combinedMesh == null) return;
 
             int totalVerts = _batchedVerts.Count;
@@ -567,5 +623,204 @@ namespace Taiwu_Godot.Scripts.Map
         {
             return pos.X >= 0 && pos.X < GridWidth && pos.Y >= 0 && pos.Y < GridHeight;
         }
+
+        #region Normalized Taiwu V2 Sprite Tile System
+
+        protected void EnsureV2TileLayer()
+        {
+            YSortEnabled = true;
+            if (_v2TileLayer == null || !GodotObject.IsInstanceValid(_v2TileLayer))
+            {
+                _v2TileLayer = GetNodeOrNull<Node2D>("V2TileLayer");
+                if (_v2TileLayer == null)
+                {
+                    _v2TileLayer = new Node2D
+                    {
+                        Name = "V2TileLayer",
+                        YSortEnabled = true,
+                        ZIndex = 0
+                    };
+                    AddChild(_v2TileLayer);
+                }
+            }
+            _v2TileLayer.YSortEnabled = true;
+        }
+
+        protected void LoadV2Textures()
+        {
+            _v2TexMeadow ??= ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/v2_test/tile_meadow_01.png");
+            _v2TexBamboo ??= ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/v2_test/tile_bamboo_crag.png");
+            _v2TexClan   ??= ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/v2_test/poi_clan_stronghold.png");
+            _v2TexCave   ??= ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/v2_test/poi_ancient_gu_cave.png");
+        }
+
+        public virtual Texture2D? GetV2TextureForTile(BiomeType biome, TilePOIType poi)
+        {
+            LoadV2Textures();
+            if (poi == TilePOIType.ClanPost)
+            {
+                return _v2TexClan ?? _v2TexMeadow;
+            }
+            if (poi == TilePOIType.AncientGuCave)
+            {
+                return _v2TexCave ?? _v2TexBamboo ?? _v2TexMeadow;
+            }
+            if (biome == BiomeType.BambooMountain)
+            {
+                return _v2TexBamboo ?? _v2TexMeadow;
+            }
+            return _v2TexMeadow;
+        }
+
+        public void RebuildV2Tiles()
+        {
+            EnsureV2TileLayer();
+            LoadV2Textures();
+
+            if (_v2TileLayer == null) return;
+            _v2TileLayer.Visible = true;
+
+            var activeCoords = new HashSet<Vector2I>();
+
+            int maxDiag = (GridWidth - 1) + (GridHeight - 1);
+            for (int diag = 0; diag <= maxDiag; diag++)
+            {
+                int startX = Math.Max(0, diag - (GridHeight - 1));
+                int endX = Math.Min(GridWidth - 1, diag);
+                for (int x = startX; x <= endX; x++)
+                {
+                    int y = diag - x;
+                    var tileInfo = GetTileDisplayInfo(x, y);
+                    if (!tileInfo.active) continue;
+
+                    Vector2I coord = new(x, y);
+                    activeCoords.Add(coord);
+
+                    Texture2D? tex = GetV2TextureForTile(tileInfo.biome, tileInfo.poi);
+                    if (tex == null) continue;
+
+                    if (!_v2TileSprites.TryGetValue(coord, out var sp) || !GodotObject.IsInstanceValid(sp))
+                    {
+                        sp = null;
+                        while (_v2SpritePool.Count > 0)
+                        {
+                            var candidate = _v2SpritePool.Pop();
+                            if (GodotObject.IsInstanceValid(candidate))
+                            {
+                                sp = candidate;
+                                break;
+                            }
+                        }
+
+                        if (sp == null)
+                        {
+                            sp = new Sprite2D();
+                            _v2TileLayer.AddChild(sp);
+                        }
+
+                        _v2TileSprites[coord] = sp;
+                    }
+
+                    sp.Name = $"Tile_{x}_{y}";
+                    sp.Texture = tex;
+                    sp.Centered = true;
+                    sp.Offset = V2_SPRITE_OFFSET;
+                    sp.Scale = new Vector2(V2_WORLD_SCALE, V2_WORLD_SCALE);
+                    sp.Position = GridToWorld(coord);
+                    sp.YSortEnabled = true;
+                }
+            }
+
+            List<Vector2I>? toRecycle = null;
+            foreach (var (coord, sp) in _v2TileSprites)
+            {
+                if (!activeCoords.Contains(coord))
+                {
+                    toRecycle ??= new List<Vector2I>();
+                    toRecycle.Add(coord);
+                    if (GodotObject.IsInstanceValid(sp))
+                    {
+                        sp.Visible = false;
+                        _v2SpritePool.Push(sp);
+                    }
+                }
+            }
+
+            if (toRecycle != null)
+            {
+                for (int i = 0; i < toRecycle.Count; i++)
+                {
+                    _v2TileSprites.Remove(toRecycle[i]);
+                }
+            }
+
+            UpdateFogV2Tiles();
+        }
+
+        public void UpdateFogV2Tiles()
+        {
+            if (_v2TileLayer == null || !_v2TileLayer.Visible) return;
+
+            foreach (var (coord, sp) in _v2TileSprites)
+            {
+                if (!GodotObject.IsInstanceValid(sp)) continue;
+
+                var tileInfo = GetTileDisplayInfo(coord.X, coord.Y);
+                if (!tileInfo.active)
+                {
+                    sp.Visible = false;
+                    continue;
+                }
+
+                if (tileInfo.visible)
+                {
+                    sp.Visible = true;
+                    if (selectedTargetPos.HasValue && selectedTargetPos.Value == coord)
+                    {
+                        sp.Modulate = new Color(1.18f, 1.15f, 1.05f, 1f);
+                    }
+                    else if (previewPathTiles.Contains(coord))
+                    {
+                        sp.Modulate = new Color(1.10f, 1.08f, 1.02f, 1f);
+                    }
+                    else
+                    {
+                        sp.Modulate = Colors.White;
+                    }
+                }
+                else if (tileInfo.explored)
+                {
+                    sp.Visible = true;
+                    sp.Modulate = new Color(0.42f, 0.44f, 0.48f, 0.95f);
+                }
+                else
+                {
+                    sp.Visible = false;
+                }
+            }
+        }
+
+        private void ClearV2Tiles()
+        {
+            foreach (var sp in _v2TileSprites.Values)
+            {
+                if (GodotObject.IsInstanceValid(sp))
+                {
+                    sp.QueueFree();
+                }
+            }
+            _v2TileSprites.Clear();
+
+            while (_v2SpritePool.Count > 0)
+            {
+                var sp = _v2SpritePool.Pop();
+                if (GodotObject.IsInstanceValid(sp))
+                {
+                    sp.QueueFree();
+                }
+            }
+        }
+
+        #endregion
     }
 }

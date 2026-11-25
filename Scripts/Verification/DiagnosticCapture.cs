@@ -34,6 +34,7 @@ namespace Taiwu_Godot.Scripts.Verification
         private bool _allCaravanOk = true;
         private bool _verify = false;
         private bool _strictPoi = false;
+        private bool _previewV2Tiles = false;
 
         public override void _Ready()
         {
@@ -48,6 +49,11 @@ namespace Taiwu_Godot.Scripts.Verification
             foreach (var arg in args)
             {
                 if (arg == "--capture") AutoCaptureAndQuit = true;
+                if (arg == "--preview-v2-tiles" || arg == "--v2-tiles" || arg == "--tiles")
+                {
+                    _previewV2Tiles = true;
+                    AutoCaptureAndQuit = true;
+                }
                 if (arg == "--verify")
                 {
                     _verify = true;
@@ -87,6 +93,71 @@ namespace Taiwu_Godot.Scripts.Verification
             }
 
             if (world == null) return;
+
+            if (_previewV2Tiles)
+            {
+                if (_frameCount == 5)
+                {
+                    GD.Print("[DiagnosticCapture] Setting up 3x3 V2 isometric test patch mixing all 4 tiles...");
+                    var sector = world.GetCurrentSector();
+                    if (sector != null)
+                    {
+                        // 3x3 patch centered at (15, 15) mixing:
+                        // tile_meadow_01, tile_bamboo_crag, poi_clan_stronghold, poi_ancient_gu_cave
+                        (int x, int y, BiomeType biome, TilePOIType poi)[] testPatch = new[]
+                        {
+                            (14, 14, BiomeType.GrasslandPlateau, TilePOIType.None),           // tile_meadow_01
+                            (15, 14, BiomeType.BambooMountain,   TilePOIType.None),           // tile_bamboo_crag
+                            (16, 14, BiomeType.GrasslandPlateau, TilePOIType.None),           // tile_meadow_01
+
+                            (14, 15, BiomeType.GrasslandPlateau, TilePOIType.AncientGuCave),  // poi_ancient_gu_cave
+                            (15, 15, BiomeType.BambooMountain,   TilePOIType.ClanPost),       // poi_clan_stronghold
+                            (16, 15, BiomeType.BambooMountain,   TilePOIType.None),           // tile_bamboo_crag
+
+                            (14, 16, BiomeType.BambooMountain,   TilePOIType.None),           // tile_bamboo_crag
+                            (15, 16, BiomeType.GrasslandPlateau, TilePOIType.AncientGuCave),  // poi_ancient_gu_cave
+                            (16, 16, BiomeType.GrasslandPlateau, TilePOIType.None)            // tile_meadow_01
+                        };
+
+                        for (int i = 0; i < testPatch.Length; i++)
+                        {
+                            var (tx, ty, tbiome, tpoi) = testPatch[i];
+                            sector.SetTile(tx, ty, new TileNode
+                            {
+                                Biome = tbiome,
+                                POI = tpoi,
+                                IsActive = true,
+                                IsExplored = true,
+                                IsVisible = true
+                            });
+                        }
+
+                        if (Bootstrapper?.PlayerController != null)
+                        {
+                            Bootstrapper.PlayerController.Visible = false;
+                        }
+
+                        if (Bootstrapper?.TileManager != null)
+                        {
+                            Bootstrapper.TileManager.UseV2SpriteTiles = true;
+                            Bootstrapper.TileManager.SyncFromWorld();
+                        }
+
+                        if (Bootstrapper?.CameraController != null)
+                        {
+                            Bootstrapper.CameraController.Position = ExplorationSystem.GridToWorld(new GridCoord(15, 15)).ToGodot();
+                            Bootstrapper.CameraController.Zoom = new Vector2(100f, 100f);
+                        }
+                    }
+                }
+                else if (_frameCount == 12)
+                {
+                    CaptureFrame("test_v2_tiles.png");
+                    GD.Print("[DiagnosticCapture] V2 Isometric Tiles test patch (all 4 tiles) captured to test_v2_tiles.png.");
+                    GetTree().Quit(0);
+                }
+                return;
+            }
 
             if (_testLandmark)
             {

@@ -229,23 +229,44 @@ namespace Taiwu_Godot.Scripts.Map
 
         public void SpawnRegionLandmarks()
         {
-            if (TileManager == null) return;
+            var tileManager = TileManager;
+            if (tileManager == null) return;
 
             ClearLandmarks();
             ClearCultivatorTokens();
 
-            int width = TileManager.GridWidth;
-            int height = TileManager.GridHeight;
+            int width = tileManager.GridWidth;
+            int height = tileManager.GridHeight;
 
             for (int x = 0; x < width; x++)
             {
                 for (int y = 0; y < height; y++)
                 {
-                    TileNode node = TileManager.GetTile(x, y);
+                    TileNode node = tileManager.GetTile(x, y);
                     if (!node.IsActive || node.POI == TilePOIType.None) continue;
 
                     Vector2I gridPos = new(x, y);
-                    Vector2 tileWorld = TileManager.GridToWorld(gridPos);
+                    Vector2 tileWorld = tileManager.GridToWorld(gridPos);
+
+                    if (tileManager.UseV2SpriteTiles && (node.POI == TilePOIType.ClanPost || node.POI == TilePOIType.AncientGuCave))
+                    {
+                        // The V2 tile layer in TileManager already renders the full diorama tile seamlessly with Y-sorting.
+                        // We register a phantom node in TileLandmarkVisualManager so HasLandmarkAt() and ActiveLandmarkCount
+                        // remain 100% consistent for tests and verification, while avoiding double-rendering/double-blending.
+                        Node2D container = new()
+                        {
+                            Name = $"Landmark_{node.POI}_{gridPos.X}_{gridPos.Y}",
+                            Position = tileWorld,
+                            YSortEnabled = true
+                        };
+                        Sprite2D phantom = new() { Name = "DioramaSprite", Visible = false };
+                        container.AddChild(phantom);
+                        AddChild(container);
+                        activeLandmarks.Add(container);
+                        landmarkDataMap[container] = (gridPos, phantom, Colors.White);
+                        continue;
+                    }
+
                     Node2D? landmark = CreatePOILandmarkObject(node.POI, tileWorld, gridPos);
                     if (landmark != null)
                     {

@@ -150,7 +150,10 @@ namespace Taiwu_Godot.Scripts.UI
                     if (arg.Equals("--verify", StringComparison.Ordinal) ||
                         arg.StartsWith("--verify=", StringComparison.Ordinal) ||
                         arg.Equals("--capture", StringComparison.Ordinal) ||
-                        arg.StartsWith("--capture", StringComparison.Ordinal))
+                        arg.StartsWith("--capture", StringComparison.Ordinal) ||
+                        arg.Equals("--preview-v2-tiles", StringComparison.Ordinal) ||
+                        arg.Equals("--v2-tiles", StringComparison.Ordinal) ||
+                        arg.Equals("--tiles", StringComparison.Ordinal))
                         return true;
                 }
             }
@@ -163,7 +166,10 @@ namespace Taiwu_Godot.Scripts.UI
                     if (arg.Equals("--verify", StringComparison.Ordinal) ||
                         arg.StartsWith("--verify=", StringComparison.Ordinal) ||
                         arg.Equals("--capture", StringComparison.Ordinal) ||
-                        arg.StartsWith("--capture", StringComparison.Ordinal))
+                        arg.StartsWith("--capture", StringComparison.Ordinal) ||
+                        arg.Equals("--preview-v2-tiles", StringComparison.Ordinal) ||
+                        arg.Equals("--v2-tiles", StringComparison.Ordinal) ||
+                        arg.Equals("--tiles", StringComparison.Ordinal))
                         return true;
                 }
             }

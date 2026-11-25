@@ -61,16 +61,17 @@ namespace Taiwu_Godot.Scripts.Map
             var db = new TileVisualDatabase();
 
             // 1. Clan Stronghold (Gu Yue Clan Village)
-            var clanVillageTex = ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/poi_clan_village.png");
+            var clanVillageTex = ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/v2_test/poi_clan_stronghold.png") 
+                ?? ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/poi_clan_village.png");
             db.RegisterEntry(new POIVisualEntry
             {
                 POIType = TilePOIType.ClanPost,
                 DioramaTexture = clanVillageTex,
                 BadgeColor = new Color(0.20f, 0.78f, 0.55f, 1f), // Viridian Green
                 Tint = Colors.White,
-                TargetFootprintWidth = 5.0f,
-                ContentWidth = 929f,
-                FootprintPivot = new Vector2(0.5034f, 0.5438f)
+                TargetFootprintWidth = 4.8f,
+                ContentWidth = 512f,
+                FootprintPivot = new Vector2(0.5f, 2f / 3f)
             });
 
             // 2. Jia Family Caravan Merchant Inn
@@ -101,15 +102,17 @@ namespace Taiwu_Godot.Scripts.Map
 
             // 4. Ancient Cultivator Ruins / Ancient Gu Cave
             var bambooTex = ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/tile_bamboo_mountain.png");
+            var ancientGuCaveTex = ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/v2_test/poi_ancient_gu_cave.png")
+                ?? bambooTex;
             db.RegisterEntry(new POIVisualEntry
             {
                 POIType = TilePOIType.AncientGuCave,
-                DioramaTexture = bambooTex,
+                DioramaTexture = ancientGuCaveTex,
                 BadgeColor = new Color(0.66f, 0.44f, 0.88f, 1f), // Mystic Daoist Violet
-                Tint = new Color(0.85f, 0.75f, 0.95f, 1f),
+                Tint = Colors.White,
                 TargetFootprintWidth = 4.8f,
-                ContentWidth = 734f,
-                FootprintPivot = new Vector2(0.4971f, 0.4919f)
+                ContentWidth = 512f,
+                FootprintPivot = new Vector2(0.5f, 2f / 3f)
             });
 
             // 5. Savage Beast Lair
