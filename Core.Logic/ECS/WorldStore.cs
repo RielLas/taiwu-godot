@@ -8,24 +8,109 @@ using TaiwuGu.Core;
 namespace TaiwuGu.Entities
 {
     /// <summary>
-    /// Restricts polymorphic JSON deserialization strictly to Core.Logic / core runtime types.
+    /// Restricts polymorphic JSON deserialization strictly to Core.Logic / allowlisted core runtime types.
     /// </summary>
     public sealed class KnownComponentsBinder : ISerializationBinder
     {
         private static readonly DefaultSerializationBinder s_Default = new();
 
+        private static readonly HashSet<string> s_AllowedSystemTypes = new(StringComparer.Ordinal)
+        {
+            "System.Collections.Generic.List",
+            "System.Collections.Generic.Dictionary",
+            "System.Collections.Generic.HashSet",
+            "System.Collections.Generic.Queue",
+            "System.Collections.Generic.KeyValuePair",
+            "System.String",
+            "System.Int32",
+            "System.UInt32",
+            "System.Int64",
+            "System.UInt64",
+            "System.Single",
+            "System.Double",
+            "System.Decimal",
+            "System.Boolean",
+            "System.Byte",
+            "System.SByte",
+            "System.Int16",
+            "System.UInt16",
+            "System.Char",
+            "System.Object",
+            "System.DateTime",
+            "System.TimeSpan",
+            "System.Guid",
+            "System.Nullable",
+            "System.ValueTuple"
+        };
+
         public Type BindToType(string? assemblyName, string typeName)
         {
-            bool allowedType =
-                typeName.StartsWith("TaiwuGu.", StringComparison.Ordinal) ||
-                typeName.StartsWith("System.", StringComparison.Ordinal);
-
-            if (!allowedType)
+            if (string.IsNullOrWhiteSpace(typeName) || !IsAllowedTypeName(typeName))
             {
                 throw new JsonSerializationException($"Disallowed polymorphic type in save payload: '{typeName}'.");
             }
 
             return s_Default.BindToType(assemblyName, typeName);
+        }
+
+        private static bool IsAllowedTypeName(string typeName)
+        {
+            string trimmed = typeName.Trim();
+
+            // Strip assembly qualification if present at top level (outside generic brackets)
+            int bracketStart = trimmed.IndexOf('[');
+            string head = bracketStart >= 0 ? trimmed.Substring(0, bracketStart) : trimmed;
+            int commaIdx = head.IndexOf(',');
+            if (commaIdx >= 0) head = head.Substring(0, commaIdx);
+            head = head.Trim();
+
+            // Handle array suffix (e.g., System.Int32[] or TaiwuGu.Map.TileNode[])
+            while (head.EndsWith("[]", StringComparison.Ordinal))
+            {
+                head = head.Substring(0, head.Length - 2);
+            }
+
+            // Strip generic arity suffix (e.g., List`1 -> List)
+            int tickIdx = head.IndexOf('`');
+            string baseName = tickIdx >= 0 ? head.Substring(0, tickIdx) : head;
+
+            bool headAllowed =
+                baseName.StartsWith("TaiwuGu.", StringComparison.Ordinal) ||
+                s_AllowedSystemTypes.Contains(baseName);
+
+            if (!headAllowed) return false;
+
+            // If there are generic arguments (e.g., [[TypeA, AsmA],[TypeB, AsmB]]), validate every nested type argument
+            if (bracketStart >= 0 && bracketStart < trimmed.Length - 1 && trimmed[bracketStart + 1] == '[')
+            {
+                int depth = 0;
+                int argStart = -1;
+                for (int i = bracketStart + 1; i < trimmed.Length; i++)
+                {
+                    char c = trimmed[i];
+                    if (c == '[')
+                    {
+                        if (depth == 0) argStart = i + 1;
+                        depth++;
+                    }
+                    else if (c == ']')
+                    {
+                        depth--;
+                        if (depth == 0 && argStart >= 0)
+                        {
+                            string arg = trimmed.Substring(argStart, i - argStart);
+                            if (!IsAllowedTypeName(arg)) return false;
+                            argStart = -1;
+                        }
+                        else if (depth < 0)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return true;
         }
 
         public void BindToName(Type serializedType, out string? assemblyName, out string? typeName)

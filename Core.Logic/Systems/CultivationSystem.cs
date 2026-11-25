@@ -245,7 +245,11 @@ namespace TaiwuGu.Systems
         {
             EntityId eid = target ?? world.PlayerEntity;
             if (!world.TryGet<CultivatorComponent>(eid, out var cult) || !cult.IsAlive) return false;
+            if (!world.IsAlive(guEntityId)) return false;
             if (!world.TryGet<GuWormComponent>(guEntityId, out var gu)) return false;
+            if (!world.TryGet<OwnerComponent>(guEntityId, out var owner) || owner.OwnerEntityId != eid.Value) return false;
+            if (gu.IsVitalGu) return false;
+            if (string.IsNullOrEmpty(gu.GuID) || !gu.GuID.Contains("lifespan", StringComparison.OrdinalIgnoreCase)) return false;
 
             int yearsToAdd = 10;
             if (gu.GuID.Contains("20", StringComparison.OrdinalIgnoreCase) || gu.Rank >= 5)
@@ -257,7 +261,7 @@ namespace TaiwuGu.Systems
                 yearsToAdd = 10;
             }
 
-            cult.LifespanYears += yearsToAdd;
+            cult.ConsumeLifespanGu(yearsToAdd);
             world.DestroyEntity(guEntityId);
 
             WorldSignals.EmitSound(HalalSoundType.CauldronSteam);
@@ -281,10 +285,12 @@ namespace TaiwuGu.Systems
 
         public static bool ConsumeLifespanGu(WorldStore world, int years = 10, EntityId? target = null)
         {
+            if (years <= 0) return false;
+
             EntityId eid = target ?? world.PlayerEntity;
             if (!world.TryGet<CultivatorComponent>(eid, out var cult) || !cult.IsAlive) return false;
 
-            cult.LifespanYears += years;
+            cult.ConsumeLifespanGu(years);
             WorldSignals.EmitSound(HalalSoundType.CauldronSteam);
             WorldSignals.EmitTopics(DirtyTopic.Cultivator | DirtyTopic.Inventory);
             return true;

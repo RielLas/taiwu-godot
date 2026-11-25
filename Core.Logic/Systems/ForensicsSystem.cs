@@ -64,8 +64,6 @@ namespace TaiwuGu.Systems
                 return false;
             }
 
-            TimeSystem.DeductActionPoints(world, 1);
-
             var scene = found.Value.Scene;
             switch (choice)
             {
@@ -91,6 +89,9 @@ namespace TaiwuGu.Systems
                     WorldDirectorSystem.TriggerFramedSkirmish(world, world.CurrentSectorKey, FactionID.XiongClan);
                     break;
             }
+
+            // Deduct AP after mutating the scene so a last-AP rollover cannot destroy it mid-action.
+            TimeSystem.DeductActionPoints(world, 1);
 
             WorldSignals.EmitTopics(DirtyTopic.Forensics | DirtyTopic.Calendar);
             return true;

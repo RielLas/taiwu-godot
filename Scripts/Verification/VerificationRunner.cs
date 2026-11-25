@@ -296,26 +296,43 @@ namespace Taiwu_Godot.Scripts.Verification
             List<string> failures,
             List<string> notes)
         {
-            IsometricTileManager? tiles = bootstrapper.TileManager;
             SectorGridComponent? sector = bootstrapper.World.GetCurrentSector();
-            if (tiles == null || sector == null) return;
+            TileLandmarkVisualManager? landmarks = bootstrapper.LandmarkManager;
+            if (sector == null) return;
+
+            if (landmarks == null)
+            {
+                string msg = "POI parity: LandmarkManager export is not wired; cannot verify spawned POI landmarks.";
+                if (strictPoi) failures.Add(msg);
+                else notes.Add(msg);
+                return;
+            }
 
             var sectorTiles = sector.EnsureHydrated();
-            int width = Math.Min(tiles.GridWidth, sector.GridWidth);
-            int height = Math.Min(tiles.GridHeight, sector.GridHeight);
-            int mismatches = 0;
+            int expectedLandmarks = 0;
+            int missingLandmarks = 0;
 
-            for (int x = 0; x < width; x++)
+            for (int y = 0; y < sector.GridHeight; y++)
             {
-                for (int y = 0; y < height; y++)
+                for (int x = 0; x < sector.GridWidth; x++)
                 {
-                    if (sectorTiles[y * sector.GridWidth + x].POI != tiles.GetTile(x, y).POI) mismatches++;
+                    TileNode tile = sectorTiles[y * sector.GridWidth + x];
+                    if (!tile.IsActive || tile.POI == TilePOIType.None) continue;
+
+                    var entry = landmarks.VisualDatabase?.GetEntry(tile.POI);
+                    if (entry == null || entry.DioramaTexture == null) continue;
+
+                    expectedLandmarks++;
+                    if (!landmarks.HasLandmarkAt(new Vector2I(x, y)))
+                    {
+                        missingLandmarks++;
+                    }
                 }
             }
 
-            if (mismatches == 0) return;
+            if (missingLandmarks == 0 && landmarks.ActiveLandmarkCount == expectedLandmarks) return;
 
-            string message = $"POI parity: {mismatches}/{width * height} tiles differ between SectorGridComponent and IsometricTileManager.";
+            string message = $"POI parity: expected {expectedLandmarks} active POI landmark(s) in TileLandmarkVisualManager, found {landmarks.ActiveLandmarkCount} ({missingLandmarks} missing from SectorGridComponent).";
             if (strictPoi) failures.Add(message);
             else notes.Add(message);
         }

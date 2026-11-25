@@ -51,8 +51,12 @@ namespace Taiwu_Godot.Scripts.UI
         [Export] public ProgressBar? ProgressBar { get; set; }
 
         private Tween? _activeTween;
+        private TaskCompletionSource<bool>? _activeFadeTcs;
+        private int _fadeGeneration = 0;
         private bool _isLoading = false;
+        private bool _isWrapping = false;
         private int _quoteIndex = 0;
+        private SceneTree? _cachedTree;
 
         public bool IsLoading => _isLoading;
 
@@ -60,14 +64,35 @@ namespace Taiwu_Godot.Scripts.UI
         {
             if (Instance != null && GodotObject.IsInstanceValid(Instance))
             {
+                Instance._cachedTree = tree;
                 return Instance;
             }
 
             var packed = GD.Load<PackedScene>("res://Scenes/UI/UniversalLoadingOverlay.tscn");
             var instance = packed.Instantiate<UniversalLoadingOverlay>();
-            tree.Root.CallDeferred(Node.MethodName.AddChild, instance);
+            instance._cachedTree = tree;
+            if (tree.Root != null)
+            {
+                try
+                {
+                    tree.Root.AddChild(instance);
+                }
+                catch
+                {
+                    tree.Root.CallDeferred(Node.MethodName.AddChild, instance);
+                }
+            }
             Instance = instance;
             return instance;
+        }
+
+        private void CancelActiveFade()
+        {
+            _activeTween?.Kill();
+            _activeTween = null;
+            var prev = _activeFadeTcs;
+            _activeFadeTcs = null;
+            prev?.TrySetResult(false);
         }
 
         public override void _EnterTree()
@@ -107,12 +132,12 @@ namespace Taiwu_Godot.Scripts.UI
                 Instance = null;
             }
 
-            _activeTween?.Kill();
+            CancelActiveFade();
         }
 
         private void HandleGameLoaded(string slot, bool success)
         {
-            if (_isLoading)
+            if (_isLoading && !_isWrapping)
             {
                 _ = HideAsync();
             }
@@ -167,19 +192,30 @@ namespace Taiwu_Godot.Scripts.UI
                 Backdrop.MouseFilter = Control.MouseFilterEnum.Stop;
             }
 
-            _activeTween?.Kill();
-            _activeTween = CreateTween();
-            _activeTween.SetParallel(true);
+            int gen = ++_fadeGeneration;
+            CancelActiveFade();
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _activeFadeTcs = tcs;
+
+            var tween = CreateTween();
+            _activeTween = tween;
+            tween.SetParallel(true);
             if (OverlayRoot != null)
             {
-                _activeTween.TweenProperty(OverlayRoot, "modulate:a", 1.0f, FadeDuration);
+                tween.TweenProperty(OverlayRoot, "modulate:a", 1.0f, FadeDuration);
             }
             if (ProgressBar != null)
             {
-                _activeTween.TweenProperty(ProgressBar, "value", 0.70, FadeDuration * 1.5f);
+                tween.TweenProperty(ProgressBar, "value", 0.70, FadeDuration * 1.5f);
             }
+            tween.Finished += () => tcs.TrySetResult(true);
 
-            await ToSignal(_activeTween, Tween.SignalName.Finished);
+            await tcs.Task;
+            if (gen == _fadeGeneration && _activeFadeTcs == tcs)
+            {
+                _activeFadeTcs = null;
+                _activeTween = null;
+            }
         }
 
         public async Task HideAsync()
@@ -189,20 +225,36 @@ namespace Taiwu_Godot.Scripts.UI
                 return;
             }
 
-            _activeTween?.Kill();
-            _activeTween = CreateTween();
-            _activeTween.SetParallel(true);
+            int gen = ++_fadeGeneration;
+            CancelActiveFade();
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _activeFadeTcs = tcs;
+
+            var tween = CreateTween();
+            _activeTween = tween;
+            tween.SetParallel(true);
 
             if (ProgressBar != null)
             {
-                _activeTween.TweenProperty(ProgressBar, "value", 1.0, FadeDuration * 0.5f);
+                tween.TweenProperty(ProgressBar, "value", 1.0, FadeDuration * 0.5f);
             }
             if (OverlayRoot != null)
             {
-                _activeTween.TweenProperty(OverlayRoot, "modulate:a", 0.0f, FadeDuration);
+                tween.TweenProperty(OverlayRoot, "modulate:a", 0.0f, FadeDuration);
+            }
+            tween.Finished += () => tcs.TrySetResult(true);
+
+            bool completed = await tcs.Task;
+            if (!completed || gen != _fadeGeneration)
+            {
+                return;
             }
 
-            await ToSignal(_activeTween, Tween.SignalName.Finished);
+            if (_activeFadeTcs == tcs)
+            {
+                _activeFadeTcs = null;
+                _activeTween = null;
+            }
 
             if (OverlayRoot != null)
             {
@@ -220,65 +272,106 @@ namespace Taiwu_Godot.Scripts.UI
 
         public async Task<bool> WrapSaveLoadAsync(string slotId, WorldStateProvider provider)
         {
-            await ShowAsync("Channeling Chronicle (载入存档)...", $"Restoring celestial record [{slotId}]...");
-
-            bool ok = false;
+            _isWrapping = true;
             try
             {
-                ok = SaveSystem.LoadAndSwap(slotId, provider);
-            }
-            catch (Exception ex)
-            {
-                GD.PrintErr($"[UniversalLoadingOverlay] LoadAndSwap threw: {ex.Message}");
-            }
+                await ShowAsync("Channeling Chronicle (载入存档)...", $"Restoring celestial record [{slotId}]...");
 
-            // Short stabilization tick
-            await Task.Delay(80);
-            await HideAsync();
-            return ok;
+                bool ok = false;
+                try
+                {
+                    ok = SaveSystem.LoadAndSwap(slotId, provider);
+                }
+                catch (Exception ex)
+                {
+                    GD.PrintErr($"[UniversalLoadingOverlay] LoadAndSwap threw: {ex.Message}");
+                }
+
+                // Short stabilization tick
+                await Task.Delay(80);
+                await HideAsync();
+                return ok;
+            }
+            finally
+            {
+                _isWrapping = false;
+            }
         }
 
         public async Task WrapSectorTransitAsync(WorldStore world, string sectorKey)
         {
-            await ShowAsync("Traversing Boundary Wall (跨越五域界壁)...", $"Entering sector [{sectorKey}]...");
-
+            _isWrapping = true;
             try
             {
-                TransitSystem.LoadSector(world, sectorKey);
-            }
-            catch (Exception ex)
-            {
-                GD.PrintErr($"[UniversalLoadingOverlay] LoadSector threw: {ex.Message}");
-            }
+                await ShowAsync("Traversing Boundary Wall (跨越五域界壁)...", $"Entering sector [{sectorKey}]...");
 
-            await Task.Delay(80);
-            await HideAsync();
+                try
+                {
+                    TransitSystem.LoadSector(world, sectorKey);
+                }
+                catch (Exception ex)
+                {
+                    GD.PrintErr($"[UniversalLoadingOverlay] LoadSector threw: {ex.Message}");
+                }
+
+                await Task.Delay(80);
+                await HideAsync();
+            }
+            finally
+            {
+                _isWrapping = false;
+            }
         }
 
         public async Task WrapSceneTransitionAsync(string scenePath, string title = "Traversing Heavenly Realm...", string tip = "")
         {
-            await ShowAsync(title, tip);
+            _isWrapping = true;
+            try
+            {
+                var tree = GetTree() ?? _cachedTree;
+                if (tree == null) return;
+                if (!IsInsideTree())
+                {
+                    await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+                }
 
-            GetTree().ChangeSceneToFile(scenePath);
+                await ShowAsync(title, tip);
 
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            await Task.Delay(80);
-            await HideAsync();
+                tree = GetTree() ?? _cachedTree;
+                if (tree == null) return;
+                tree.ChangeSceneToFile(scenePath);
+
+                await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+                await Task.Delay(80);
+                await HideAsync();
+            }
+            finally
+            {
+                _isWrapping = false;
+            }
         }
 
         public async Task WrapActionAsync(Action action, string title = "Traversing Realm...", string tip = "")
         {
-            await ShowAsync(title, tip);
+            _isWrapping = true;
             try
             {
-                action?.Invoke();
+                await ShowAsync(title, tip);
+                try
+                {
+                    action?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    GD.PrintErr($"[UniversalLoadingOverlay] WrapAction threw: {ex.Message}");
+                }
+                await Task.Delay(80);
+                await HideAsync();
             }
-            catch (Exception ex)
+            finally
             {
-                GD.PrintErr($"[UniversalLoadingOverlay] WrapAction threw: {ex.Message}");
+                _isWrapping = false;
             }
-            await Task.Delay(80);
-            await HideAsync();
         }
     }
 }

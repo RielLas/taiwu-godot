@@ -204,7 +204,7 @@ namespace Taiwu_Godot.Scripts.Verification
                 {
                     GD.Print("[DiagnosticCapture] (--all) Step 6: Testing System Menu & Atomic Save...");
                     Bootstrapper?.SystemMenuView?.OpenMenu();
-                    _ = SaveSystem.SaveAsync("slot_01", world);
+                    _ = SaveSystem.SaveAsync("__verify__", world);
                 }
                 else if (_frameCount == 50)
                 {

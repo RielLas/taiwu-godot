@@ -17,6 +17,9 @@ namespace TaiwuGu.Entities
         public int SeasonalBonusAP { get; set; } = 0;
         public int FatiguePenaltyAP { get; set; } = 0;
 
+        public int LastClanRestYear { get; set; } = -1;
+        public int LastClanRestTerm { get; set; } = -1;
+
         public int MonthlyAPBudget => Math.Max(10, BASE_MONTHLY_AP + RealmBonusAP + SeasonalBonusAP - FatiguePenaltyAP);
         public SolarTerm ActiveSolarTerm => (SolarTerm)Math.Clamp(CurrentSolarTermIndex, 1, TERMS_PER_YEAR);
 

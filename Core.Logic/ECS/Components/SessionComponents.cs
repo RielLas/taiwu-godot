@@ -9,15 +9,16 @@ namespace TaiwuGu.Entities
     [Serializable]
     public class GuRefinementRecipe
     {
-        public string RecipeName { get; set; } = "Moonglow Beast Gu Refinement (月芒彘力合炼)";
-        public string PrimaryGuID { get; set; } = "gu_moonlight_01";
-        public string SecondaryGuID { get; set; } = "gu_white_boar_01";
-        public string ResultGuID { get; set; } = "gu_moonglow_beast_02";
-        public string ResultGuName { get; set; } = "Moonglow Beast Gu (月芒彘力蛊)";
+        public string RecipeName { get; set; } = "Moonglow Gu Refinement (月芒蛊合炼)";
+        public string PrimaryGuID { get; set; } = "gu_moonlight_r1";
+        public string SecondaryGuID { get; set; } = "gu_white_boar_r1";
+        public string ResultGuID { get; set; } = "gu_moonglow_r2";
+        public string ResultGuName { get; set; } = "Moonglow Gu (月芒蛊)";
         public int TargetRank { get; set; } = 2;
         public GuSlotCategory SlotCategory { get; set; } = GuSlotCategory.Attack;
         public GuDietType Diet { get; set; } = GuDietType.MoonOrchidPetals;
-        public float BaseEssenceCost { get; set; } = 22f;
+        public float BaseEssenceCost { get; set; } = 18f;
+        public float BaseSuccessRate { get; set; } = 0.85f;
 
         public float Phase1Duration { get; set; } = 4.0f;
         public float Phase2Duration { get; set; } = 4.5f;
@@ -120,6 +121,7 @@ namespace TaiwuGu.Entities
         public bool IsModalOpen { get; set; } = false;
         public bool IsRegionalMode { get; set; } = false;
         public SouthernMountainID? PendingMountainDestination { get; set; }
+        public string? PendingSectorKey { get; set; }
     }
 
     /// <summary>

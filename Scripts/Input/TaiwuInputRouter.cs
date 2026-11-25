@@ -58,13 +58,9 @@ namespace Taiwu_Godot.Scripts.Input
 
         private void HandleUIModalActive(bool isActive)
         {
-            if (!isActive)
+            if (!isActive && _modalStack?.HasActiveModal == true)
             {
-                if (_modalStack?.IsModalOpen<TaiwuLedgerView>() == true ||
-                    _modalStack?.IsModalOpen<RefinementCauldronView>() == true ||
-                    _modalStack?.IsModalOpen<TilePOIModalView>() == true ||
-                    _modalStack?.IsModalOpen<TaiwuSystemMenuView>() == true)
-                    return;
+                return;
             }
 
             IsModalActive = isActive;
@@ -107,7 +103,7 @@ namespace Taiwu_Godot.Scripts.Input
         {
             if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
 
-            if (key.IsActionPressed("ui_cancel"))
+            if (key.IsActionPressed("ui_cancel") || key.IsActionPressed("toggle_system_menu"))
             {
                 ConsumeEscape();
                 GetViewport().SetInputAsHandled();
@@ -144,7 +140,7 @@ namespace Taiwu_Godot.Scripts.Input
                 {
                     BreakthroughSystem.CloseSession(WorldProvider.Current);
                 }
-                else
+                else if (!IsModalActive)
                 {
                     BreakthroughSystem.OpenSession(WorldProvider.Current);
                 }
@@ -169,16 +165,12 @@ namespace Taiwu_Godot.Scripts.Input
                 return;
             }
 
-            if (key.IsActionPressed("toggle_system_menu"))
-            {
-                SystemMenuView?.ToggleMenu();
-                GetViewport().SetInputAsHandled();
-                return;
-            }
-
             if (key.IsActionPressed("recenter_camera"))
             {
-                WorldSignals.EmitRecenterCamera();
+                if (!IsModalActive)
+                {
+                    WorldSignals.EmitRecenterCamera();
+                }
                 GetViewport().SetInputAsHandled();
             }
         }

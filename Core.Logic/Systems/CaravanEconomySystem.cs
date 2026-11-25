@@ -20,7 +20,11 @@ namespace TaiwuGu.Systems
             GuDietType.MoonOrchidPetals,
             GuDietType.FreshBoarFlesh,
             GuDietType.VintageWine,
-            GuDietType.IronOrePowder
+            GuDietType.WillowLeafDew,
+            GuDietType.IronOrePowder,
+            GuDietType.WolfBlood,
+            GuDietType.SpringWater,
+            GuDietType.SpiritStonePowder
         };
 
         private static readonly GuDietType[] GambleFodderPool =
@@ -28,7 +32,11 @@ namespace TaiwuGu.Systems
             GuDietType.MoonOrchidPetals,
             GuDietType.FreshBoarFlesh,
             GuDietType.VintageWine,
-            GuDietType.IronOrePowder
+            GuDietType.WillowLeafDew,
+            GuDietType.IronOrePowder,
+            GuDietType.WolfBlood,
+            GuDietType.SpringWater,
+            GuDietType.SpiritStonePowder
         };
 
         private static readonly CaravanOreTier[] OreTiers =
@@ -91,32 +99,64 @@ namespace TaiwuGu.Systems
         {
             var session = world.GetOrCreateSingleton<CaravanSessionComponent>();
             session.Stock ??= new List<CaravanStockEntry>();
+            session.SectorStockCache ??= new Dictionary<string, List<CaravanStockEntry>>(StringComparer.Ordinal);
+            session.SectorSeedCache ??= new Dictionary<string, int>(StringComparer.Ordinal);
 
             var clock = world.GetSingleton<WorldClockComponent>();
             if (clock == null) return session;
 
             int term = Math.Clamp(clock.CurrentSolarTermIndex, 1, WorldClockComponent.TERMS_PER_YEAR);
             string currentSector = world.CurrentSectorKey ?? string.Empty;
-            if (session.HasStock &&
-                session.RestockYear == clock.CurrentYear &&
-                session.RestockTerm == term &&
-                string.Equals(session.SectorKey, currentSector, StringComparison.Ordinal))
+
+            bool sameTerm = session.HasStock &&
+                            session.RestockYear == clock.CurrentYear &&
+                            session.RestockTerm == term;
+
+            if (sameTerm && string.Equals(session.SectorKey, currentSector, StringComparison.Ordinal))
             {
                 return session;
+            }
+
+            if (!sameTerm)
+            {
+                session.SectorStockCache.Clear();
+                session.SectorSeedCache.Clear();
+            }
+            else if (!string.IsNullOrEmpty(session.SectorKey) && session.Stock.Count > 0)
+            {
+                session.SectorStockCache[session.SectorKey] = session.Stock;
+                session.SectorSeedCache[session.SectorKey] = session.StockSeed;
             }
 
             session.RestockYear = clock.CurrentYear;
             session.RestockTerm = term;
             session.SectorKey = currentSector;
+
+            if (sameTerm && session.SectorStockCache.TryGetValue(currentSector, out var cachedStock))
+            {
+                session.Stock = cachedStock;
+                session.StockSeed = session.SectorSeedCache.TryGetValue(currentSector, out int cachedSeed)
+                    ? cachedSeed
+                    : unchecked(world.RunSeed * 397 ^ clock.CurrentYear * 7919 ^ term * 104729 ^ ComputeStringHash(currentSector) * 31);
+                session.HasStock = true;
+                return session;
+            }
+
             int sectorHash = ComputeStringHash(currentSector);
             session.StockSeed = unchecked(world.RunSeed * 397 ^ clock.CurrentYear * 7919 ^ term * 104729 ^ sectorHash * 31);
-            session.Stock.Clear();
+            session.Stock = new List<CaravanStockEntry>();
 
             var rng = new SeededRandom(session.StockSeed);
             AddFodderStock(session, rng);
             AddCommonGuStock(session, rng);
             if (IsAutumnArrival(term)) AddAutumnGuStock(session, rng);
             AddOreStock(session);
+
+            if (!string.IsNullOrEmpty(currentSector))
+            {
+                session.SectorStockCache[currentSector] = session.Stock;
+                session.SectorSeedCache[currentSector] = session.StockSeed;
+            }
 
             session.HasStock = true;
             return session;
@@ -438,6 +478,8 @@ namespace TaiwuGu.Systems
             1 => 90,
             2 => 220,
             3 => 480,
+            4 => 900,
+            5 => 1600,
             _ => Math.Max(90, 90 * rank)
         };
 

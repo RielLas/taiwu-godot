@@ -14,6 +14,13 @@ namespace TaiwuGu.Systems
         public static CombatArenaSimulation GetOrCreateArena(WorldStore world)
             => world.GetOrCreateSingleton<CombatSessionComponent>().Simulation;
 
+        private static int GetCombatTimeSalt(WorldStore world)
+        {
+            var clock = world.GetSingleton<WorldClockComponent>();
+            if (clock == null) return 0;
+            return unchecked((clock.CurrentYear * 360 + clock.CurrentSolarTermIndex * 15) * 83492791);
+        }
+
         public static bool StartCombat(
             WorldStore world,
             ArenaEncounterType encounter,
@@ -26,8 +33,9 @@ namespace TaiwuGu.Systems
             var session = world.GetOrCreateSingleton<CombatSessionComponent>();
             if (session.InBattle || session.Simulation.IsActive) return false;
 
+            int timeSalt = GetCombatTimeSalt(world);
             IRandomSource rngSource = rng ?? new SeededRandom(
-                world.RunSeed ^ (tilePos.X * 73856093) ^ (tilePos.Y * 19349663));
+                unchecked(world.RunSeed ^ (tilePos.X * 73856093) ^ (tilePos.Y * 19349663) ^ timeSalt));
 
             session.Simulation.InitializeArena(world, encounter, tilePos, targetNpcId, isLethal, enemyName, rngSource);
             session.InBattle = true;
@@ -63,6 +71,7 @@ namespace TaiwuGu.Systems
                 {
                     // A loaded save may carry the battle flag without a live runtime simulation.
                     session.InBattle = false;
+                    WorldSignals.EmitBattleStageChanged(false);
                 }
                 return;
             }
@@ -88,11 +97,18 @@ namespace TaiwuGu.Systems
 
             if (aperture != null)
             {
-                float health = simulation.EntityBuffer[0].Health;
-                aperture.CurrentHealth = Math.Clamp(health, 0f, aperture.MaxHealth);
-                if (outcome == CombatOutcome.Defeat || outcome == CombatOutcome.Retreated)
+                float health = Math.Clamp(simulation.EntityBuffer[0].Health, 0f, aperture.MaxHealth);
+                if (outcome == CombatOutcome.Defeat)
                 {
                     aperture.CurrentHealth = MathF.Max(1f, aperture.MaxHealth * 0.20f);
+                }
+                else if (outcome == CombatOutcome.Retreated)
+                {
+                    aperture.CurrentHealth = MathF.Max(1f, health);
+                }
+                else
+                {
+                    aperture.CurrentHealth = health;
                 }
             }
 
@@ -102,14 +118,38 @@ namespace TaiwuGu.Systems
                 cult.PrimevalStones -= stoneLoss;
             }
 
+            bool playerWon = outcome == CombatOutcome.Victory;
             ResolveCombatConcluded(
                 world,
-                outcome == CombatOutcome.Victory,
+                playerWon,
                 simulation.SourceTilePos,
                 simulation.EnemyDisplayName,
-                simulation.EncounterType);
+                simulation.EncounterType,
+                emitTopics: false);
 
-            if (outcome == CombatOutcome.Victory &&
+            DirtyTopic dirtyTopics =
+                DirtyTopic.Cultivator | DirtyTopic.Aperture | DirtyTopic.Inventory |
+                DirtyTopic.NPCs | DirtyTopic.Forensics | DirtyTopic.Calendar;
+
+            // Resolve Bounty Hunter state transitions (defeated on victory, disengaged on defeat/retreat)
+            if (simulation.TargetNpcId is { } opponentId)
+            {
+                var bountyTracker = world.GetSingleton<BountyTrackerComponent>();
+                if (bountyTracker != null && bountyTracker.Hunters.Exists(h => h.HunterEntityId == opponentId.Value))
+                {
+                    if (playerWon)
+                    {
+                        WorldDirectorSystem.ResolveHunterDefeated(world, opponentId);
+                    }
+                    else
+                    {
+                        WorldDirectorSystem.ResolveHunterDisengaged(world, opponentId.Value);
+                    }
+                    dirtyTopics |= DirtyTopic.Bounty;
+                }
+            }
+
+            if (playerWon &&
                 simulation.TargetNpcId is { } targetNpcId &&
                 world.TryGet<CultivatorComponent>(targetNpcId, out var npcCult))
             {
@@ -117,7 +157,6 @@ namespace TaiwuGu.Systems
                 {
                     npcCult.Favorability = Math.Min(300, npcCult.Favorability + 15);
                     npcCult.AddMemory("Defeated in fair sparring duel (+15 Favor).");
-                    WorldSignals.EmitTopics(DirtyTopic.NPCs);
                 }
                 else
                 {
@@ -140,14 +179,21 @@ namespace TaiwuGu.Systems
 
             WorldSignals.EmitCombatResolved(simulation.EncounterType, outcome, summary);
             WorldSignals.EmitBattleStageChanged(false);
-            WorldSignals.EmitTopics(
-                DirtyTopic.Cultivator | DirtyTopic.Aperture | DirtyTopic.Inventory |
-                DirtyTopic.NPCs | DirtyTopic.Forensics | DirtyTopic.Calendar);
+            WorldSignals.EmitTopics(dirtyTopics);
         }
 
-        public static void ResolveCombatConcluded(WorldStore world, bool playerWon, GridCoord tilePos, string enemyName, ArenaEncounterType encounter, IRandomSource? rngOverride = null)
+        public static void ResolveCombatConcluded(
+            WorldStore world,
+            bool playerWon,
+            GridCoord tilePos,
+            string enemyName,
+            ArenaEncounterType encounter,
+            IRandomSource? rngOverride = null,
+            bool emitTopics = true)
         {
-            IRandomSource rng = rngOverride ?? new SeededRandom(world.RunSeed ^ tilePos.X ^ tilePos.Y);
+            int timeSalt = GetCombatTimeSalt(world);
+            IRandomSource rng = rngOverride ?? new SeededRandom(
+                unchecked(world.RunSeed ^ (tilePos.X * 73856093) ^ (tilePos.Y * 19349663) ^ timeSalt));
             var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
             var ap = world.Get<ApertureComponent>(world.PlayerEntity);
             var inv = world.Get<InventoryComponent>(world.PlayerEntity);
@@ -184,16 +230,51 @@ namespace TaiwuGu.Systems
                     cult.PrimevalStones += 25;
                     inv.AddFood(GuDietType.MoonOrchidPetals, 3);
                 }
+                else if (encounter == ArenaEncounterType.SovereignTrial)
+                {
+                    cult.PrimevalStones += 250;
+                    var daoMarks = world.Get<DaoMarksComponent>(world.PlayerEntity)?.Ledger;
+                    if (daoMarks != null)
+                    {
+                        daoMarks.AddMarks(DaoPathType.HumanPath, 25);
+                        daoMarks.AddMarks(DaoPathType.StrengthPath, 15);
+                    }
 
-                WorldSignals.EmitTopics(DirtyTopic.Cultivator | DirtyTopic.Inventory | DirtyTopic.Calendar | DirtyTopic.Forensics);
+                    cult.AddMemory($"Conquered the Sovereign Trial against {enemyName} (+250 Primeval Stones, +40 Dao Marks).");
+                    WorldSignals.EmitScenicToast(
+                        "Sovereign Trial Conquered (峰主试炼告捷)",
+                        "【尊】",
+                        $"Defeated {enemyName}! Gained 250 Primeval Stones and 40 Dao Marks.",
+                        tilePos);
+                }
+
+                if (emitTopics)
+                {
+                    WorldSignals.EmitTopics(DirtyTopic.Cultivator | DirtyTopic.Inventory | DirtyTopic.Calendar | DirtyTopic.Forensics);
+                }
             }
             else if (!playerWon && ap != null)
             {
                 ap.CurrentEssenceSea = MathF.Max(0f, ap.CurrentEssenceSea - 15f);
-                WorldSignals.EmitTopics(DirtyTopic.Aperture);
+                if (emitTopics)
+                {
+                    WorldSignals.EmitTopics(DirtyTopic.Aperture);
+                }
             }
 
-            TransitSystem.CompletePendingAmbushArrival(world);
+            if (playerWon)
+            {
+                TransitSystem.CompletePendingAmbushArrival(world);
+            }
+            else
+            {
+                var transitPending = world.GetSingleton<TransitPendingComponent>();
+                if (transitPending != null)
+                {
+                    transitPending.PendingMountainDestination = null;
+                    transitPending.PendingSectorKey = null;
+                }
+            }
         }
     }
 }

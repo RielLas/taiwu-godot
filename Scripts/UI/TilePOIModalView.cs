@@ -65,6 +65,17 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.OnTopicsChanged -= HandleTopicsChanged;
             WorldSignals.OnBattleStageChanged -= HandleBattleStageChanged;
 
+            if (_cultivatorsContainer != null)
+            {
+                foreach (Node child in _cultivatorsContainer.GetChildren())
+                {
+                    if (child is CultivatorCardView existingCard)
+                    {
+                        existingCard.InteractRequested -= HandleCultivatorInteractRequested;
+                    }
+                }
+            }
+
             if (IsOpen)
             {
                 Visible = false;
@@ -300,7 +311,14 @@ namespace Taiwu_Godot.Scripts.UI
             // Resident Cultivators
             if (_cultivatorsContainer != null)
             {
-                foreach (Node child in _cultivatorsContainer.GetChildren()) child.QueueFree();
+                foreach (Node child in _cultivatorsContainer.GetChildren())
+                {
+                    if (child is CultivatorCardView existingCard)
+                    {
+                        existingCard.InteractRequested -= HandleCultivatorInteractRequested;
+                    }
+                    child.QueueFree();
+                }
 
                 if (npcs.Count == 0)
                 {
@@ -317,9 +335,9 @@ namespace Taiwu_Godot.Scripts.UI
                         var card = _cultivatorCardScene?.Instantiate<CultivatorCardView>();
                         if (card != null)
                         {
+                            _cultivatorsContainer.AddChild(card);
                             card.Bind(eid.Value.ToString(), rank, substage, cult.Name, cult.Clan, cult.Favorability, cult.PrimevalStones);
                             card.InteractRequested += HandleCultivatorInteractRequested;
-                            _cultivatorsContainer.AddChild(card);
                         }
                         else
                         {

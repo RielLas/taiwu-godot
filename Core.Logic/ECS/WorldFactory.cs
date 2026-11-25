@@ -2,6 +2,7 @@ using System;
 using TaiwuGu.Core;
 using TaiwuGu.Map;
 using TaiwuGu.Psychology;
+using TaiwuGu.Systems;
 
 namespace TaiwuGu.Entities
 {
@@ -22,20 +23,25 @@ namespace TaiwuGu.Entities
                 StartingSectorKey = DefaultSectorKey,
                 AptitudePercent = 44.0f,
                 Disposition = TaiwuDisposition.Egoist,
-                VitalGuId = "gu_moonlight_01"
+                VitalGuId = "gu_moonlight_r1"
             }, playerStart);
         }
 
         public static WorldStore CreateFromConfig(NewRunConfig config, GridCoord? playerStart = null)
         {
             config ??= new NewRunConfig();
+            SaveSystem.PlaytimeSeconds = 0.0;
+
             int runSeed = config.RunSeed;
-            string sectorKey = !string.IsNullOrWhiteSpace(config.StartingSectorKey) ? config.StartingSectorKey : DefaultSectorKey;
+            string requestedSectorKey = !string.IsNullOrWhiteSpace(config.StartingSectorKey) ? config.StartingSectorKey : DefaultSectorKey;
+            var startBp = WorldAtlasRegistry.TryGet(requestedSectorKey, out var foundBp) && foundBp != null
+                ? foundBp
+                : WorldAtlasRegistry.Get(DefaultSectorKey);
 
             var store = new WorldStore
             {
                 RunSeed = runSeed,
-                CurrentSectorKey = sectorKey
+                CurrentSectorKey = startBp.SectorKey
             };
 
             // 1. World Singleton Entity (Clock + Kinship/Bounty Ledger)
@@ -45,7 +51,7 @@ namespace TaiwuGu.Entities
 
             var kinship = new KinshipLedgerComponent();
             kinship.AddEdge("npc_enforcer_01", "npc_elder_yan", KinshipRelationshipType.Parent, 1.8f, 1.5f);
-            kinship.AddEdge("npc_rogue_01", "npc_rogue_brother", KinshipRelationshipType.SwornSibling, 1.2f, 1.0f);
+            kinship.AddEdge("npc_rogue_demon", "npc_rogue_brother", KinshipRelationshipType.SwornSibling, 1.2f, 1.0f);
             kinship.AddEdge("npc_chi_disciple", "npc_mo_elder", KinshipRelationshipType.Parent, 1.9f, 1.5f);
             kinship.AddEdge("npc_bai_scout", "npc_bai_elder", KinshipRelationshipType.Parent, 1.7f, 1.5f);
             kinship.AddEdge("npc_xiong_hunter", "npc_xiong_warrior", KinshipRelationshipType.SwornSibling, 1.6f, 1.2f);
@@ -53,10 +59,6 @@ namespace TaiwuGu.Entities
             store.Set(worldId, kinship);
 
             // 2. Starting Sector Map Entity
-            var startBp = WorldAtlasRegistry.TryGet(sectorKey, out var foundBp) && foundBp != null
-                ? foundBp
-                : WorldAtlasRegistry.Get(DefaultSectorKey);
-
             EntityId sectorEntity = store.CreateEntity(startBp.SectorKey);
             var sector = new SectorGridComponent
             {
@@ -118,7 +120,7 @@ namespace TaiwuGu.Entities
             store.Set(playerId, inv);
 
             // Starter Gu Entities owned by Player
-            string vitalId = !string.IsNullOrWhiteSpace(config.VitalGuId) ? config.VitalGuId : "gu_moonlight_01";
+            string vitalId = !string.IsNullOrWhiteSpace(config.VitalGuId) ? config.VitalGuId : "gu_moonlight_r1";
             GuWormComponent? vitalGu = null;
             if (GuDatabase.TryGet(vitalId, out var def) && def != null)
             {
@@ -139,9 +141,9 @@ namespace TaiwuGu.Entities
 
             if (!vitalId.Contains("boar", StringComparison.OrdinalIgnoreCase))
             {
-                SpawnGuForOwner(store, playerId, new GuWormComponent
+                var secondaryBoar = GuDatabase.CreateGuWormComponent("gu_white_boar_r1", isWild: false) ?? new GuWormComponent
                 {
-                    GuID = "gu_white_boar_01",
+                    GuID = "gu_white_boar_r1",
                     Name = "White Boar Gu (白豕蛊)",
                     Rank = 1,
                     Slot = GuSlotCategory.Support,
@@ -149,13 +151,15 @@ namespace TaiwuGu.Entities
                     BaseEssenceCost = 15f,
                     Satiety = 100f,
                     IsVitalGu = false
-                }, isEquipped: true, equipSlot: 1);
+                };
+                secondaryBoar.IsVitalGu = false;
+                SpawnGuForOwner(store, playerId, secondaryBoar, isEquipped: true, equipSlot: 1);
             }
             else
             {
-                SpawnGuForOwner(store, playerId, new GuWormComponent
+                var secondaryMoon = GuDatabase.CreateGuWormComponent("gu_moonlight_r1", isWild: false) ?? new GuWormComponent
                 {
-                    GuID = "gu_moonlight_01",
+                    GuID = "gu_moonlight_r1",
                     Name = "Moonlight Gu (月光蛊)",
                     Rank = 1,
                     Slot = GuSlotCategory.Attack,
@@ -163,7 +167,9 @@ namespace TaiwuGu.Entities
                     BaseEssenceCost = 10f,
                     Satiety = 100f,
                     IsVitalGu = false
-                }, isEquipped: true, equipSlot: 1);
+                };
+                secondaryMoon.IsVitalGu = false;
+                SpawnGuForOwner(store, playerId, secondaryMoon, isEquipped: true, equipSlot: 1);
             }
 
             // 4. Seed 6 Autonomous Faction Entities

@@ -39,10 +39,26 @@ namespace TaiwuGu.Tests
             Assert.True(wasHarmonic);
             Assert.True(session.MembraneCurrentHP < 100f);
 
-            // Relic Gu bypass promotes Rank 1 -> Rank 2
+            // Relic Gu bypass requires owning a Relic Gu
+            Assert.False(BreakthroughSystem.TryUseRelicGuBypass(world));
+            Assert.Equal(1, ap.Rank);
+
+            // Spawn Rank 1 Relic Gu, then bypass promotes Rank 1 -> Rank 2 and consumes the Relic Gu
+            EntityId relicId = WorldFactory.SpawnGuForOwner(world, world.PlayerEntity, new GuWormComponent
+            {
+                GuID = "gu_green_copper_relic",
+                Name = "Green Copper Relic Gu (青铜舍利蛊)",
+                Rank = 1,
+                Slot = GuSlotCategory.Support,
+                Diet = GuDietType.None,
+                BaseEssenceCost = 0f,
+                IsVitalGu = false
+            }, isEquipped: false);
+
             int resolvedRank = 0;
             WorldSignals.OnBreakthroughResolved += (st, rank) => resolvedRank = rank;
             Assert.True(BreakthroughSystem.TryUseRelicGuBypass(world));
+            Assert.False(world.IsAlive(relicId));
             Assert.Equal(2, ap.Rank);
             Assert.Equal(1, ap.Substage);
             Assert.Equal(2, resolvedRank);

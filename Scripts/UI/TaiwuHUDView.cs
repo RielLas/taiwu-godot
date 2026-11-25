@@ -27,27 +27,6 @@ namespace Taiwu_Godot.Scripts.UI
         {
             _modalStack = modalStack;
             _stateProvider = stateProvider;
-
-            // Consume pending NewRunConfig or save load from Title Screen
-            if (stateProvider is WorldStateProvider provider)
-            {
-                if (TaiwuTitleScreenView.PendingRunConfig != null)
-                {
-                    var config = TaiwuTitleScreenView.PendingRunConfig;
-                    TaiwuTitleScreenView.PendingRunConfig = null;
-                    GD.Print($"[TaiwuHUDView] Applying PendingRunConfig: {config.PlayerName} (Aptitude: {config.AptitudePercent}%, Sector: {config.StartingSectorKey}, Vital Gu: {config.VitalGuId})");
-                    provider.Replace(WorldFactory.CreateFromConfig(config));
-                    WorldSignals.EmitTopics(DirtyTopic.All);
-                }
-                else if (!string.IsNullOrEmpty(TaiwuTitleScreenView.PendingLoadSlot))
-                {
-                    string slot = TaiwuTitleScreenView.PendingLoadSlot;
-                    TaiwuTitleScreenView.PendingLoadSlot = null;
-                    GD.Print($"[TaiwuHUDView] Applying PendingLoadSlot: [{slot}]");
-                    SaveSystem.LoadAndSwap(slot, provider);
-                }
-            }
-
             RefreshFromStore();
         }
 
@@ -121,7 +100,7 @@ namespace Taiwu_Godot.Scripts.UI
             };
             _topBarMargin.SetAnchorsPreset(LayoutPreset.TopWide);
             _topBarMargin.OffsetTop = 8f;
-            _topBarMargin.OffsetBottom = 68f;
+            _topBarMargin.OffsetBottom = 64f;
             _topBarMargin.OffsetLeft = 8f;
             _topBarMargin.OffsetRight = -8f;
             AddChild(_topBarMargin);
@@ -143,70 +122,52 @@ namespace Taiwu_Godot.Scripts.UI
                 Alignment = BoxContainer.AlignmentMode.Center,
                 MouseFilter = MouseFilterEnum.Stop
             };
-            leftHBox.AddThemeConstantOverride("separation", 10);
+            leftHBox.AddThemeConstantOverride("separation", 8);
             topBarHBox.AddChild(leftHBox);
 
-            // Dim hotkeys column (vertically stacked matching Unity Image 2)
+            // Compact 3-line dim hotkeys column (fits cleanly inside 56px top bar height)
             var hotkeysVBox = new VBoxContainer
             {
                 Name = "HotkeysVBox",
                 Alignment = BoxContainer.AlignmentMode.Center,
                 MouseFilter = MouseFilterEnum.Ignore
             };
-            hotkeysVBox.AddThemeConstantOverride("separation", 1);
+            hotkeysVBox.AddThemeConstantOverride("separation", 0);
             leftHBox.AddChild(hotkeysVBox);
 
-            var lblLedgerHint = new Label
+            var lblHotkeyRow1 = new Label
             {
-                Text = "[Tab / L] Ledger",
+                Text = "[Tab/L] Ledger  [M] Map",
                 Modulate = new Color(0.58f, 0.64f, 0.72f, 0.75f),
                 MouseFilter = MouseFilterEnum.Ignore
             };
-            lblLedgerHint.AddThemeFontSizeOverride("font_size", 10);
-            hotkeysVBox.AddChild(lblLedgerHint);
+            lblHotkeyRow1.AddThemeFontSizeOverride("font_size", 9);
+            hotkeysVBox.AddChild(lblHotkeyRow1);
 
-            var lblMapHint = new Label
+            var lblHotkeyRow2 = new Label
             {
-                Text = "[M] World Map",
+                Text = "[C] Cauldron  [Esc] Menu",
                 Modulate = new Color(0.58f, 0.64f, 0.72f, 0.75f),
                 MouseFilter = MouseFilterEnum.Ignore
             };
-            lblMapHint.AddThemeFontSizeOverride("font_size", 10);
-            hotkeysVBox.AddChild(lblMapHint);
+            lblHotkeyRow2.AddThemeFontSizeOverride("font_size", 9);
+            hotkeysVBox.AddChild(lblHotkeyRow2);
 
-            var lblCauldronHint = new Label
+            var lblHotkeyRow3 = new Label
             {
-                Text = "[C] Cauldron",
+                Text = "[WASD/Drag] Pan",
                 Modulate = new Color(0.58f, 0.64f, 0.72f, 0.75f),
                 MouseFilter = MouseFilterEnum.Ignore
             };
-            lblCauldronHint.AddThemeFontSizeOverride("font_size", 10);
-            hotkeysVBox.AddChild(lblCauldronHint);
-
-            var lblEscHint = new Label
-            {
-                Text = "[Esc] Menu",
-                Modulate = new Color(0.58f, 0.64f, 0.72f, 0.75f), // Slate grey #94A3B8
-                MouseFilter = MouseFilterEnum.Ignore
-            };
-            lblEscHint.AddThemeFontSizeOverride("font_size", 10);
-            hotkeysVBox.AddChild(lblEscHint);
-
-            var lblPanHint = new Label
-            {
-                Text = "[WASD / Drag] Pan",
-                Modulate = new Color(0.58f, 0.64f, 0.72f, 0.75f),
-                MouseFilter = MouseFilterEnum.Ignore
-            };
-            lblPanHint.AddThemeFontSizeOverride("font_size", 10);
-            hotkeysVBox.AddChild(lblPanHint);
+            lblHotkeyRow3.AddThemeFontSizeOverride("font_size", 9);
+            hotkeysVBox.AddChild(lblHotkeyRow3);
 
             // Gauges column
             var gaugesContainer = new VBoxContainer
             {
                 Name = "GaugesContainer",
                 Alignment = BoxContainer.AlignmentMode.Center,
-                CustomMinimumSize = new Vector2(195f, 60f),
+                CustomMinimumSize = new Vector2(195f, 52f),
                 MouseFilter = MouseFilterEnum.Stop
             };
             gaugesContainer.AddThemeConstantOverride("separation", 2);
@@ -393,7 +354,7 @@ namespace Taiwu_Godot.Scripts.UI
             var bannerContainer = new PanelContainer
             {
                 Name = "BannerContainer",
-                CustomMinimumSize = new Vector2(440f, 48f),
+                CustomMinimumSize = new Vector2(360f, 48f),
                 SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
                 MouseFilter = MouseFilterEnum.Stop
             };
@@ -403,6 +364,7 @@ namespace Taiwu_Godot.Scripts.UI
             var bannerVBox = new VBoxContainer
             {
                 Alignment = BoxContainer.AlignmentMode.Center,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 MouseFilter = MouseFilterEnum.Ignore
             };
             bannerContainer.AddChild(bannerVBox);
@@ -412,6 +374,8 @@ namespace Taiwu_Godot.Scripts.UI
                 Name = "LblRegionTitle",
                 Text = string.Empty,
                 HorizontalAlignment = HorizontalAlignment.Center,
+                ClipText = true,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 Modulate = new Color(0.984f, 0.749f, 0.141f, 1f), // Imperial Amber Gold #FBBF24
                 MouseFilter = MouseFilterEnum.Ignore
             };
@@ -423,6 +387,8 @@ namespace Taiwu_Godot.Scripts.UI
                 Name = "LblDateSubtitle",
                 Text = string.Empty,
                 HorizontalAlignment = HorizontalAlignment.Center,
+                ClipText = true,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 Modulate = new Color(0.886f, 0.910f, 0.941f, 1f), // Soft Ivory White #E2E8F0
                 MouseFilter = MouseFilterEnum.Ignore
             };
@@ -518,7 +484,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BtnPassMonth",
                 Text = "Pass Month",
-                CustomMinimumSize = new Vector2(98f, 26f),
+                CustomMinimumSize = new Vector2(94f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -535,7 +501,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BtnLedger",
                 Text = "【籍】Ledger",
-                CustomMinimumSize = new Vector2(82f, 26f),
+                CustomMinimumSize = new Vector2(74f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -552,7 +518,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BtnMap",
                 Text = "【图】Atlas",
-                CustomMinimumSize = new Vector2(76f, 26f),
+                CustomMinimumSize = new Vector2(68f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -569,7 +535,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BtnCauldron",
                 Text = "【炼】Cauldron",
-                CustomMinimumSize = new Vector2(88f, 26f),
+                CustomMinimumSize = new Vector2(82f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -598,7 +564,7 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Name = "BtnSystem",
                 Text = "Menu [Esc]",
-                CustomMinimumSize = new Vector2(72f, 26f),
+                CustomMinimumSize = new Vector2(68f, 26f),
                 MouseFilter = MouseFilterEnum.Stop,
                 FocusMode = FocusModeEnum.None
             };
@@ -774,6 +740,10 @@ namespace Taiwu_Godot.Scripts.UI
                     if (key.CtrlPressed || key.AltPressed || key.MetaPressed || key.ShiftPressed) return;
                     Control? focusOwner = GetViewport().GuiGetFocusOwner();
                     if (focusOwner is LineEdit || focusOwner is TextEdit) return;
+
+                    var session = _stateProvider?.Current?.GetSingleton<CombatSessionComponent>();
+                    if (session != null && session.InBattle) return;
+                    if (_modalStack?.HasActiveModal == true && !(_atlasModal?.IsOpen == true)) return;
 
                     ToggleAtlasModal();
                     GetViewport().SetInputAsHandled();

@@ -22,4 +22,6 @@ test_*.png.import
 *.tmp
 *.log
 tools/captures/
+__pycache__/
+*.pyc
 

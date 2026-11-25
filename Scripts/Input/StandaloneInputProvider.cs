@@ -11,6 +11,8 @@ namespace Taiwu_Godot.Scripts.Input
     /// </summary>
     public partial class StandaloneInputProvider : Node2D
     {
+        public const float KEYBOARD_PAN_SENTINEL = 10_000_000f;
+
         private bool _isDragging = false;
         private bool _isPointerDown = false;
         private Vector2 _pointerDownPos;
@@ -120,8 +122,13 @@ namespace Taiwu_Godot.Scripts.Input
 
             if (kbMove != Vector2.Zero)
             {
-                Vector2 dir = kbMove.Normalized();
-                WorldSignals.EmitPan(new WorldVec2(dir.X * 10000f, dir.Y * 10000f));
+                float dt = Math.Clamp((float)delta, 0f, 0.1f);
+                if (dt > 0f)
+                {
+                    Vector2 dir = kbMove.Normalized();
+                    float scaled = dt * KEYBOARD_PAN_SENTINEL;
+                    WorldSignals.EmitPan(new WorldVec2(dir.X * scaled, dir.Y * scaled));
+                }
             }
         }
     }

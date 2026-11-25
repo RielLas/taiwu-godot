@@ -42,7 +42,7 @@
         "result_gu_id": "gu_moonscar_r2",
         "required_materials": [
           "gu_moonlight_r1",
-          "gu_scar_stone_catalyst"
+          "gu_bronze_skin_r1"
         ],
         "catalysts": [
           "primeval_stones_40"
@@ -190,7 +190,7 @@
     "path": "Moon",
     "rank": 3,
     "slot_category": 0,
-    "base_beu_cost": 32.0,
+    "base_beu_cost": 36.0,
     "cooldown_seconds": 1.0,
     "diet": {
       "diet_type": 5,
@@ -200,7 +200,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "GoldenMoonBlade",
-      "base_damage": 175.0,
+      "base_damage": 95.0,
       "speed": 18.0,
       "range": 14.0
     },
@@ -211,7 +211,7 @@
     "description": "Rank 3 Moon Path Gu. Integrates metal brilliance into lunar blade resonance, producing shimmering golden arcs capable of slicing through granite fortifications.",
     "refinement_paths": [
       {
-        "result_gu_id": "gu_shattering_gold_moon_r4",
+        "result_gu_id": "gu_pale_moon_r4",
         "required_materials": [
           "gu_golden_moon_r3"
         ],
@@ -230,7 +230,7 @@
     "path": "Moon",
     "rank": 3,
     "slot_category": 0,
-    "base_beu_cost": 28.0,
+    "base_beu_cost": 38.0,
     "cooldown_seconds": 0.8,
     "diet": {
       "diet_type": 6,
@@ -240,7 +240,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BloodMoonScythe",
-      "base_damage": 190.0,
+      "base_damage": 100.0,
       "speed": 17.0,
       "range": 13.0
     },
@@ -251,7 +251,7 @@
     "description": "Rank 3 Demonic Moon/Blood Path Gu. Swallows fresh blood to launch crimson lunar discs that carve flesh and siphons vitality to accelerate flight duration.",
     "refinement_paths": [
       {
-        "result_gu_id": "gu_blood_crescent_scythe_r4",
+        "result_gu_id": "gu_blood_weep_r4",
         "required_materials": [
           "gu_blood_moon_r3"
         ],
@@ -443,7 +443,7 @@
     "path": "Strength",
     "rank": 3,
     "slot_category": 6,
-    "base_beu_cost": 45.0,
+    "base_beu_cost": 38.0,
     "cooldown_seconds": 6.0,
     "diet": {
       "diet_type": 2,
@@ -667,7 +667,7 @@
     "description": "Rank 3 Peak Defense Gu. Envelops the Gu Master in an ethereal glowing white mantle of celestial armor, completely dissipating Rank 1-2 strikes and mitigating Rank 3 attacks.",
     "refinement_paths": [
       {
-        "result_gu_id": "gu_iron_canopy_bastion_r4",
+        "result_gu_id": "gu_divine_light_r4",
         "required_materials": [
           "gu_sky_canopy_r3"
         ],
@@ -789,7 +789,7 @@
     "description": "Rank 3 Recon Gu. Allows the Gu Master to completely merge into aquatic currents like an incorporeal phantom, suppressing essence leakage and acoustic ripples.",
     "refinement_paths": [
       {
-        "result_gu_id": "gu_formless_tide_phantom_r4",
+        "result_gu_id": "gu_moonlight_shadow_r4",
         "required_materials": [
           "gu_water_ghost_stealth_r3"
         ],
@@ -952,7 +952,7 @@
     "description": "Rank 3 Movement Gu. Ignites electrical spark trajectories underfoot, granting blistering horizontal sprint bursts equivalent to flash lightning across the battlefield.",
     "refinement_paths": [
       {
-        "result_gu_id": "gu_thunder_wings_r4",
+        "result_gu_id": "gu_storm_wind_r4",
         "required_materials": [
           "gu_lightning_chaser_r3"
         ],
@@ -1104,7 +1104,7 @@
     "path": "Wood",
     "rank": 3,
     "slot_category": 3,
-    "base_beu_cost": 50.0,
+    "base_beu_cost": 40.0,
     "cooldown_seconds": 5.0,
     "diet": {
       "diet_type": 7,
@@ -1125,7 +1125,7 @@
     "description": "Rank 3 Rare Wood Path Gu. Channels surging restorative bio-vitality capable of knitting shattered bone fractures, repairing ruptured organs, and restoring near-fatal trauma.",
     "refinement_paths": [
       {
-        "result_gu_id": "gu_flesh_bone_reconstruction_r4",
+        "result_gu_id": "gu_iron_wood_r4",
         "required_materials": [
           "gu_undying_grass_r3"
         ],
@@ -1285,7 +1285,7 @@
     "description": "Rank 3 Advanced Recon Gu. Deepens somatic acoustic resonance to map subterranean tunnels, hollow caverns, hidden ore veins, and troop troop distributions over several miles.",
     "refinement_paths": [
       {
-        "result_gu_id": "gu_earth_pulse_divination_r4",
+        "result_gu_id": "gu_earth_wall_r4",
         "required_materials": [
           "gu_subterranean_root_ear_r3"
         ],
@@ -1366,7 +1366,7 @@
     "description": "Rank 2 Storage Gu. Expands spatial holding capacity to ten cubic meters, with minor mass dampening to allow effortless transport of provisions, ores, and weapons.",
     "refinement_paths": [
       {
-        "result_gu_id": "gu_tusita_satchel_r3",
+        "result_gu_id": "gu_fixed_immortal_travel_r5",
         "required_materials": [
           "gu_tusita_pouch_r2"
         ],
@@ -1467,7 +1467,7 @@
     "path": "Food",
     "rank": 3,
     "slot_category": 6,
-    "base_beu_cost": 75.0,
+    "base_beu_cost": 42.0,
     "cooldown_seconds": 0.0,
     "diet": {
       "diet_type": 3,
@@ -1488,7 +1488,7 @@
     "description": "Rank 3 Sublime Food Path Gu. Purifies White Silver primeval essence, allowing Rank 3 Gu Masters to wield Upper or Peak stage combat intensity prematurely.",
     "refinement_paths": [
       {
-        "result_gu_id": "gu_nine_revolutions_liquor_worm_r4",
+        "result_gu_id": "gu_nine_fragrances_liquor_worm_r5",
         "required_materials": [
           "gu_seven_fragrances_liquor_worm_r3"
         ],
@@ -1585,7 +1585,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "CicadaWingFlash",
-      "base_damage": 40.0,
+      "base_damage": 80.0,
       "speed": 14.0,
       "range": 10.0
     },
@@ -1625,7 +1625,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "TimeVortex",
-      "base_damage": 100.0,
+      "base_damage": 200.0,
       "speed": 16.0,
       "range": 12.0
     },
@@ -1653,7 +1653,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "TimeRipples",
-      "base_damage": 35.0,
+      "base_damage": 70.0,
       "speed": 10.0,
       "range": 9.0
     },
@@ -1693,7 +1693,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "TimeArrow",
-      "base_damage": 75.0,
+      "base_damage": 150.0,
       "speed": 18.0,
       "range": 12.0
     },
@@ -1721,7 +1721,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "TimeFlash",
-      "base_damage": 30.0,
+      "base_damage": 60.0,
       "speed": 12.0,
       "range": 8.0
     },
@@ -1749,7 +1749,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "MoonPhase",
-      "base_damage": 35.0,
+      "base_damage": 70.0,
       "speed": 11.0,
       "range": 9.0
     },
@@ -1777,7 +1777,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "YearWheel",
-      "base_damage": 85.0,
+      "base_damage": 170.0,
       "speed": 13.0,
       "range": 11.0
     },
@@ -1805,7 +1805,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BearArmor",
-      "base_damage": 40.0,
+      "base_damage": 80.0,
       "speed": 0.0,
       "range": 0.0
     },
@@ -1845,7 +1845,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BoarRoar",
-      "base_damage": 50.0,
+      "base_damage": 100.0,
       "speed": 12.0,
       "range": 6.0
     },
@@ -1885,7 +1885,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "CarpTailWave",
-      "base_damage": 45.0,
+      "base_damage": 90.0,
       "speed": 11.0,
       "range": 8.0
     },
@@ -1913,7 +1913,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BeastPhantomBlast",
-      "base_damage": 80.0,
+      "base_damage": 160.0,
       "speed": 14.0,
       "range": 9.0
     },
@@ -1953,7 +1953,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "TigerClawSwipe",
-      "base_damage": 70.0,
+      "base_damage": 140.0,
       "speed": 15.0,
       "range": 8.0
     },
@@ -1981,7 +1981,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "ColossalPaws",
-      "base_damage": 95.0,
+      "base_damage": 190.0,
       "speed": 10.0,
       "range": 7.0
     },
@@ -2009,7 +2009,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "MountainSlam",
-      "base_damage": 130.0,
+      "base_damage": 260.0,
       "speed": 12.0,
       "range": 8.5
     },
@@ -2037,7 +2037,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "MoonVeil",
-      "base_damage": 30.0,
+      "base_damage": 60.0,
       "speed": 0.0,
       "range": 0.0
     },
@@ -2067,7 +2067,7 @@
     "path": "Moon",
     "rank": 4,
     "slot_category": 2,
-    "base_beu_cost": 40.0,
+    "base_beu_cost": 45.0,
     "cooldown_seconds": 1.0,
     "diet": {
       "diet_type": 1,
@@ -2077,7 +2077,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "MoonShadowStep",
-      "base_damage": 25.0,
+      "base_damage": 50.0,
       "speed": 16.0,
       "range": 8.0
     },
@@ -2117,7 +2117,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "PaleMoonblade",
-      "base_damage": 70.0,
+      "base_damage": 140.0,
       "speed": 14.0,
       "range": 9.0
     },
@@ -2145,7 +2145,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "CurvedMoonSlash",
-      "base_damage": 120.0,
+      "base_damage": 240.0,
       "speed": 16.0,
       "range": 10.5
     },
@@ -2173,7 +2173,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "FrostBarrier",
-      "base_damage": 50.0,
+      "base_damage": 100.0,
       "speed": 0.0,
       "range": 0.0
     },
@@ -2201,7 +2201,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BloodWeepWail",
-      "base_damage": 68.0,
+      "base_damage": 136.0,
       "speed": 13.0,
       "range": 9.0
     },
@@ -2241,7 +2241,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BloodMend",
-      "base_damage": 30.0,
+      "base_damage": 60.0,
       "speed": 0.0,
       "range": 0.0
     },
@@ -2269,7 +2269,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "SkullMist",
-      "base_damage": 40.0,
+      "base_damage": 80.0,
       "speed": 10.0,
       "range": 6.0
     },
@@ -2309,7 +2309,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BloodWingsGust",
-      "base_damage": 35.0,
+      "base_damage": 70.0,
       "speed": 16.0,
       "range": 8.0
     },
@@ -2337,7 +2337,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "FrenzyWave",
-      "base_damage": 125.0,
+      "base_damage": 250.0,
       "speed": 14.0,
       "range": 10.0
     },
@@ -2365,7 +2365,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BloodTsunami",
-      "base_damage": 135.0,
+      "base_damage": 270.0,
       "speed": 13.0,
       "range": 11.0
     },
@@ -2393,7 +2393,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BloodOrb",
-      "base_damage": 80.0,
+      "base_damage": 160.0,
       "speed": 12.0,
       "range": 8.0
     },
@@ -2421,7 +2421,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BoneSpear",
-      "base_damage": 72.0,
+      "base_damage": 144.0,
       "speed": 17.0,
       "range": 10.0
     },
@@ -2461,7 +2461,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "ChariotRam",
-      "base_damage": 110.0,
+      "base_damage": 220.0,
       "speed": 8.0,
       "range": 6.0
     },
@@ -2479,7 +2479,7 @@
     "path": "Bone",
     "rank": 4,
     "slot_category": 2,
-    "base_beu_cost": 44.0,
+    "base_beu_cost": 45.0,
     "cooldown_seconds": 1.0,
     "diet": {
       "diet_type": 2,
@@ -2489,7 +2489,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BoneWingFlap",
-      "base_damage": 30.0,
+      "base_damage": 60.0,
       "speed": 15.0,
       "range": 8.0
     },
@@ -2517,7 +2517,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BoneSpikesBurst",
-      "base_damage": 65.0,
+      "base_damage": 130.0,
       "speed": 15.0,
       "range": 9.0
     },
@@ -2545,7 +2545,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "BonePlates",
-      "base_damage": 35.0,
+      "base_damage": 70.0,
       "speed": 0.0,
       "range": 0.0
     },
@@ -2585,7 +2585,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "GiganticBoneShield",
-      "base_damage": 60.0,
+      "base_damage": 120.0,
       "speed": 0.0,
       "range": 0.0
     },
@@ -2613,7 +2613,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "EnslavementRune",
-      "base_damage": 40.0,
+      "base_damage": 80.0,
       "speed": 10.0,
       "range": 7.0
     },
@@ -2653,7 +2653,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "MyriadRune",
-      "base_damage": 70.0,
+      "base_damage": 140.0,
       "speed": 11.0,
       "range": 8.0
     },
@@ -2681,7 +2681,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "WolfSoulMark",
-      "base_damage": 35.0,
+      "base_damage": 70.0,
       "speed": 12.0,
       "range": 8.0
     },
@@ -2721,7 +2721,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "WolfEmperorAura",
-      "base_damage": 65.0,
+      "base_damage": 130.0,
       "speed": 12.0,
       "range": 8.5
     },
@@ -2749,7 +2749,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "TokenAura",
-      "base_damage": 55.0,
+      "base_damage": 110.0,
       "speed": 9.0,
       "range": 7.0
     },
@@ -2777,7 +2777,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "DivineRay",
-      "base_damage": 75.0,
+      "base_damage": 150.0,
       "speed": 20.0,
       "range": 11.0
     },
@@ -2817,7 +2817,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "RainbowBeam",
-      "base_damage": 125.0,
+      "base_damage": 250.0,
       "speed": 22.0,
       "range": 12.0
     },
@@ -2845,7 +2845,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "IronRoots",
-      "base_damage": 40.0,
+      "base_damage": 80.0,
       "speed": 0.0,
       "range": 0.0
     },
@@ -2885,7 +2885,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "TreeLifeAura",
-      "base_damage": 60.0,
+      "base_damage": 120.0,
       "speed": 0.0,
       "range": 0.0
     },
@@ -2913,7 +2913,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "EarthWall",
-      "base_damage": 45.0,
+      "base_damage": 90.0,
       "speed": 0.0,
       "range": 0.0
     },
@@ -2953,7 +2953,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "GoldenBulwark",
-      "base_damage": 70.0,
+      "base_damage": 140.0,
       "speed": 0.0,
       "range": 0.0
     },
@@ -2981,7 +2981,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "GaleScythe",
-      "base_damage": 68.0,
+      "base_damage": 136.0,
       "speed": 18.0,
       "range": 10.0
     },
@@ -3021,7 +3021,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "AstralTornado",
-      "base_damage": 120.0,
+      "base_damage": 240.0,
       "speed": 19.0,
       "range": 11.5
     },
@@ -3049,7 +3049,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "SpatialFlash",
-      "base_damage": 40.0,
+      "base_damage": 80.0,
       "speed": 25.0,
       "range": 12.0
     },
@@ -3077,7 +3077,7 @@
     },
     "combat_stats": {
       "projectile_prefab": "LiquorMist",
-      "base_damage": 30.0,
+      "base_damage": 60.0,
       "speed": 0.0,
       "range": 0.0
     },

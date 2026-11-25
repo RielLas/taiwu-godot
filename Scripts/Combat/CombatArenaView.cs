@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 using TaiwuGu.Combat;
 using TaiwuGu.Core;
@@ -16,7 +17,7 @@ namespace Taiwu_Godot.Scripts.Combat
     /// Uses 2D textures for stone floor, parallax mountains/mist, and entity medallion tokens.
     /// Boundary formations use geometric Daoist array brackets and talisman calligraphy.
     /// Strict Halal aniconism: medallions, geometric totems, and talisman calligraphy only.
-    /// Employs a zero-GC ring buffer of 32 floating damage number structs, local hit-stop,
+    /// Employs a zero-GC ring buffer of 32 floating damage number structs, simulation-synced hit-stop,
     /// trauma-decoupled mouse aiming with a 0.2 deadzone, and a minimal ink-and-gold reticle.
     /// </summary>
     public partial class CombatArenaView : Node2D
@@ -25,6 +26,7 @@ namespace Taiwu_Godot.Scripts.Combat
         private const float ArenaHalfH = CombatArenaSimulation.ARENA_HALF_H;
         private const float ArenaZoom = 56f;
         private const float Px = 1f / ArenaZoom; // World-unit equivalent of 1 screen pixel at battle zoom
+        private const float LmbHoldRetryCooldown = 0.25f;
 
         private static readonly Color Lacquer = new Color(0.031f, 0.051f, 0.050f, 0.985f);
         private static readonly Color LacquerEdge = new Color(0.72f, 0.56f, 0.24f, 0.85f);
@@ -38,6 +40,9 @@ namespace Taiwu_Godot.Scripts.Combat
 
         // Pre-cached damage string lookup (0 B runtime GC allocation)
         private static readonly string[] PrecachedDamageStrings = new string[1000];
+        private static readonly Dictionary<int, string> OverflowDamageStrings = new(64);
+        private const string OverflowDamageCapString = "-99999+";
+
         static CombatArenaView()
         {
             for (int i = 0; i < 1000; i++) PrecachedDamageStrings[i] = $"-{i}";
@@ -46,8 +51,19 @@ namespace Taiwu_Godot.Scripts.Combat
         private static string GetDamageString(float amount)
         {
             int val = (int)MathF.Round(amount);
-            if (val >= 0 && val < 1000) return PrecachedDamageStrings[val];
-            return $"-{val}";
+            if (val <= 0) return PrecachedDamageStrings[0];
+            if (val < 1000) return PrecachedDamageStrings[val];
+            if (val > 99999) return OverflowDamageCapString;
+
+            if (!OverflowDamageStrings.TryGetValue(val, out string? cached))
+            {
+                cached = $"-{val}";
+                if (OverflowDamageStrings.Count < 256)
+                {
+                    OverflowDamageStrings[val] = cached;
+                }
+            }
+            return cached;
         }
 
         // Struct for zero-GC floating combat damage numbers
@@ -64,9 +80,12 @@ namespace Taiwu_Godot.Scripts.Combat
         private readonly FloatingDamageEntry[] _damageRing = new FloatingDamageEntry[32];
         private int _damageRingHead = 0;
 
-        // Health tracking to detect hits and trigger local hit-stop
+        // Health tracking to detect hits and trigger simulation hit-stop + camera trauma
         private readonly float[] _prevHealth = new float[CombatArenaSimulation.MAX_ENTITIES];
-        private float _hitStopTimer = 0f;
+
+        // Prevent LMB double-cast on press frame and throttle hold-LMB failed cast retries
+        private bool _lmbCastThisFrame = false;
+        private float _lmbHoldRetryTimer = 0f;
 
         // Decoupled un-shaken mouse aiming position
         private Vector2 _arenaCursorPos;
@@ -204,7 +223,12 @@ namespace Taiwu_Godot.Scripts.Combat
             {
                 if (mouse.ButtonIndex == MouseButton.Left)
                 {
-                    simulation.TryCastSkill(world, 0);
+                    bool castOk = simulation.TryCastSkill(world, 0);
+                    _lmbCastThisFrame = true;
+                    if (!castOk)
+                    {
+                        _lmbHoldRetryTimer = LmbHoldRetryCooldown;
+                    }
                     GetViewport().SetInputAsHandled();
                 }
                 else if (mouse.ButtonIndex == MouseButton.Right)
@@ -236,71 +260,78 @@ namespace Taiwu_Godot.Scripts.Combat
 
             float dt = (float)delta;
 
-            // 1. Local hit-stop timer update
-            if (_hitStopTimer > 0f)
+            if (_lmbHoldRetryTimer > 0f)
             {
-                _hitStopTimer = MathF.Max(0f, _hitStopTimer - dt);
+                _lmbHoldRetryTimer = MathF.Max(0f, _lmbHoldRetryTimer - dt);
             }
 
-            // 2. Advance active floating damage numbers
+            // 1. Advance active floating damage numbers
             for (int i = 0; i < 32; i++)
             {
-                if (!_damageRing[i].Active) continue;
-                _damageRing[i].Lifetime -= dt;
-                if (_damageRing[i].Lifetime <= 0f)
+                ref FloatingDamageEntry entry = ref _damageRing[i];
+                if (!entry.Active) continue;
+                entry.Lifetime -= dt;
+                if (entry.Lifetime <= 0f)
                 {
-                    _damageRing[i].Active = false;
+                    entry.Active = false;
                 }
                 else
                 {
-                    _damageRing[i].Position += new Vector2(0f, -0.6f * dt);
+                    entry.Position += new Vector2(0f, -0.6f * dt);
                 }
             }
 
-            // 3. Detect entity health reductions to trigger hit-stop, camera trauma, and damage numbers
+            // 2. Detect entity health reductions (including killing blows) to trigger hit-stop, camera trauma, and damage numbers
             for (int i = 0; i < CombatArenaSimulation.MAX_ENTITIES; i++)
             {
-                CombatEntityData entity = simulation.EntityBuffer[i];
-                if (entity.Active)
+                ref readonly CombatEntityData entity = ref simulation.EntityBuffer[i];
+                float prev = _prevHealth[i];
+
+                if (prev > 0.001f && (!entity.Active || entity.Health < prev))
                 {
-                    float prev = _prevHealth[i];
-                    if (prev > 0.001f && entity.Health < prev)
+                    float deltaDmg = entity.Health < prev ? (prev - entity.Health) : prev;
+                    if (deltaDmg > 0.001f)
                     {
-                        float deltaDmg = prev - entity.Health;
                         SpawnDamageNumber(new Vector2(entity.PosX, entity.PosY), deltaDmg, entity.Team == CombatEntityTeam.Player);
 
-                        // Trigger local hit-stop and camera trauma
-                        _hitStopTimer = 0.045f;
-                        simulation.HitStopTimer = 0.045f;
+                        // Preserve longer hit-stops (e.g., Killer Move's 0.12s)
+                        simulation.HitStopTimer = MathF.Max(simulation.HitStopTimer, 0.045f);
 
                         if (_camera is CameraIsometricController isoCam)
                         {
                             isoCam.AddTrauma(entity.Team == CombatEntityTeam.Player ? 0.40f : 0.25f);
                         }
                     }
-                    _prevHealth[i] = entity.Health;
                 }
-                else
-                {
-                    _prevHealth[i] = 0f;
-                }
+
+                _prevHealth[i] = entity.Active ? MathF.Max(0f, entity.Health) : 0f;
             }
 
-            // 4. Calculate un-shaken mouse aim in local arena space.
-            // GetLocalMousePosition() already accounts for Camera2D.Offset via Viewport.CanvasTransform;
-            // subtracting _camera.Offset a second time would inject inverse shake into the aim vector.
+            // 3. Calculate trauma-free mouse aim in local arena space by removing Camera2D shake offset
             Vector2 localMouse = GetLocalMousePosition();
+            if (_camera != null)
+            {
+                localMouse -= _camera.Offset;
+            }
             float cursorX = Math.Clamp(localMouse.X, -ArenaHalfW, ArenaHalfW);
             float cursorY = Math.Clamp(localMouse.Y, -ArenaHalfH, ArenaHalfH);
             _arenaCursorPos = new Vector2(cursorX, cursorY);
 
-            // Left-click hold-to-fire on cooldown
-            if (Godot.Input.IsMouseButtonPressed(MouseButton.Left))
+            // Left-click hold-to-fire on cooldown (skipped on press frame, throttled on failed casts)
+            if (!_lmbCastThisFrame && Godot.Input.IsMouseButtonPressed(MouseButton.Left))
             {
-                simulation.TryCastSkill(world, 0);
+                ref readonly CombatSkillSlot primarySlot = ref simulation.PlayerSkills[0];
+                if (primarySlot.IsPopulated && primarySlot.CooldownRemaining <= 0f && _lmbHoldRetryTimer <= 0f)
+                {
+                    if (!simulation.TryCastSkill(world, 0))
+                    {
+                        _lmbHoldRetryTimer = LmbHoldRetryCooldown;
+                    }
+                }
             }
+            _lmbCastThisFrame = false;
 
-            // 5. Player movement and aiming inputs with deadzone
+            // 4. Player movement and aiming inputs with deadzone
             float moveX = 0f;
             float moveY = 0f;
             if (Godot.Input.IsKeyPressed(Key.W) || Godot.Input.IsKeyPressed(Key.Up)) moveY -= 1f;
@@ -308,7 +339,7 @@ namespace Taiwu_Godot.Scripts.Combat
             if (Godot.Input.IsKeyPressed(Key.A) || Godot.Input.IsKeyPressed(Key.Left)) moveX -= 1f;
             if (Godot.Input.IsKeyPressed(Key.D) || Godot.Input.IsKeyPressed(Key.Right)) moveX += 1f;
 
-            ref CombatEntityData player = ref simulation.EntityBuffer[0];
+            ref readonly CombatEntityData player = ref simulation.EntityBuffer[0];
             float aimDx = _arenaCursorPos.X - player.PosX;
             float aimDy = _arenaCursorPos.Y - player.PosY;
             float aimDistSq = aimDx * aimDx + aimDy * aimDy;
@@ -357,7 +388,8 @@ namespace Taiwu_Godot.Scripts.Combat
             if (inBattle)
             {
                 Visible = true;
-                _hitStopTimer = 0f;
+                _lmbCastThisFrame = false;
+                _lmbHoldRetryTimer = 0f;
 
                 for (int i = 0; i < 32; i++) _damageRing[i] = default;
                 for (int i = 0; i < CombatArenaSimulation.MAX_ENTITIES; i++) _prevHealth[i] = 0f;
@@ -370,7 +402,7 @@ namespace Taiwu_Godot.Scripts.Combat
                     {
                         for (int i = 0; i < CombatArenaSimulation.MAX_ENTITIES; i++)
                         {
-                            CombatEntityData entity = session.Simulation.EntityBuffer[i];
+                            ref readonly CombatEntityData entity = ref session.Simulation.EntityBuffer[i];
                             if (entity.Active) _prevHealth[i] = entity.Health;
                         }
                     }
@@ -388,6 +420,8 @@ namespace Taiwu_Godot.Scripts.Combat
             else
             {
                 Visible = false;
+                _lmbCastThisFrame = false;
+                _lmbHoldRetryTimer = 0f;
                 if (_camera != null && _hasSavedCamera)
                 {
                     var world = _provider?.Current;
@@ -497,7 +531,7 @@ namespace Taiwu_Godot.Scripts.Combat
         {
             for (int i = 0; i < CombatArenaSimulation.MAX_ENTITIES; i++)
             {
-                CombatEntityData entity = simulation.EntityBuffer[i];
+                ref readonly CombatEntityData entity = ref simulation.EntityBuffer[i];
                 if (!entity.Active) continue;
 
                 var position = new Vector2(entity.PosX, entity.PosY);
@@ -506,24 +540,27 @@ namespace Taiwu_Godot.Scripts.Combat
                 switch (entity.Archetype)
                 {
                     case CombatEntityArchetype.PlayerCultivator:
-                        DrawPlayer(entity, position, flash);
+                        DrawPlayer(in entity, position, flash);
                         break;
                     case CombatEntityArchetype.WildBoarSwarm:
-                        DrawWildBoar(entity, position, flash);
+                        DrawWildBoar(in entity, position, flash);
                         break;
                     case CombatEntityArchetype.ClanPatrol:
-                        DrawClanPatrol(entity, position, flash);
+                        DrawClanPatrol(in entity, position, flash);
                         break;
                     case CombatEntityArchetype.DemonicCultivator:
-                        DrawDemonicCultivator(entity, position, flash);
+                        DrawDemonicCultivator(in entity, position, flash);
+                        break;
+                    case CombatEntityArchetype.SovereignElder:
+                        DrawSovereignElder(in entity, position, flash);
                         break;
                 }
 
-                DrawHealthBar(entity, position);
+                DrawHealthBar(in entity, position);
             }
         }
 
-        private void DrawPlayer(CombatEntityData player, Vector2 position, bool flash)
+        private void DrawPlayer(in CombatEntityData player, Vector2 position, bool flash)
         {
             float diameter = player.Radius * 2.2f;
             var tokenRect = new Rect2(position - new Vector2(diameter * 0.5f, diameter * 0.5f), new Vector2(diameter, diameter));
@@ -558,7 +595,7 @@ namespace Taiwu_Godot.Scripts.Combat
             DrawSeal(position + new Vector2(0f, player.Radius + 0.40f), "【道】", Jade, 16);
         }
 
-        private void DrawWildBoar(CombatEntityData entity, Vector2 position, bool flash)
+        private void DrawWildBoar(in CombatEntityData entity, Vector2 position, bool flash)
         {
             float diameter = entity.Radius * 2.2f;
             var tokenRect = new Rect2(position - new Vector2(diameter * 0.5f, diameter * 0.5f), new Vector2(diameter, diameter));
@@ -578,7 +615,7 @@ namespace Taiwu_Godot.Scripts.Combat
             DrawSeal(position + new Vector2(0f, entity.Radius + 0.36f), "【兽】", Crimson, 16);
         }
 
-        private void DrawClanPatrol(CombatEntityData entity, Vector2 position, bool flash)
+        private void DrawClanPatrol(in CombatEntityData entity, Vector2 position, bool flash)
         {
             float diameter = entity.Radius * 2.2f;
             var tokenRect = new Rect2(position - new Vector2(diameter * 0.5f, diameter * 0.5f), new Vector2(diameter, diameter));
@@ -598,7 +635,7 @@ namespace Taiwu_Godot.Scripts.Combat
             DrawSeal(position + new Vector2(0f, entity.Radius + 0.38f), "【卫】", Bronze, 16);
         }
 
-        private void DrawDemonicCultivator(CombatEntityData entity, Vector2 position, bool flash)
+        private void DrawDemonicCultivator(in CombatEntityData entity, Vector2 position, bool flash)
         {
             float diameter = entity.Radius * 2.4f;
             var tokenRect = new Rect2(position - new Vector2(diameter * 0.5f, diameter * 0.5f), new Vector2(diameter, diameter));
@@ -620,6 +657,27 @@ namespace Taiwu_Godot.Scripts.Combat
 
             DrawArc(position, entity.Radius, 0f, Mathf.Tau, 36, flash ? HitFlash : Crimson, 2.2f * Px, true);
             DrawSeal(position + new Vector2(0f, entity.Radius + 0.40f), "【魔】", flash ? HitFlash : Crimson, 16);
+        }
+
+        private void DrawSovereignElder(in CombatEntityData entity, Vector2 position, bool flash)
+        {
+            float diameter = entity.Radius * 2.6f;
+            var tokenRect = new Rect2(position - new Vector2(diameter * 0.5f, diameter * 0.5f), new Vector2(diameter, diameter));
+
+            if (_texTokenBoss != null)
+            {
+                Color mod = flash ? HitFlash : Amber;
+                DrawTextureRect(_texTokenBoss, tokenRect, false, mod);
+            }
+            else
+            {
+                DrawBaguaMandala(position, entity.Radius, flash ? HitFlash : Amber);
+            }
+
+            // Imperial Gold & Crimson Sovereign aura rings
+            DrawArc(position, entity.Radius, 0f, Mathf.Tau, 48, flash ? HitFlash : Amber, 2.8f * Px, true);
+            DrawArc(position, entity.Radius + 0.16f, 0f, Mathf.Tau, 48, flash ? HitFlash : Crimson, 2.0f * Px, true);
+            DrawSeal(position + new Vector2(0f, entity.Radius + 0.46f), "【尊】", flash ? HitFlash : Amber, 18);
         }
 
         private void DrawDiamondTotem(Vector2 position, float radius, Color color)
@@ -664,7 +722,7 @@ namespace Taiwu_Godot.Scripts.Combat
             }
         }
 
-        private void DrawHealthBar(CombatEntityData entity, Vector2 position)
+        private void DrawHealthBar(in CombatEntityData entity, Vector2 position)
         {
             float width = Mathf.Max(0.9f, entity.Radius * 2.6f);
             float height = 0.10f;
@@ -680,7 +738,7 @@ namespace Taiwu_Godot.Scripts.Combat
         {
             for (int i = 0; i < CombatArenaSimulation.MAX_PROJECTILES; i++)
             {
-                CombatProjectileData projectile = simulation.ProjectileBuffer[i];
+                ref readonly CombatProjectileData projectile = ref simulation.ProjectileBuffer[i];
                 if (!projectile.Active) continue;
 
                 var position = new Vector2(projectile.PosX, projectile.PosY);
@@ -741,7 +799,7 @@ namespace Taiwu_Godot.Scripts.Combat
 
         private void DrawAimReticle(CombatArenaSimulation simulation)
         {
-            ref CombatEntityData player = ref simulation.EntityBuffer[0];
+            ref readonly CombatEntityData player = ref simulation.EntityBuffer[0];
             if (!player.Active) return;
 
             Vector2 playerPos = new Vector2(player.PosX, player.PosY);
@@ -770,7 +828,7 @@ namespace Taiwu_Godot.Scripts.Combat
         {
             for (int i = 0; i < 32; i++)
             {
-                ref FloatingDamageEntry entry = ref _damageRing[i];
+                ref readonly FloatingDamageEntry entry = ref _damageRing[i];
                 if (!entry.Active) continue;
 
                 float alpha = Mathf.Clamp(entry.Lifetime / entry.MaxLifetime, 0f, 1f);

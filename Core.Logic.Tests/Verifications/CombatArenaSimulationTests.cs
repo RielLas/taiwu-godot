@@ -50,7 +50,7 @@ namespace TaiwuGu.Tests
         {
             var world = WorldFactory.CreateDefault();
             var aperture = world.Get<ApertureComponent>(world.PlayerEntity)!;
-            EntityId moonId = FindGu(world, "gu_moonlight_01");
+            EntityId moonId = FindGu(world, "gu_moonlight_r1");
             var moon = world.Get<GuWormComponent>(moonId)!;
             var simulation = CombatSystem.GetOrCreateArena(world);
             simulation.InitializeArena(

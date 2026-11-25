@@ -35,8 +35,9 @@ void fragment() {
 
 		// Gentle ethereal Dao mist overlay: blend soft mist rather than pitch black storm clouds
 		vec3 mist_tint = mix(fog_color.rgb, dao_mist_color.rgb, mist_density * 0.5);
-		// Apply mist proportional to fog_factor, retaining visible mountain landscape underneath
-		float blend_amount = clamp(fog_factor * 0.92 + mist_density * 0.08, 0.0, 1.0);
+		// Smooth ramp across the fog boundary so there is no hard step discontinuity
+		float mist_ramp = smoothstep(0.02, 0.14, fog_factor);
+		float blend_amount = clamp(fog_factor * 0.92 * mist_ramp + mist_ramp * mist_density * 0.08, 0.0, 1.0);
 		base_color.rgb = mix(base_color.rgb, mist_tint, blend_amount);
 	}
 

@@ -97,17 +97,29 @@ namespace TaiwuGu.Serialization
 
         public static WorldStore? LoadWorld(string slotID)
         {
-            if (!TryGetSlotDirectory(slotID, out string slotDir)) return null;
+            return TryLoadWorldWithMetadata(slotID, out var world, out _) ? world : null;
+        }
+
+        public static bool TryLoadWorldWithMetadata(string slotID, out WorldStore? world, out SaveMetadataDTO? metadata)
+        {
+            world = null;
+            metadata = null;
+            if (!TryGetSlotDirectory(slotID, out string slotDir)) return false;
 
             foreach (string path in CandidatePaths(slotDir))
             {
-                WorldStore? world = ReadWorld(path, slotID);
-                if (world != null) return world;
+                var env = ReadValidatedEnvelope(path, slotID);
+                if (env != null && env.Store != null)
+                {
+                    world = env.Store;
+                    metadata = env.Metadata;
+                    return true;
+                }
             }
 
             Debug.LogError($"[SaveDiskIO] No readable v{CURRENT_SAVE_VERSION} save found for slot '{slotID}'.");
             OnSaveLoadError?.Invoke(slotID, "No readable save found.");
-            return null;
+            return false;
         }
 
         public static async Task<WorldStore?> LoadWorldAsync(string slotID)
@@ -252,13 +264,13 @@ namespace TaiwuGu.Serialization
             yield return primary + SavePaths.BACKUP_SUFFIX;
         }
 
-        private static WorldStore? ReadWorld(string path, string slotID)
+        private static WorldSaveEnvelope? ReadValidatedEnvelope(string path, string slotID)
         {
             if (!File.Exists(path)) return null;
             try
             {
                 string json = File.ReadAllText(path, Encoding.UTF8);
-                return ParseWorld(json, path, slotID);
+                return ParseEnvelope(json, path, slotID);
             }
             catch (Exception ex)
             {
@@ -272,7 +284,7 @@ namespace TaiwuGu.Serialization
             try
             {
                 string json = await ReadTextFromFileAsync(path);
-                return ParseWorld(json, path, slotID);
+                return ParseEnvelope(json, path, slotID)?.Store;
             }
             catch (Exception ex)
             {
@@ -281,7 +293,7 @@ namespace TaiwuGu.Serialization
             }
         }
 
-        private static WorldStore? ParseWorld(string json, string path, string slotID)
+        private static WorldSaveEnvelope? ParseEnvelope(string json, string path, string slotID)
         {
             WorldSaveEnvelope? env = JsonConvert.DeserializeObject<WorldSaveEnvelope>(json, s_SerializerSettings);
             if (env == null || env.SaveVersion != CURRENT_SAVE_VERSION || env.Store == null)
@@ -297,7 +309,7 @@ namespace TaiwuGu.Serialization
             }
 
             env.Store.RebuildIndices();
-            return env.Store;
+            return env;
         }
 
         private static WorldSaveEnvelope? ReadEnvelope(string path)

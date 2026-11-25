@@ -231,7 +231,12 @@ namespace TaiwuGu.Systems
 
         public static void TickMonthlyNPCs(WorldStore world, IRandomSource? rng = null)
         {
-            IRandomSource random = rng ?? new SeededRandom(world.RunSeed + (world.GetSingleton<WorldClockComponent>()?.CurrentSolarTermIndex ?? 1));
+            var clock = world.GetSingleton<WorldClockComponent>();
+            int seed = unchecked(
+                world.RunSeed ^
+                ((clock?.CurrentYear ?? 1) * 10007) ^
+                ((clock?.CurrentSolarTermIndex ?? 1) * 397));
+            IRandomSource random = rng ?? new SeededRandom(seed);
 
             var moves = new List<(EntityId Id, GridCoord Next, string SectorKey)>();
             foreach (var (eid, cult) in world.GetAll<CultivatorComponent>())

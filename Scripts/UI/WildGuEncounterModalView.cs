@@ -78,6 +78,12 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.OnTopicsChanged          -= HandleTopicsChanged;
             WorldSignals.OnWildEncounterResolved  -= HandleEncounterResolved;
             WorldSignals.OnEscapeRequested        -= HandleEscapeRequested;
+
+            if (_isOpen)
+            {
+                _isOpen = false;
+                WorldSignals.EmitModalClosed(this);
+            }
         }
 
         private void LoadTextures()

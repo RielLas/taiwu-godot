@@ -121,7 +121,8 @@ namespace TaiwuGu.Systems
 
             if (dist <= tol)
             {
-                float damage = 22f + (CalculateRankDifferential(world, s) * 6f);
+                int deltaR = CalculateRankDifferential(world, s);
+                float damage = MathF.Max(5f, 22f + (deltaR * 6f));
                 s.FeralWillResistance = MathF.Max(0f, s.FeralWillResistance - damage);
                 s.PlayerWillAlignment = MathF.Min(100f, s.PlayerWillAlignment + 18f);
             }
@@ -140,12 +141,20 @@ namespace TaiwuGu.Systems
             if (s.State != SubjugationState.Clashing || s.Target == null || !IsInstantRefineAvailable(world, s))
                 return;
 
-            if (world.TryGet<CultivatorComponent>(world.PlayerEntity, out var cult) &&
-                world.TryGet<ApertureComponent>(world.PlayerEntity, out var ap))
+            if (!world.TryGet<CultivatorComponent>(world.PlayerEntity, out var cult) ||
+                !world.TryGet<ApertureComponent>(world.PlayerEntity, out var ap))
+                return;
+
+            float cost = cult.AptitudePercent * 0.01f;
+            if (ap.CurrentEssenceSea < cost)
             {
-                float cost = cult.AptitudePercent * 0.01f;
-                ap.CurrentEssenceSea = MathF.Max(0f, ap.CurrentEssenceSea - cost);
+                s.LastResolutionMessage = "Insufficient Primeval Essence to perform Instantaneous Will Overwrite!";
+                WorldSignals.EmitTopics(DirtyTopic.WildEncounter);
+                return;
             }
+
+            ap.CurrentEssenceSea = MathF.Max(0f, ap.CurrentEssenceSea - cost);
+            WorldSignals.EmitTopics(DirtyTopic.Aperture);
 
             ResolveSuccess(world, s, "Instantaneous Will Overwrite (阶位秒炼)! The creature's primitive consciousness is effortlessly crushed by absolute high-rank realm majesty.");
         }
@@ -173,7 +182,9 @@ namespace TaiwuGu.Systems
 
             if (dist <= tol)
             {
-                s.PlayerWillAlignment += (24f + CalculateRankDifferential(world, s) * 6f) * dt;
+                int deltaR = CalculateRankDifferential(world, s);
+                float alignmentRate = MathF.Max(4f, 24f + deltaR * 6f);
+                s.PlayerWillAlignment += alignmentRate * dt;
                 s.FeralWillResistance = MathF.Max(0f, s.FeralWillResistance - 15f * dt);
             }
             else

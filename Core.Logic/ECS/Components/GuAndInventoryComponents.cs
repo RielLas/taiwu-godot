@@ -32,10 +32,21 @@ namespace TaiwuGu.Entities
 
         public bool TryConsumeFood(GuDietType diet, int quantity = 1)
         {
-            var item = FoodStockpile.Find(i => i.DietType == diet && i.Quantity >= quantity);
-            if (item == null) return false;
-            item.Quantity -= quantity;
-            if (item.Quantity <= 0) FoodStockpile.Remove(item);
+            if (quantity <= 0) return false;
+            if (GetFoodQuantity(diet) < quantity) return false;
+
+            int remaining = quantity;
+            for (int i = 0; i < FoodStockpile.Count && remaining > 0; i++)
+            {
+                var item = FoodStockpile[i];
+                if (item.DietType != diet || item.Quantity <= 0) continue;
+
+                int take = Math.Min(item.Quantity, remaining);
+                item.Quantity -= take;
+                remaining -= take;
+            }
+
+            FoodStockpile.RemoveAll(i => i.Quantity <= 0);
             return true;
         }
 
@@ -74,7 +85,7 @@ namespace TaiwuGu.Entities
             if (ConsecutiveHibernationCycles >= GetMaxHibernationCyclesAllowed() && !IsVitalGu)
                 return GuStarvationStage.Dead;
             if (IsInTraumaSleep || Satiety <= 0f) return GuStarvationStage.Hibernating;
-            if (Satiety < 25f) return GuStarvationStage.Starving;
+            if (Satiety <= 25f) return GuStarvationStage.Starving;
             if (Satiety <= 50f) return GuStarvationStage.Hungry;
             return GuStarvationStage.Healthy;
         }

@@ -54,6 +54,9 @@ namespace Taiwu_Godot.Scripts.UI
         // Settings Controls
         [Export] public Button? BtnBackFromSettings { get; set; }
 
+        private bool _transitioning = false;
+        private bool _videoSubscribed = false;
+
         public override void _EnterTree()
         {
             Instance = this;
@@ -91,9 +94,18 @@ namespace Taiwu_Godot.Scripts.UI
                 VideoBackdrop.Loop = false;
                 VideoBackdrop.Expand = true;
                 VideoBackdrop.Finished += OnVideoFinished;
-                if (VideoBackdrop.Stream != null && !VideoBackdrop.IsPlaying())
+                _videoSubscribed = true;
+                if (VideoBackdrop.Stream != null)
                 {
-                    VideoBackdrop.Play();
+                    if (!VideoBackdrop.IsPlaying())
+                    {
+                        VideoBackdrop.Play();
+                    }
+                }
+                else if (FallbackBackdrop != null)
+                {
+                    var mod = FallbackBackdrop.Modulate;
+                    FallbackBackdrop.Modulate = new Color(mod.R, mod.G, mod.B, 1.0f);
                 }
             }
 
@@ -111,6 +123,17 @@ namespace Taiwu_Godot.Scripts.UI
 
         public override void _ExitTree()
         {
+            if (VideoBackdrop != null && IsInstanceValid(VideoBackdrop))
+            {
+                if (_videoSubscribed)
+                {
+                    VideoBackdrop.Finished -= OnVideoFinished;
+                    _videoSubscribed = false;
+                }
+                VideoBackdrop.Stop();
+                VideoBackdrop.Stream = null;
+            }
+
             if (Instance == this)
             {
                 Instance = null;
@@ -124,7 +147,10 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 foreach (var arg in userArgs)
                 {
-                    if (arg == "--verify" || arg == "--capture" || arg.Contains("verify") || arg.Contains("capture"))
+                    if (arg.Equals("--verify", StringComparison.Ordinal) ||
+                        arg.StartsWith("--verify=", StringComparison.Ordinal) ||
+                        arg.Equals("--capture", StringComparison.Ordinal) ||
+                        arg.StartsWith("--capture", StringComparison.Ordinal))
                         return true;
                 }
             }
@@ -134,7 +160,10 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 foreach (var arg in allArgs)
                 {
-                    if (arg == "--verify" || arg == "--capture")
+                    if (arg.Equals("--verify", StringComparison.Ordinal) ||
+                        arg.StartsWith("--verify=", StringComparison.Ordinal) ||
+                        arg.Equals("--capture", StringComparison.Ordinal) ||
+                        arg.StartsWith("--capture", StringComparison.Ordinal))
                         return true;
                 }
             }
@@ -206,10 +235,8 @@ namespace Taiwu_Godot.Scripts.UI
                 OptSector.SetItemMetadata(1, "Sector_SouthernBorder_BaiClanMountain");
                 OptSector.AddItem("Xiong Ridge (熊家寨, Southern Border)", 2);
                 OptSector.SetItemMetadata(2, "Sector_SouthernBorder_XiongRidge");
-                OptSector.AddItem("Qing Mao Mountain (青茅山, Southern Border)", 3);
-                OptSector.SetItemMetadata(3, "Sector_SouthernBorder_QingMaoMountain");
-                OptSector.AddItem("Shang Clan City (商家城, Southern Border)", 4);
-                OptSector.SetItemMetadata(4, "Sector_SouthernBorder_ShangClanCity");
+                OptSector.AddItem("Qing Mao Gorge (青茅幽峡, Southern Border)", 3);
+                OptSector.SetItemMetadata(3, "Sector_SouthernBorder_QingMaoGorge");
                 OptSector.Select(0);
             }
 
@@ -217,15 +244,15 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 OptVitalGu.Clear();
                 OptVitalGu.AddItem("Moonlight Gu (月光蛊, Rank 1 Moon Path)", 0);
-                OptVitalGu.SetItemMetadata(0, "gu_moonlight_01");
-                OptVitalGu.AddItem("Hope Gu (希望蛊, Rank 1 Light/Essence Path)", 1);
-                OptVitalGu.SetItemMetadata(1, "gu_hope_01");
-                OptVitalGu.AddItem("Bear Strength Gu (熊力蛊, Rank 1 Strength Path)", 2);
-                OptVitalGu.SetItemMetadata(2, "gu_bear_strength_01");
-                OptVitalGu.AddItem("Boar Strength Gu (豕力蛊, Rank 1 Strength Path)", 3);
-                OptVitalGu.SetItemMetadata(3, "gu_boar_strength_01");
+                OptVitalGu.SetItemMetadata(0, "gu_moonlight_r1");
+                OptVitalGu.AddItem("Liquor Worm (酒虫, Rank 1 Food/Essence Path)", 1);
+                OptVitalGu.SetItemMetadata(1, "gu_liquor_worm_r1");
+                OptVitalGu.AddItem("Bear Strength Gu (熊力蛊, Rank 2 Strength Path)", 2);
+                OptVitalGu.SetItemMetadata(2, "gu_bear_strength_r2");
+                OptVitalGu.AddItem("White Boar Gu (白猪蛊, Rank 1 Strength Path)", 3);
+                OptVitalGu.SetItemMetadata(3, "gu_white_boar_r1");
                 OptVitalGu.AddItem("Little Light Gu (小光蛊, Rank 1 Light Path)", 4);
-                OptVitalGu.SetItemMetadata(4, "gu_little_light_01");
+                OptVitalGu.SetItemMetadata(4, "gu_little_light_r1");
                 OptVitalGu.Select(0);
             }
 
@@ -281,6 +308,9 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void OnConfirmEmbarkPressed()
         {
+            if (_transitioning) return;
+            _transitioning = true;
+
             string name = TxtPlayerName?.Text?.Trim() ?? "";
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -312,7 +342,7 @@ namespace Taiwu_Godot.Scripts.UI
                 }
             }
 
-            string vitalGu = "gu_moonlight_01";
+            string vitalGu = "gu_moonlight_r1";
             if (OptVitalGu != null)
             {
                 var meta = OptVitalGu.GetItemMetadata(OptVitalGu.Selected);
@@ -404,6 +434,9 @@ namespace Taiwu_Godot.Scripts.UI
                 btn.AddThemeFontSizeOverride("font_size", 11);
                 btn.Pressed += () =>
                 {
+                    if (_transitioning) return;
+                    _transitioning = true;
+
                     PendingRunConfig = null;
                     PendingLoadSlot = slotId;
                     GD.Print($"[TitleScreen] Selected slot [{slotId}] for loading. Launching OverworldScene...");

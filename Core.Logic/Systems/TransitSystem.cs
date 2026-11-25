@@ -138,6 +138,12 @@ namespace TaiwuGu.Systems
         {
             reason = string.Empty;
             var currentSector = world.GetCurrentSector();
+            if (currentSector != null && currentSector.Region != WorldRegionID.SouthernBorder)
+            {
+                reason = "Must be in Southern Border to travel between Qing Mao mountains!";
+                return false;
+            }
+
             if (currentSector != null && currentSector.MountainId == target && currentSector.Region == WorldRegionID.SouthernBorder)
             {
                 reason = "Already at this mountain!";
@@ -213,11 +219,18 @@ namespace TaiwuGu.Systems
             world.GetCurrentSector()?.CommitTilesToSnapshot();
             CloseTransitModal(world);
 
-            IRandomSource rng = rngOverride ?? new SeededRandom(world.RunSeed + (int)destination);
+            var clock = world.GetSingleton<WorldClockComponent>();
+            int ambushSeed = unchecked(
+                world.RunSeed ^
+                ((int)destination * 1009) ^
+                ((clock?.CurrentYear ?? 1) * 10007) ^
+                ((clock?.CurrentSolarTermIndex ?? 1) * 397));
+            IRandomSource rng = rngOverride ?? new SeededRandom(ambushSeed);
             if (rng.NextDouble() < ROAD_AMBUSH_CHANCE)
             {
                 var s = GetOrCreateSession(world);
                 s.PendingMountainDestination = destination;
+                s.PendingSectorKey = MakeSectorKey(WorldRegionID.SouthernBorder, destination);
                 WorldSignals.EmitRoadAmbushOccurred(ArenaEncounterType.WildBoarHunt, world.GetPlayerPosition());
                 CombatSystem.StartCombat(
                     world,
@@ -255,9 +268,116 @@ namespace TaiwuGu.Systems
             return true;
         }
 
+        public static bool TravelToSector(WorldStore world, string targetSectorKey, bool sealAperture = false, IRandomSource? rngOverride = null)
+        {
+            if (string.IsNullOrWhiteSpace(targetSectorKey) ||
+                !WorldAtlasRegistry.TryGet(targetSectorKey, out var targetBp) ||
+                targetBp == null)
+            {
+                Debug.LogWarning($"[TransitSystem] Unknown target sector: '{targetSectorKey}'.");
+                return false;
+            }
+
+            if (string.Equals(world.CurrentSectorKey, targetBp.SectorKey, StringComparison.Ordinal))
+            {
+                Debug.LogWarning($"[TransitSystem] Already in sector '{targetBp.SectorKey}'.");
+                return false;
+            }
+
+            if (!world.TryGet<CultivatorComponent>(world.PlayerEntity, out var cult))
+            {
+                return false;
+            }
+
+            var currentSector = world.GetCurrentSector();
+            WorldRegionID fromRegion = currentSector?.Region ?? WorldRegionID.SouthernBorder;
+            bool crossingRegions = fromRegion != targetBp.Region;
+
+            int stoneCost = crossingRegions ? REGIONAL_TRANSIT_STONE_COST : TRAVEL_STONE_COST;
+            int apCost = crossingRegions ? REGIONAL_TRANSIT_AP_COST : TRAVEL_AP_COST;
+
+            if (cult.PrimevalStones < stoneCost)
+            {
+                Debug.LogWarning($"[TransitSystem] Sector transit blocked: need {stoneCost} Stones (have {cult.PrimevalStones}).");
+                return false;
+            }
+
+            int ap = world.GetSingleton<WorldClockComponent>()?.ActionPointsRemaining ?? 0;
+            if (ap < apCost)
+            {
+                Debug.LogWarning($"[TransitSystem] Sector transit blocked: need {apCost} AP (have {ap}).");
+                return false;
+            }
+
+            cult.PrimevalStones -= stoneCost;
+            TimeSystem.DeductActionPoints(world, apCost);
+
+            if (crossingRegions)
+            {
+                RegionalWallType wall = RegionalWallLaw.GetBoundaryWall(fromRegion, targetBp.Region);
+                ApplyRegionalWallBacklash(world, wall, sealAperture);
+            }
+
+            currentSector?.CommitTilesToSnapshot();
+            CloseTransitModal(world);
+
+            if (!crossingRegions)
+            {
+                var clock = world.GetSingleton<WorldClockComponent>();
+                int keyHash = ComputeSectorHash(targetBp.SectorKey);
+                int ambushSeed = unchecked(
+                    world.RunSeed ^
+                    keyHash ^
+                    ((clock?.CurrentYear ?? 1) * 10007) ^
+                    ((clock?.CurrentSolarTermIndex ?? 1) * 397));
+                IRandomSource rng = rngOverride ?? new SeededRandom(ambushSeed);
+
+                if (rng.NextDouble() < ROAD_AMBUSH_CHANCE)
+                {
+                    var s = GetOrCreateSession(world);
+                    s.PendingSectorKey = targetBp.SectorKey;
+                    s.PendingMountainDestination = targetBp.MountainId;
+                    WorldSignals.EmitRoadAmbushOccurred(ArenaEncounterType.WildBoarHunt, world.GetPlayerPosition());
+                    CombatSystem.StartCombat(
+                        world,
+                        ArenaEncounterType.WildBoarHunt,
+                        world.GetPlayerPosition(),
+                        isLethal: true,
+                        enemyName: "Road Ambush Beasts");
+                    WorldSignals.EmitTopics(DirtyTopic.Cultivator | DirtyTopic.Calendar | DirtyTopic.Transit);
+                    return true;
+                }
+            }
+
+            LoadSector(world, targetBp.SectorKey);
+            return true;
+        }
+
+        private static int ComputeSectorHash(string text)
+        {
+            unchecked
+            {
+                int hash = 17;
+                for (int i = 0; i < text.Length; i++)
+                {
+                    hash = hash * 31 + text[i];
+                }
+                return hash;
+            }
+        }
+
         public static void CompletePendingAmbushArrival(WorldStore world)
         {
             var s = GetOrCreateSession(world);
+            if (!string.IsNullOrEmpty(s.PendingSectorKey))
+            {
+                string destKey = s.PendingSectorKey!;
+                s.PendingSectorKey = null;
+                s.PendingMountainDestination = null;
+                LoadSector(world, destKey);
+                return;
+            }
+
             if (!s.PendingMountainDestination.HasValue) return;
             var dest = s.PendingMountainDestination.Value;
             s.PendingMountainDestination = null;

@@ -12,7 +12,7 @@ namespace TaiwuGu.Core
     public static class GuDatabase
     {
         private static readonly Dictionary<string, GuWormDefinitionDTO> _database = new Dictionary<string, GuWormDefinitionDTO>(StringComparer.OrdinalIgnoreCase);
-        private static readonly Dictionary<string, (GuRefinementPathDTO path, GuWormDefinitionDTO? result)> _recipeIndex = new Dictionary<string, (GuRefinementPathDTO, GuWormDefinitionDTO?)>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, List<(GuRefinementPathDTO path, GuWormDefinitionDTO? result)>> _recipeIndex = new Dictionary<string, List<(GuRefinementPathDTO, GuWormDefinitionDTO?)>>(StringComparer.OrdinalIgnoreCase);
         private static readonly Dictionary<string, (GuWormDefinitionDTO source, GuRefinementPathDTO path, GuWormDefinitionDTO? result)> _resultIndex = new Dictionary<string, (GuWormDefinitionDTO, GuRefinementPathDTO, GuWormDefinitionDTO?)>(StringComparer.OrdinalIgnoreCase);
         private static bool _isLoaded = false;
 
@@ -71,7 +71,16 @@ namespace TaiwuGu.Core
                         string m1 = path.RequiredMaterials[0];
                         string? m2 = path.RequiredMaterials.Count >= 2 ? path.RequiredMaterials[1] : null;
                         _database.TryGetValue(path.ResultGuId, out var resultDef);
-                        _recipeIndex[MakeRecipeKey(m1, m2 ?? "")] = (path, resultDef);
+                        string recipeKey = MakeRecipeKey(m1, m2 ?? "");
+                        if (!_recipeIndex.TryGetValue(recipeKey, out var recipeList))
+                        {
+                            recipeList = new List<(GuRefinementPathDTO path, GuWormDefinitionDTO? result)>();
+                            _recipeIndex[recipeKey] = recipeList;
+                        }
+                        if (!recipeList.Exists(r => string.Equals(r.path.ResultGuId, path.ResultGuId, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            recipeList.Add((path, resultDef));
+                        }
 
                         if (!string.IsNullOrEmpty(path.ResultGuId) && !_resultIndex.ContainsKey(path.ResultGuId))
                         {
@@ -116,16 +125,25 @@ namespace TaiwuGu.Core
 
         public static bool TryFindRecipe(string primaryGuId, string secondaryGuId, out GuRefinementPathDTO? foundPath, out GuWormDefinitionDTO? resultGu)
         {
-            if (_recipeIndex.TryGetValue(MakeRecipeKey(primaryGuId, secondaryGuId), out var entry))
+            if (_recipeIndex.TryGetValue(MakeRecipeKey(primaryGuId, secondaryGuId), out var list) && list.Count > 0)
             {
-                foundPath = entry.path;
-                resultGu = entry.result;
+                foundPath = list[0].path;
+                resultGu = list[0].result;
                 return true;
             }
 
             foundPath = null;
             resultGu = null;
             return false;
+        }
+
+        public static IReadOnlyList<(GuRefinementPathDTO Path, GuWormDefinitionDTO? Result)> FindRecipes(string primaryGuId, string secondaryGuId)
+        {
+            if (_recipeIndex.TryGetValue(MakeRecipeKey(primaryGuId, secondaryGuId), out var list))
+            {
+                return list;
+            }
+            return Array.Empty<(GuRefinementPathDTO, GuWormDefinitionDTO?)>();
         }
 
         public static bool TryFindRecipeByResult(string resultGuId, out GuWormDefinitionDTO? sourceGu, out GuRefinementPathDTO? foundPath, out GuWormDefinitionDTO? resultGu)
@@ -144,14 +162,14 @@ namespace TaiwuGu.Core
             return false;
         }
 
-        public static GuWormComponent? CreateGuWormComponent(string guId, bool isWild = false)
+        public static GuWormComponent? CreateGuWormComponent(string guId, bool isWild = false, IRandomSource? rng = null)
         {
             if (!TryGet(guId, out var def) || def == null) return null;
 
             GuDietType diet = def.Diet != null ? (GuDietType)def.Diet.DietType : GuDietType.None;
             GuSlotCategory slot = (GuSlotCategory)Mathf.Clamp(def.SlotCategory, 0, 6);
 
-            float satiety = isWild ? (float)Random.Shared.Next(40, 91) : 100f;
+            float satiety = isWild ? (rng != null ? (float)rng.Next(40, 91) : 70f) : 100f;
 
             return new GuWormComponent
             {

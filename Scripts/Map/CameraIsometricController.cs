@@ -1,13 +1,17 @@
 using System;
 using Godot;
+using Mathf = Godot.Mathf;
 using TaiwuGu.Core;
 using TaiwuGu.Entities;
+using TaiwuGu.Systems;
+using Taiwu_Godot.Scripts.Input;
 
 namespace Taiwu_Godot.Scripts.Map
 {
     public partial class CameraIsometricController : Camera2D
     {
         [Export] public Node2D? Target { get; set; }
+        [Export] public IsometricTileManager? TileManager { get; set; }
         [Export] public float FollowSpeed { get; set; } = 6.0f;
         [Export] public bool IsLockedToTarget { get; set; } = true;
 
@@ -16,6 +20,7 @@ namespace Taiwu_Godot.Scripts.Map
         [Export] public float MinZoom { get; set; } = 15.0f;
         [Export] public float MaxZoom { get; set; } = 120.0f;
         [Export] public float DefaultZoom { get; set; } = 68.0f;
+        [Export] public float PanBoundsMargin { get; set; } = 8.0f;
 
         private float _targetZoom = 68.0f;
         private float _trauma = 0f;
@@ -25,7 +30,8 @@ namespace Taiwu_Godot.Scripts.Map
 
         public override void _Ready()
         {
-            _targetZoom = DefaultZoom;
+            TileManager ??= GetParent()?.GetNodeOrNull<IsometricTileManager>("IsometricTileManager");
+            _targetZoom = Math.Clamp(DefaultZoom, MinZoom, MaxZoom);
             Zoom = new Vector2(_targetZoom, _targetZoom);
 
             WorldSignals.OnPauseToggled += HandlePauseToggled;
@@ -90,22 +96,42 @@ namespace Taiwu_Godot.Scripts.Map
             LockOnTarget();
         }
 
+        private Vector2 ClampToMapBounds(Vector2 worldPos)
+        {
+            int gridW = TileManager != null && TileManager.GridWidth > 0 ? TileManager.GridWidth : IsometricTileRenderer.GRID_SIZE;
+            int gridH = TileManager != null && TileManager.GridHeight > 0 ? TileManager.GridHeight : IsometricTileRenderer.GRID_SIZE;
+
+            float hw = ExplorationSystem.TILE_HALF_WIDTH;
+            float hh = ExplorationSystem.TILE_HALF_HEIGHT;
+            float minX = -(gridH - 1) * hw - PanBoundsMargin;
+            float maxX = (gridW - 1) * hw + PanBoundsMargin;
+            float minY = -PanBoundsMargin;
+            float maxY = (gridW - 1 + gridH - 1) * hh + PanBoundsMargin;
+
+            return new Vector2(
+                Mathf.Clamp(worldPos.X, minX, maxX),
+                Mathf.Clamp(worldPos.Y, minY, maxY));
+        }
+
         private void HandlePan(WorldVec2 screenDelta)
         {
             if (_isPauseLocked || _isUIModalLocked || _isBattleLocked) return;
 
             IsLockedToTarget = false;
 
+            float safeZoom = MathF.Max(MinZoom, Zoom.X);
             float magSq = screenDelta.X * screenDelta.X + screenDelta.Y * screenDelta.Y;
-            if (magSq >= 1000000f) // Keyboard synthetic delta: view moves in key direction
+            if (magSq >= 1000000f) // Keyboard synthetic delta: view moves in key direction scaled by dt
             {
-                Vector2 dir = new Vector2(screenDelta.X, screenDelta.Y).Normalized();
-                Position += dir * (PanSpeed * 12.0f / Zoom.X);
+                float mag = MathF.Sqrt(magSq);
+                Vector2 dir = new Vector2(screenDelta.X / mag, screenDelta.Y / mag);
+                float dt = Math.Clamp(mag / StandaloneInputProvider.KEYBOARD_PAN_SENTINEL, 0f, 0.1f);
+                Position = ClampToMapBounds(Position + dir * (PanSpeed * 720.0f * dt / safeZoom));
             }
             else // Mouse drag pixel delta: grab-and-drag moves world with mouse
             {
-                Vector2 worldDelta = new Vector2(screenDelta.X, screenDelta.Y) / Zoom.X * PanSpeed;
-                Position -= worldDelta;
+                Vector2 worldDelta = new Vector2(screenDelta.X, screenDelta.Y) / safeZoom * PanSpeed;
+                Position = ClampToMapBounds(Position - worldDelta);
             }
         }
 
@@ -119,7 +145,7 @@ namespace Taiwu_Godot.Scripts.Map
 
         public override void _Process(double delta)
         {
-            float dt = (float)delta;
+            float dt = MathF.Max(0f, (float)delta);
 
             // Decaying camera trauma shake (Trauma^2 non-linear falloff)
             if (_trauma > 0f)
@@ -139,15 +165,17 @@ namespace Taiwu_Godot.Scripts.Map
 
             if (_isPauseLocked || _isUIModalLocked || _isBattleLocked) return;
 
-            // Smooth position follow when locked to player
+            // Smooth position follow when locked to player (hitch-safe exponential smoothing)
             if (IsLockedToTarget && Target != null)
             {
-                Position = Position.Lerp(Target.Position, FollowSpeed * dt);
+                float posWeight = Mathf.Clamp(1f - MathF.Exp(-FollowSpeed * dt), 0f, 1f);
+                Position = Position.Lerp(Target.Position, posWeight);
             }
 
-            // Smooth zoom lerp
+            // Smooth zoom lerp (hitch-safe exponential smoothing + zoom bounds clamp)
             float currentZoom = Zoom.X;
-            float newZoom = Godot.Mathf.Lerp(currentZoom, _targetZoom, 10.0f * dt);
+            float zoomWeight = Mathf.Clamp(1f - MathF.Exp(-10.0f * dt), 0f, 1f);
+            float newZoom = Mathf.Clamp(Mathf.Lerp(currentZoom, _targetZoom, zoomWeight), MinZoom, MaxZoom);
             Zoom = new Vector2(newZoom, newZoom);
         }
     }

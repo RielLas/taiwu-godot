@@ -37,8 +37,22 @@ namespace TaiwuGu.Systems
         public static void CloseCauldron(WorldStore world)
         {
             var cState = GetOrCreateSession(world);
+            if (cState.IsActive &&
+                (cState.CurrentPhase == RefinementPhase.Phase2_WillFusion ||
+                 cState.CurrentPhase == RefinementPhase.Phase3_Condensation))
+            {
+                ResolveFailure(
+                    world,
+                    cState,
+                    RefinementFailureTier.Tier2_MaterialRupture,
+                    "Cauldron aborted mid-fusion! Unstable essence ruptured the crucible.");
+            }
+            else
+            {
+                cState.CurrentPhase = RefinementPhase.Idle;
+            }
+
             cState.IsActive = false;
-            cState.CurrentPhase = RefinementPhase.Idle;
 
             WorldSignals.EmitUIModalActive(false);
             WorldSignals.EmitCauldronModalToggled(false);
@@ -68,6 +82,8 @@ namespace TaiwuGu.Systems
         private static void ApplyRecipe(WorldStore world, GuWormDefinitionDTO? sourceGu, GuRefinementPathDTO path, GuWormDefinitionDTO resultGu)
         {
             var cState = GetOrCreateSession(world);
+            float baseRate = path.BaseSuccessRate > 0f ? Math.Clamp(path.BaseSuccessRate, 0.1f, 1.0f) : 0.85f;
+            float decayScale = Math.Clamp(1.25f - baseRate * 0.35f, 0.85f, 1.40f);
             cState.ActiveRecipe = new GuRefinementRecipe
             {
                 RecipeName = $"{resultGu.CanonicalName} Refinement ({resultGu.ChineseName}合炼)",
@@ -79,10 +95,11 @@ namespace TaiwuGu.Systems
                 SlotCategory = (GuSlotCategory)resultGu.SlotCategory,
                 Diet = resultGu.Diet != null ? (GuDietType)resultGu.Diet.DietType : GuDietType.None,
                 BaseEssenceCost = resultGu.BaseBeuCost,
+                BaseSuccessRate = baseRate,
                 Phase1Duration = 4.0f + (resultGu.Rank - 1) * 1.5f,
                 Phase2Duration = 4.5f + (resultGu.Rank - 1) * 2.0f,
                 Phase3Duration = 3.5f + (resultGu.Rank - 1) * 1.5f,
-                DecayRateK = 18.0f + (resultGu.Rank - 1) * 5.0f
+                DecayRateK = (18.0f + (resultGu.Rank - 1) * 5.0f) * decayScale
             };
             WorldSignals.EmitTopics(DirtyTopic.Cauldron);
         }
@@ -104,11 +121,19 @@ namespace TaiwuGu.Systems
                 return false;
             }
 
-            if (!string.IsNullOrEmpty(recipe.SecondaryGuID) &&
-                GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, recipe.SecondaryGuID) == null)
+            if (!string.IsNullOrEmpty(recipe.SecondaryGuID))
             {
-                validationReason = $"Missing secondary catalyst Gu: {recipe.SecondaryGuID}";
-                return false;
+                EntityId? secId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, recipe.SecondaryGuID);
+                if (secId == null)
+                {
+                    validationReason = $"Missing secondary catalyst Gu: {recipe.SecondaryGuID}";
+                    return false;
+                }
+                if (world.TryGet<GuWormComponent>(secId.Value, out var secGu) && secGu.IsVitalGu)
+                {
+                    validationReason = "Cannot consume your Vital Gu as a secondary catalyst.";
+                    return false;
+                }
             }
 
             var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
@@ -261,10 +286,17 @@ namespace TaiwuGu.Systems
 
             if (cState.Phase1Timer >= recipe.Phase1Duration)
             {
-                IRandomSource rng = rngOverride ?? new SeededRandom(world.RunSeed + cState.StonesCrushed);
+                var clock = world.GetSingleton<WorldClockComponent>();
+                int phase1Seed = unchecked(
+                    world.RunSeed ^
+                    ((clock?.CurrentYear ?? 1) * 10007) ^
+                    ((clock?.CurrentSolarTermIndex ?? 1) * 397) ^
+                    ((clock?.ActionPointsRemaining ?? 0) * 31));
+                IRandomSource rng = rngOverride ?? new SeededRandom(phase1Seed);
+                float baseRate = recipe.BaseSuccessRate > 0f ? Math.Clamp(recipe.BaseSuccessRate, 0.1f, 1.0f) : 0.85f;
                 cState.CurrentPhase = RefinementPhase.Phase2_WillFusion;
                 cState.Phase2Timer = 0f;
-                cState.WildWillResistance = 50f;
+                cState.WildWillResistance = 50f + (1.0f - baseRate) * 20f;
                 cState.WillAlignmentProgress = 0f;
                 cState.MasterWillFocus = 0.5f;
                 cState.WildWillFrequency = 0.35f + (float)rng.NextDouble() * 0.30f;
@@ -356,7 +388,10 @@ namespace TaiwuGu.Systems
             if (!string.IsNullOrEmpty(recipe.SecondaryGuID))
             {
                 EntityId? secId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, recipe.SecondaryGuID);
-                if (secId.HasValue) world.DestroyEntity(secId.Value);
+                if (secId.HasValue && (!world.TryGet<GuWormComponent>(secId.Value, out var secGu) || !secGu.IsVitalGu))
+                {
+                    world.DestroyEntity(secId.Value);
+                }
             }
 
             EntityId? priId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, recipe.PrimaryGuID);
@@ -383,8 +418,14 @@ namespace TaiwuGu.Systems
             cState.CurrentPhase = RefinementPhase.Failure;
             cState.LastFailureTier = tier;
 
-            EntityId? secId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, recipe.SecondaryGuID);
-            if (secId.HasValue) world.DestroyEntity(secId.Value);
+            if (tier >= RefinementFailureTier.Tier2_MaterialRupture && !string.IsNullOrEmpty(recipe.SecondaryGuID))
+            {
+                EntityId? secId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, recipe.SecondaryGuID);
+                if (secId.HasValue && (!world.TryGet<GuWormComponent>(secId.Value, out var secGu) || !secGu.IsVitalGu))
+                {
+                    world.DestroyEntity(secId.Value);
+                }
+            }
 
             EntityId? priId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, recipe.PrimaryGuID);
             var priGu = priId.HasValue ? world.Get<GuWormComponent>(priId.Value) : null;

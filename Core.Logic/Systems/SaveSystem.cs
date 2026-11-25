@@ -61,20 +61,43 @@ namespace TaiwuGu.Systems
                 return false;
             }
 
-            WorldStore? loaded = SaveDiskIO.LoadWorld(slotID);
-            if (loaded == null)
+            if (!SaveDiskIO.TryLoadWorldWithMetadata(slotID, out WorldStore? loaded, out SaveMetadataDTO? meta) || loaded == null)
             {
                 WorldSignals.EmitGameLoaded(slotID, false);
                 return false;
             }
 
+            ClearTransientSessions(loaded);
             provider.Replace(loaded);
-            var meta = SaveDiskIO.LoadMetadata(slotID);
             if (meta != null) PlaytimeSeconds = meta.TotalPlaytimeSeconds;
 
             WorldSignals.EmitTopics(DirtyTopic.All);
             WorldSignals.EmitGameLoaded(slotID, true);
             return true;
+        }
+
+        private static void ClearTransientSessions(WorldStore world)
+        {
+            if (world.TryGet<CombatSessionComponent>(world.WorldEntity, out var combat))
+            {
+                combat.InBattle = false;
+            }
+            if (world.TryGet<CauldronSessionComponent>(world.PlayerEntity, out var cauldron))
+            {
+                cauldron.IsActive = false;
+            }
+            if (world.TryGet<BreakthroughSessionComponent>(world.PlayerEntity, out var breakthrough))
+            {
+                breakthrough.IsOpen = false;
+            }
+            if (world.TryGet<WildEncounterSessionComponent>(world.PlayerEntity, out var wild))
+            {
+                wild.IsOpen = false;
+            }
+            if (world.TryGet<TransitPendingComponent>(world.PlayerEntity, out var transit))
+            {
+                transit.IsModalOpen = false;
+            }
         }
 
         public static bool DeleteSlot(string slotID)

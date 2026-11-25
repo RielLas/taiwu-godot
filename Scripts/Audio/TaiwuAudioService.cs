@@ -16,7 +16,7 @@ namespace Taiwu_Godot.Scripts.Audio
     /// 100% Halal Compliant: Strictly excludes musical instruments (strings, flutes, bells, singing bowls).
     /// Pure nature foley and physical acoustic vibrations generated procedurally (0 MB disk bloat).
     /// </summary>
-    public partial class TaiwuAudioService : Node, IDisposable
+    public partial class TaiwuAudioService : Node
     {
         private AudioStreamPlayer _ambientWindSource = null!;
         private AudioStreamPlayer _combatWindSource = null!;
@@ -53,6 +53,11 @@ namespace Taiwu_Godot.Scripts.Audio
         private const float COOLDOWN_SLASH = 0.08f;
         private const float COOLDOWN_IMPACT = 0.08f;
         private const float COOLDOWN_RUSTLE = 0.15f;
+        private const float COOLDOWN_DASH = 0.15f;
+        private const float COOLDOWN_FIRE = 0.12f;
+        private const float COOLDOWN_STONE = 0.12f;
+        private const float COOLDOWN_STEAM = 0.15f;
+        private const float COOLDOWN_KNOCK = 0.15f;
 
         private FastNoise _pitchRng = new(777);
         private bool _isDisposed = false;
@@ -118,7 +123,7 @@ namespace Taiwu_Godot.Scripts.Audio
             _combatWindSource.Stream = _clipCombatWind;
             _currentCombatLinear = 0f;
             _combatWindSource.VolumeDb = -80f;
-            _combatWindSource.Play();
+            // Kept paused/stopped until combat fades in above 0.001 linear gain
 
             // 3. Configure Multi-Voice SFX Pool (8 simultaneous non-blocking voices)
             for (int i = 0; i < _sfxVoicePool.Length; i++)
@@ -223,10 +228,7 @@ namespace Taiwu_Godot.Scripts.Audio
                 _ambientWindSource.VolumeDb = LinearToDecibels(_currentAmbientLinear);
             }
 
-            if (_combatWindSource != null && GodotObject.IsInstanceValid(_combatWindSource))
-            {
-                _combatWindSource.VolumeDb = LinearToDecibels(_currentCombatLinear);
-            }
+            UpdateCombatWindPlayback();
         }
 
         private void RefreshSourceVolumes()
@@ -241,9 +243,34 @@ namespace Taiwu_Godot.Scripts.Audio
             {
                 _ambientWindSource.VolumeDb = LinearToDecibels(_currentAmbientLinear);
             }
-            if (_combatWindSource != null && GodotObject.IsInstanceValid(_combatWindSource))
+
+            UpdateCombatWindPlayback();
+        }
+
+        private void UpdateCombatWindPlayback()
+        {
+            if (_combatWindSource == null || !GodotObject.IsInstanceValid(_combatWindSource)) return;
+
+            if (_currentCombatLinear <= 0.001f)
+            {
+                _combatWindSource.VolumeDb = -80f;
+                if (_combatWindSource.Playing && !_combatWindSource.StreamPaused)
+                {
+                    _combatWindSource.StreamPaused = true;
+                }
+            }
+            else
             {
                 _combatWindSource.VolumeDb = LinearToDecibels(_currentCombatLinear);
+                if (!_combatWindSource.Playing)
+                {
+                    _combatWindSource.StreamPaused = false;
+                    _combatWindSource.Play();
+                }
+                else if (_combatWindSource.StreamPaused)
+                {
+                    _combatWindSource.StreamPaused = false;
+                }
             }
         }
 
@@ -290,19 +317,19 @@ namespace Taiwu_Godot.Scripts.Audio
                     if (CanPlay("impact", COOLDOWN_IMPACT)) PlaySFX(_clipBluntImpact, 0.90f, 0.90f, 1.05f);
                     break;
                 case HalalSoundType.DashWhoosh:
-                    PlaySFX(_clipDashWhoosh, 0.90f, 0.95f, 1.05f);
+                    if (CanPlay("dash", COOLDOWN_DASH)) PlaySFX(_clipDashWhoosh, 0.90f, 0.95f, 1.05f);
                     break;
                 case HalalSoundType.CauldronFire:
-                    PlaySFX(_clipCauldronFire, 0.90f, 0.93f, 1.07f);
+                    if (CanPlay("fire", COOLDOWN_FIRE)) PlaySFX(_clipCauldronFire, 0.90f, 0.93f, 1.07f);
                     break;
                 case HalalSoundType.StoneShatter:
-                    PlaySFX(_clipStoneShatter, 0.95f, 0.94f, 1.06f);
+                    if (CanPlay("stone", COOLDOWN_STONE)) PlaySFX(_clipStoneShatter, 0.95f, 0.94f, 1.06f);
                     break;
                 case HalalSoundType.CauldronSteam:
-                    PlaySFX(_clipCauldronSteam, 0.75f, 0.96f, 1.04f);
+                    if (CanPlay("steam", COOLDOWN_STEAM)) PlaySFX(_clipCauldronSteam, 0.75f, 0.96f, 1.04f);
                     break;
                 case HalalSoundType.WoodenKnock:
-                    PlaySFX(_clipWoodenKnock, 0.85f, 0.94f, 1.06f);
+                    if (CanPlay("knock", COOLDOWN_KNOCK)) PlaySFX(_clipWoodenKnock, 0.85f, 0.94f, 1.06f);
                     break;
             }
         }
@@ -362,12 +389,6 @@ namespace Taiwu_Godot.Scripts.Audio
                 Shutdown();
             }
             base.Dispose(disposing);
-        }
-
-        public new void Dispose()
-        {
-            Shutdown();
-            base.Dispose();
         }
 
         private void Shutdown()

@@ -8,7 +8,7 @@ namespace TaiwuGu.Entities
     [Serializable]
     public class WorldEventEntry
     {
-        public string EventId { get; set; } = Guid.NewGuid().ToString("N");
+        public string EventId { get; set; } = string.Empty;
         public WorldCalamityKind Kind { get; set; } = WorldCalamityKind.BeastTide;
         public WorldCalamityPhase Phase { get; set; } = WorldCalamityPhase.Foreshadowed;
         public string SectorKey { get; set; } = string.Empty;
@@ -28,8 +28,12 @@ namespace TaiwuGu.Entities
             GridCoord targetCoord,
             int remainingTerms,
             string title,
-            string description)
+            string description,
+            string? eventId = null)
         {
+            EventId = !string.IsNullOrEmpty(eventId)
+                ? eventId
+                : $"evt_{kind}_{sectorKey}_{targetCoord.X}_{targetCoord.Y}";
             Kind = kind;
             Phase = phase;
             SectorKey = sectorKey;
@@ -44,6 +48,7 @@ namespace TaiwuGu.Entities
     public class WorldEventComponent
     {
         public int NextEventCountdownTerms { get; set; } = 6;
+        public int NextEventSequence { get; set; } = 1;
         public List<WorldEventEntry> ActiveEvents { get; set; } = new();
 
         public WorldEventComponent() { }

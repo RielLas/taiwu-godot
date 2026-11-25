@@ -52,7 +52,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             var btnOpenCauldron = new Button
             {
-                Text = "◆ Alchemical Cauldron (合炼鼎炉) [R] ◆",
+                Text = "◆ Alchemical Cauldron (合炼鼎炉) [C] ◆",
                 CustomMinimumSize = new Vector2(250f, 28f),
                 MouseFilter = MouseFilterEnum.Stop
             };

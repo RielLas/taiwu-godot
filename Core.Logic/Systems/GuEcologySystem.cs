@@ -56,9 +56,20 @@ namespace TaiwuGu.Systems
 
                 if ((currentTermIndex % cadence) != 0) continue;
 
-                // Autonomous NPC owners abstractly forage their own rations unless inventory is depleted; player must spend real stockpile rations
-                bool fed = world.TryGet<InventoryComponent>(ownerEntity, out var inv) &&
-                           (inv.TryConsumeFood(dietType, rationAmount) || (!world.Has<PlayerTagComponent>(ownerEntity) && cult.PrimevalStones >= 10));
+                // Autonomous NPC owners abstractly purchase rations for 10 stones when inventory is depleted; player must spend real stockpile rations
+                bool fed = false;
+                if (world.TryGet<InventoryComponent>(ownerEntity, out var inv))
+                {
+                    if (inv.TryConsumeFood(dietType, rationAmount))
+                    {
+                        fed = true;
+                    }
+                    else if (!world.Has<PlayerTagComponent>(ownerEntity) && cult.PrimevalStones >= 10)
+                    {
+                        cult.PrimevalStones -= 10;
+                        fed = true;
+                    }
+                }
 
                 gu.ApplyFeedingCycleResult(fed, degradation);
                 var stage = gu.GetStarvationStage();
@@ -101,7 +112,10 @@ namespace TaiwuGu.Systems
         public static bool FeedGu(WorldStore world, EntityId guEntityId, GuDietType dietOverride = GuDietType.None, int quantity = 0, EntityId? ownerOverride = null)
         {
             EntityId ownerId = ownerOverride ?? world.PlayerEntity;
-            if (!world.TryGet<GuWormComponent>(guEntityId, out var gu) ||
+            if (!world.IsAlive(guEntityId) ||
+                !world.TryGet<GuWormComponent>(guEntityId, out var gu) ||
+                !world.TryGet<OwnerComponent>(guEntityId, out var owner) ||
+                owner.OwnerEntityId != ownerId.Value ||
                 !world.TryGet<InventoryComponent>(ownerId, out var inv))
                 return false;
 
@@ -158,12 +172,22 @@ namespace TaiwuGu.Systems
         public static EntityId? FindOwnedGuEntity(WorldStore world, EntityId ownerId, string guIdOrName)
         {
             if (string.IsNullOrEmpty(guIdOrName)) return null;
-            string normalizedId = guIdOrName.Replace("_r1", "_01").Replace("_r2", "_02").Replace("_r3", "_03");
+
+            string legacyId = guIdOrName
+                .Replace("_r1", "_01", StringComparison.OrdinalIgnoreCase)
+                .Replace("_r2", "_02", StringComparison.OrdinalIgnoreCase)
+                .Replace("_r3", "_03", StringComparison.OrdinalIgnoreCase);
+
+            string canonicalId = guIdOrName
+                .Replace("_01", "_r1", StringComparison.OrdinalIgnoreCase)
+                .Replace("_02", "_r2", StringComparison.OrdinalIgnoreCase)
+                .Replace("_03", "_r3", StringComparison.OrdinalIgnoreCase);
 
             foreach (var (eid, gu) in world.GetOwned<GuWormComponent>(ownerId))
             {
                 if (string.Equals(gu.GuID, guIdOrName, StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(gu.GuID, normalizedId, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(gu.GuID, legacyId, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(gu.GuID, canonicalId, StringComparison.OrdinalIgnoreCase) ||
                     (!string.IsNullOrEmpty(gu.Name) && gu.Name.IndexOf(guIdOrName, StringComparison.OrdinalIgnoreCase) >= 0))
                 {
                     return eid;

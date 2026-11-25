@@ -66,6 +66,12 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.OnTransitModalToggled -= HandleTransitModalToggled;
             WorldSignals.OnTopicsChanged -= HandleTopicsChanged;
             WorldSignals.OnEscapeRequested -= HandleEscapeRequested;
+
+            if (_isOpen)
+            {
+                _isOpen = false;
+                WorldSignals.EmitModalClosed(this);
+            }
         }
 
         private void BuildUI()
@@ -239,6 +245,7 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void HandleTransitModalToggled(bool isOpen)
         {
+            if (_isOpen == isOpen) return;
             _isOpen = isOpen;
             if (isOpen && _stateProvider?.Current is { } world)
             {

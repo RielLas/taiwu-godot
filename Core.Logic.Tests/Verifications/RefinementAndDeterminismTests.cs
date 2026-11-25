@@ -49,6 +49,7 @@ namespace TaiwuGu.Tests
             TickFor(world, 0.6f);
             Assert.Equal(RefinementPhase.Failure, cauldron.CurrentPhase);
             Assert.Equal(RefinementFailureTier.Tier1_CleanFail, cauldron.LastFailureTier);
+            Assert.NotNull(GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_white_boar_r1"));
         }
 
         [Fact]
@@ -96,8 +97,8 @@ namespace TaiwuGu.Tests
             TickFor(world, 1.1f);
 
             Assert.Equal(RefinementPhase.Success, cauldron.CurrentPhase);
-            Assert.Null(GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_white_boar_01"));
-            var resultId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_moonglow_beast_02");
+            Assert.Null(GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_white_boar_r1"));
+            var resultId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_moonglow_r2");
             Assert.NotNull(resultId);
             Assert.Equal(2, world.Get<GuWormComponent>(resultId!.Value)!.Rank);
         }
@@ -119,8 +120,8 @@ namespace TaiwuGu.Tests
             Assert.Equal(RefinementPhase.Failure, cauldron.CurrentPhase);
             Assert.Equal(RefinementFailureTier.Tier3_CatastrophicBacklash, cauldron.LastFailureTier);
 
-            Assert.Null(GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_white_boar_01"));
-            var vitalId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_moonlight_01");
+            Assert.Null(GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_white_boar_r1"));
+            var vitalId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_moonlight_r1");
             Assert.NotNull(vitalId);
             var vitalGu = world.Get<GuWormComponent>(vitalId!.Value)!;
             Assert.True(vitalGu.IsInTraumaSleep);

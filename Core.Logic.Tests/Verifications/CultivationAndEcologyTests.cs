@@ -74,12 +74,17 @@ namespace TaiwuGu.Tests
 
             // Term 1 rollover feeds Rank 1 Moonlight Gu from stockpile
             TimeSystem.RollOverMonth(world);
-            Assert.Equal(initialPetals - 1, inv.GetFoodQuantity(GuDietType.MoonOrchidPetals));
+            int consumed = (GuDatabase.TryGet("gu_moonlight_r1", out var moonDef) && moonDef?.Diet != null)
+                ? Math.Max(1, moonDef.Diet.RationAmount)
+                : 1;
+            Assert.Equal(initialPetals - consumed, inv.GetFoodQuantity(GuDietType.MoonOrchidPetals));
 
             // Clear stockpile and give non-vital Boar Gu + vital Moonlight Gu predatory starvation pressure
             inv.FoodStockpile.Clear();
-            EntityId moonId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_moonlight_01")!.Value;
-            EntityId boarId = GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_white_boar_01")!.Value;
+            EntityId moonId = (GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_moonlight_r1")
+                ?? GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_moonlight_01"))!.Value;
+            EntityId boarId = (GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_white_boar_r1")
+                ?? GuEcologySystem.FindOwnedGuEntity(world, world.PlayerEntity, "gu_white_boar_01"))!.Value;
 
             var moonGu = world.Get<GuWormComponent>(moonId)!;
             var boarGu = world.Get<GuWormComponent>(boarId)!;

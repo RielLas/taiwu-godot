@@ -38,5 +38,7 @@ namespace TaiwuGu.Entities
         public bool HasStock { get; set; }
         public int GambleSequence { get; set; }
         public List<CaravanStockEntry> Stock { get; set; } = new();
+        public Dictionary<string, List<CaravanStockEntry>> SectorStockCache { get; set; } = new(StringComparer.Ordinal);
+        public Dictionary<string, int> SectorSeedCache { get; set; } = new(StringComparer.Ordinal);
     }
 }

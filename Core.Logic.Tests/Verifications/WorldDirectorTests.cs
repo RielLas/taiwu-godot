@@ -34,18 +34,22 @@ namespace TaiwuGu.Tests
             var sector = world.GetCurrentSector();
             Assert.NotNull(sector);
 
-            // 1. Advance to countdown trigger: Calamity scheduled as Foreshadowed
+            // 1. Advance to countdown trigger: Calamity scheduled as Foreshadowed with full duration (not decremented on spawn tick)
             WorldDirectorSystem.TickSolarTerm(world);
             Assert.Single(eventComp.ActiveEvents);
             var ev = eventComp.ActiveEvents[0];
             Assert.Equal(WorldCalamityPhase.Foreshadowed, ev.Phase);
-            // After tick 1, the scheduled calamity has ticked remaining terms down to 1
-            Assert.Equal(1, ev.RemainingTerms);
+            Assert.Equal(WorldDirectorSystem.DEFAULT_FORESHADOW_DURATION_TERMS, ev.RemainingTerms);
 
             TilePOIType initialPOI = sector!.GetTile(ev.TargetCoord.X, ev.TargetCoord.Y).POI;
             string? initialLandmark = sector.GetTile(ev.TargetCoord.X, ev.TargetCoord.Y).CustomLandmarkId;
 
-            // 2. Advance 1 term: Foreshadowed -> Active transition
+            // 2. Advance 1 term: Foreshadowed countdown ticks (2 -> 1)
+            WorldDirectorSystem.TickSolarTerm(world);
+            Assert.Equal(WorldCalamityPhase.Foreshadowed, ev.Phase);
+            Assert.Equal(1, ev.RemainingTerms);
+
+            // 3. Advance 1 term: Foreshadowed -> Active transition
             // AncientGuCave placed on target tile, previous POI cached
             WorldDirectorSystem.TickSolarTerm(world);
             Assert.Equal(WorldCalamityPhase.Active, ev.Phase);
@@ -54,13 +58,13 @@ namespace TaiwuGu.Tests
             Assert.Equal(initialLandmark, ev.PreviousCustomLandmarkId);
             Assert.Equal(TilePOIType.AncientGuCave, sector.GetTile(ev.TargetCoord.X, ev.TargetCoord.Y).POI);
 
-            // 3. Advance 1 term: Active countdown ticks (2 -> 1)
+            // 4. Advance 1 term: Active countdown ticks (2 -> 1)
             WorldDirectorSystem.TickSolarTerm(world);
             Assert.Equal(WorldCalamityPhase.Active, ev.Phase);
             Assert.Equal(1, ev.RemainingTerms);
             Assert.Equal(TilePOIType.AncientGuCave, sector.GetTile(ev.TargetCoord.X, ev.TargetCoord.Y).POI);
 
-            // 4. Advance 1 term: Active -> Expired transition
+            // 5. Advance 1 term: Active -> Expired transition
             // Previous tile POI cleanly restored and event removed from ActiveEvents
             WorldDirectorSystem.TickSolarTerm(world);
             Assert.Equal(initialPOI, sector.GetTile(ev.TargetCoord.X, ev.TargetCoord.Y).POI);
@@ -93,6 +97,7 @@ namespace TaiwuGu.Tests
                 var evA = eventCompA.ActiveEvents[i];
                 var evB = eventCompB.ActiveEvents[i];
 
+                Assert.Equal(evA.EventId, evB.EventId);
                 Assert.Equal(evA.Kind, evB.Kind);
                 Assert.Equal(evA.Phase, evB.Phase);
                 Assert.Equal(evA.SectorKey, evB.SectorKey);

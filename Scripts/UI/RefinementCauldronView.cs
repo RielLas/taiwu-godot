@@ -408,15 +408,29 @@ namespace Taiwu_Godot.Scripts.UI
             _barTemperature.AddThemeStyleboxOverride("fill", tempFill);
             tempBarContainer.AddChild(_barTemperature);
 
+            // Plain Control host so MarginContainer does not stretch the 20%-80% overlay to 100%
+            var greenZoneHost = new Control
+            {
+                CustomMinimumSize = new Vector2(400f, 32f),
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            tempBarContainer.AddChild(greenZoneHost);
+
             // Safe green zone overlay (20% to 80%)
             var greenZoneOverlay = new ColorRect
             {
                 Color = new Color(0.2f, 0.9f, 0.4f, 0.25f),
-                Size = new Vector2(240f, 32f),
-                Position = new Vector2(80f, 0f),
+                AnchorLeft = 0.20f,
+                AnchorRight = 0.80f,
+                AnchorTop = 0f,
+                AnchorBottom = 1f,
+                OffsetLeft = 0f,
+                OffsetRight = 0f,
+                OffsetTop = 0f,
+                OffsetBottom = 0f,
                 MouseFilter = MouseFilterEnum.Ignore
             };
-            tempBarContainer.AddChild(greenZoneOverlay);
+            greenZoneHost.AddChild(greenZoneOverlay);
 
             var btnPulseHeat = new Button
             {

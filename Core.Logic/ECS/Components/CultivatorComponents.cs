@@ -119,8 +119,9 @@ namespace TaiwuGu.Entities
 
         public static float CalculateStoneRecoveryPercentage(int rank, int substage, float aptitudePercent)
         {
+            float safeAptitude = MathF.Max(1f, aptitudePercent);
             double density = CalculateDensityCoefficient(rank, substage);
-            double deltaPct = (BASE_STONE_ESSENCE / (aptitudePercent * density)) * 100.0;
+            double deltaPct = (BASE_STONE_ESSENCE / (safeAptitude * density)) * 100.0;
             return (float)deltaPct;
         }
 
@@ -129,15 +130,17 @@ namespace TaiwuGu.Entities
 
         public static float CalculateSubstageNurtureCost(int rank, int currentSubstage, float aptitudePercent)
         {
+            float safeAptitude = MathF.Max(1f, aptitudePercent);
             float baseCost = 25f * MathF.Pow(2.2f, rank - 1) * MathF.Pow(1.8f, currentSubstage - 1);
-            float aptitudeEfficiency = 100f / aptitudePercent;
+            float aptitudeEfficiency = 100f / safeAptitude;
             return baseCost * aptitudeEfficiency;
         }
 
         public static float CalculateBreakthroughCost(int rank, float aptitudePercent)
         {
+            float safeAptitude = MathF.Max(1f, aptitudePercent);
             float baseCost = 150f * MathF.Pow(3.5f, rank - 1);
-            float aptitudeEfficiency = 100f / aptitudePercent;
+            float aptitudeEfficiency = 100f / safeAptitude;
             return baseCost * aptitudeEfficiency;
         }
     }

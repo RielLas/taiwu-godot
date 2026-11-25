@@ -87,6 +87,12 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.OnBreakthroughWaveImpact -= HandleBreakthroughWaveImpact;
             WorldSignals.OnBreakthroughResolved   -= HandleBreakthroughResolved;
             WorldSignals.OnEscapeRequested        -= HandleEscapeRequested;
+
+            if (_isOpen)
+            {
+                _isOpen = false;
+                WorldSignals.EmitModalClosed(this);
+            }
         }
 
         private void LoadTextures()
@@ -459,23 +465,34 @@ namespace Taiwu_Godot.Scripts.UI
                 _waveTrack.Frequency = _latestSnapshot.OscillationFrequency;
                 _waveTrack.TurbulenceRatio = _latestSnapshot.TurbulenceRatio;
                 _waveTrack.SweetSpotWidth = _latestSnapshot.SweetSpotWidth;
+                _waveTrack.HumanPathMarks = _latestSnapshot.HumanPathMarks;
                 _waveTrack.QueueRedraw();
             }
+        }
 
-            // Keyboard Shortcuts
-            if (_latestSnapshot.State == BreakthroughState.PoundingInSession && _stateProvider?.Current is { } world)
+        public override void _UnhandledInput(InputEvent @event)
+        {
+            if (!_isOpen || _latestSnapshot.State != BreakthroughState.PoundingInSession) return;
+            if (_stateProvider?.Current is not { } world) return;
+
+            if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.Echo)
             {
-                if (Godot.Input.IsActionJustPressed("ui_select") || Godot.Input.IsKeyPressed(Key.Space))
+                if (keyEvent.CtrlPressed || keyEvent.AltPressed || keyEvent.MetaPressed) return;
+
+                if (keyEvent.Keycode == Key.Space || keyEvent.PhysicalKeycode == Key.Space)
                 {
                     BreakthroughSystem.ReleaseEssenceWave(world, 1.0f);
+                    GetViewport().SetInputAsHandled();
                 }
-                else if (Godot.Input.IsKeyPressed(Key.C))
+                else if (keyEvent.Keycode == Key.C || keyEvent.PhysicalKeycode == Key.C)
                 {
                     BreakthroughSystem.CrushStone(world);
+                    GetViewport().SetInputAsHandled();
                 }
-                else if (Godot.Input.IsKeyPressed(Key.R))
+                else if (keyEvent.Keycode == Key.R || keyEvent.PhysicalKeycode == Key.R)
                 {
                     BreakthroughSystem.TryUseRelicGuBypass(world);
+                    GetViewport().SetInputAsHandled();
                 }
             }
         }
@@ -647,7 +664,9 @@ namespace Taiwu_Godot.Scripts.UI
         public float Frequency { get; set; } = 1.2f;
         public float TurbulenceRatio { get; set; } = 0f;
         public float SweetSpotWidth { get; set; } = 0.22f;
+        public int HumanPathMarks { get; set; } = 0;
 
+        private readonly Vector2[] _wavePoints = new Vector2[90];
         private float _rippleTimer = 0f;
         private Color _rippleColor = Colors.Transparent;
 
@@ -680,9 +699,12 @@ namespace Taiwu_Godot.Scripts.UI
             float midY = size.Y * 0.5f;
             DrawLine(new Vector2(0f, midY), new Vector2(size.X, midY), new Color(0.22f, 0.35f, 0.32f, 0.8f), 1f);
 
-            // 3. Golden Sweet Spot Zone (Right side high-crest alignment: [1 - sweetWidth .. 1])
-            float sweetStartX = size.X * (1f - SweetSpotWidth);
-            float sweetW = size.X * SweetSpotWidth;
+            // 3. Golden Sweet Spot Zone aligned with BreakthroughSystem harmonic threshold
+            float humanPrecisionBonus = Math.Clamp(HumanPathMarks * 0.015f, 0f, 0.20f);
+            float harmonicThreshold = 0.75f - humanPrecisionBonus;
+            float normalizedThreshold = (harmonicThreshold + 1f) * 0.5f;
+            float sweetStartX = size.X * normalizedThreshold;
+            float sweetW = size.X - sweetStartX;
             var sweetRect = new Rect2(sweetStartX, 2f, sweetW, size.Y - 4f);
 
             // Golden translucent fill & border
@@ -702,8 +724,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             // 4. Live Sinusoidal Wave Geometry with Turbulence Jitter
             float amplitude = (size.Y * 0.38f);
-            int sampleCount = 90;
-            var wavePoints = new Vector2[sampleCount];
+            int sampleCount = _wavePoints.Length;
 
             float jitterAmp = TurbulenceRatio * 7.0f; // Destabilization jitter amplitude
             float spatialScale = 2.0f; // 2 wave cycles across track width
@@ -722,20 +743,20 @@ namespace Taiwu_Godot.Scripts.UI
 
                 float phase = (ElapsedSessionTime * Frequency * Mathf.Pi * 2f) + (t * spatialScale * Mathf.Pi * 2f);
                 float y = midY - (Mathf.Sin(phase) * amplitude) + jitter;
-                wavePoints[i] = new Vector2(x, y);
+                _wavePoints[i] = new Vector2(x, y);
             }
 
             // Draw wave line in radiant jade/celestial cyan
             Color waveColor = TurbulenceRatio > 0.65f ? new Color(0.95f, 0.40f, 0.40f, 0.95f) : new Color(0.204f, 0.827f, 0.600f, 0.95f);
-            DrawPolyline(wavePoints, waveColor, 2.5f);
+            DrawPolyline(_wavePoints, waveColor, 2.5f);
 
             // 5. Oscillating Resonance Pulse Indicator (The Gu Master's Tidal Breath)
             float rawSine = Mathf.Sin(ElapsedSessionTime * Frequency * Mathf.Pi * 2f);
             float currentPulseX = size.X * ((rawSine + 1f) * 0.5f);
             float pulseY = midY - (rawSine * amplitude);
 
-            // Check if currently inside sweet spot
-            bool inSweetZone = rawSine >= (0.75f - (SweetSpotWidth * 0.5f));
+            // Check if currently inside sweet spot (exact match with BreakthroughSystem)
+            bool inSweetZone = rawSine >= harmonicThreshold;
             Color pulseColor = inSweetZone ? new Color(0.984f, 0.749f, 0.141f, 1f) : new Color(0.88f, 0.94f, 0.96f, 1f);
 
             // Vertical tracking line

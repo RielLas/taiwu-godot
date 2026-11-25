@@ -1,4 +1,5 @@
 using System;
+using TaiwuGu.Combat;
 using TaiwuGu.Core;
 using TaiwuGu.Entities;
 
@@ -187,14 +188,92 @@ namespace TaiwuGu.Systems
                 return false;
             }
 
+            EntityId? relicEntityId = FindOwnedRelicGu(world, ap.Rank);
+            if (!relicEntityId.HasValue)
+            {
+                s.StatusMessage = "No Relic Gu owned in aperture to bypass breakthrough.";
+                WorldSignals.EmitTopics(DirtyTopic.Breakthrough);
+                return false;
+            }
+
             int prevRank = ap.Rank;
+            world.DestroyEntity(relicEntityId.Value);
             CultivationSystem.PromoteMajorRank(cult, ap);
             s.MembraneMaxHP = ap.MaxWallDurability;
             s.MembraneCurrentHP = ap.MaxWallDurability;
             s.StatusMessage = $"Consuming Relic Gu! Transcended from Rank {prevRank} to Rank {ap.Rank} {ap.GetMembraneTypeName()}!";
 
             EndBreakthrough(world, s, cult, ap, BreakthroughState.Succeeded);
+            WorldSignals.EmitTopics(DirtyTopic.Inventory);
             return true;
+        }
+
+        public static bool TryStartSovereignTrial(WorldStore world)
+        {
+            var s = GetOrCreateSession(world);
+            if (!world.TryGet<CultivatorComponent>(world.PlayerEntity, out var cult) ||
+                !world.TryGet<ApertureComponent>(world.PlayerEntity, out var ap))
+                return false;
+
+            if (ap.Rank < 5 || ap.Substage < 4)
+            {
+                s.StatusMessage = "Sovereign Trial requires Peak Rank 5 (Substage 4) cultivation.";
+                WorldSignals.EmitTopics(DirtyTopic.Breakthrough);
+                return false;
+            }
+
+            var clock = world.GetSingleton<WorldClockComponent>();
+            if (clock != null && clock.ActionPointsRemaining < 1)
+            {
+                s.StatusMessage = "Insufficient Action Points to challenge the Sovereign Trial!";
+                WorldSignals.EmitTopics(DirtyTopic.Breakthrough);
+                return false;
+            }
+
+            bool started = CombatSystem.StartCombat(
+                world,
+                ArenaEncounterType.SovereignTrial,
+                world.GetPlayerPosition(),
+                isLethal: true,
+                enemyName: "Heavenly Sovereign Elder (五转巅峰大能)");
+
+            if (!started)
+            {
+                return false;
+            }
+
+            if (clock != null)
+            {
+                TimeSystem.DeductActionPoints(world, 1);
+            }
+
+            s.StatusMessage = $"{cult.Name} entered the Peak Rank 5 Sovereign Trial!";
+            WorldSignals.EmitTopics(DirtyTopic.Breakthrough | DirtyTopic.Calendar);
+            return true;
+        }
+
+        private static EntityId? FindOwnedRelicGu(WorldStore world, int currentRank)
+        {
+            EntityId? fallbackRelic = null;
+            foreach (var (eid, gu) in world.GetOwned<GuWormComponent>(world.PlayerEntity))
+            {
+                if (gu.IsVitalGu || string.IsNullOrEmpty(gu.GuID)) continue;
+                bool isRelic =
+                    gu.GuID.Contains("relic", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(gu.GuID, "gu_green_copper_relic", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(gu.GuID, "gu_red_iron_relic", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(gu.GuID, "gu_white_silver_relic", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(gu.GuID, "gu_yellow_gold_relic", StringComparison.OrdinalIgnoreCase);
+
+                if (!isRelic) continue;
+
+                if (gu.Rank == currentRank)
+                {
+                    return eid;
+                }
+                fallbackRelic ??= eid;
+            }
+            return fallbackRelic;
         }
 
         public static void Tick(WorldStore world, float dt)

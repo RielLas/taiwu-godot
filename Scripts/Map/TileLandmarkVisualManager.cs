@@ -16,17 +16,25 @@ namespace Taiwu_Godot.Scripts.Map
 
         private IWorldStateProvider? _worldProvider;
         private readonly List<Node2D> activeLandmarks = new();
-        private readonly Dictionary<Node2D, (Vector2I pos, Sprite2D sprite)> landmarkDataMap = new();
+        private readonly Dictionary<Node2D, (Vector2I pos, Sprite2D sprite, Color baseTint)> landmarkDataMap = new();
         private readonly Dictionary<ulong, Node2D> _activeTokens = new();
+        private readonly Dictionary<ulong, Vector2I> _activeTokenCoords = new();
         private readonly Stack<Node2D> _tokenPool = new();
 
-        private Texture2D? clanVillageTex;
-        private Texture2D? merchantInnTex;
-        private Texture2D? primevalSpringTex;
-        private Texture2D? bambooMountainTex;
         private Texture2D? jadeMedallionTex;
         private Texture2D? clanBronzeTex;
         private Texture2D? caravanBrassTex;
+
+        public int ActiveLandmarkCount => activeLandmarks.Count;
+
+        public bool HasLandmarkAt(Vector2I gridPos)
+        {
+            foreach (var data in landmarkDataMap.Values)
+            {
+                if (data.pos == gridPos) return true;
+            }
+            return false;
+        }
 
         public override void _Ready()
         {
@@ -50,10 +58,6 @@ namespace Taiwu_Godot.Scripts.Map
 
         private void LoadTextures()
         {
-            clanVillageTex = ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/poi_clan_village.png");
-            merchantInnTex = ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/poi_merchant_inn.png");
-            primevalSpringTex = ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/poi_primeval_spring.png");
-            bambooMountainTex = ResourceLoader.Load<Texture2D>("res://Resources/Landmarks/tile_bamboo_mountain.png");
             jadeMedallionTex = ResourceLoader.Load<Texture2D>("res://Resources/Tokens/token_player_jade.png");
             clanBronzeTex = ResourceLoader.Load<Texture2D>("res://Resources/Tokens/token_clan_bronze.png");
             caravanBrassTex = ResourceLoader.Load<Texture2D>("res://Resources/Tokens/token_caravan_brass.png");
@@ -113,11 +117,13 @@ namespace Taiwu_Godot.Scripts.Map
                         Vector2 worldPos = TileManager.GridToWorld(gridPos);
 
                         // Slightly offset NPC tokens when sharing a tile with ClanPost so they don't sit on the watchtower roof
-                        TileNode tile = TileManager.GetTile(gridPos.X, gridPos.Y);
-                        if (tile.POI == TilePOIType.ClanPost)
+                        bool inBounds = TileManager.IsWithinBounds(gridPos);
+                        TileNode tile = inBounds ? TileManager.GetTile(gridPos.X, gridPos.Y) : default;
+                        if (inBounds && tile.POI == TilePOIType.ClanPost)
                         {
                             worldPos += new Vector2(0.55f, 0.38f);
                         }
+                        bool tokenVisible = inBounds && tile.IsExplored && tile.IsVisible;
 
                         // Differentiate / tint NPC token by FactionComponent color
                         FactionID? factionId = null;
@@ -130,6 +136,9 @@ namespace Taiwu_Godot.Scripts.Map
                             factionId = FactionComponent.ResolveFactionFromClan(cult.Clan);
                         }
                         Color factionTint = GetFactionTint(factionId);
+                        Texture2D? tokenTex = (factionId == FactionID.JiaConsortium)
+                            ? (caravanBrassTex ?? clanBronzeTex ?? jadeMedallionTex)
+                            : (clanBronzeTex ?? jadeMedallionTex);
 
                         if (_activeTokens.TryGetValue(id, out var tokenNode))
                         {
@@ -139,12 +148,14 @@ namespace Taiwu_Godot.Scripts.Map
                                 {
                                     tokenNode.Position = worldPos;
                                 }
-                                tokenNode.Visible = true;
+                                tokenNode.Visible = tokenVisible;
                                 var medallion = tokenNode.GetNodeOrNull<TalismanMedallionToken>("ClanMedallion");
                                 if (medallion != null)
                                 {
+                                    medallion.SetTexture(tokenTex);
                                     medallion.Modulate = factionTint;
                                 }
+                                _activeTokenCoords[id] = gridPos;
                             }
                         }
                         else
@@ -163,21 +174,20 @@ namespace Taiwu_Godot.Scripts.Map
                             if (token != null)
                             {
                                 token.Position = worldPos;
-                                token.Visible = true;
+                                token.Visible = tokenVisible;
                                 var medallion = token.GetNodeOrNull<TalismanMedallionToken>("ClanMedallion");
                                 if (medallion != null)
                                 {
+                                    medallion.SetTexture(tokenTex);
                                     medallion.Modulate = factionTint;
                                 }
                             }
                             else
                             {
-                                Texture2D? tokenTex = (factionId == FactionID.JiaConsortium)
-                                    ? (caravanBrassTex ?? clanBronzeTex ?? jadeMedallionTex)
-                                    : (clanBronzeTex ?? jadeMedallionTex);
                                 token = CreateCultivatorTokenObject(worldPos, gridPos, tokenTex, factionTint);
                                 if (token != null)
                                 {
+                                    token.Visible = tokenVisible;
                                     AddChild(token);
                                 }
                             }
@@ -185,6 +195,7 @@ namespace Taiwu_Godot.Scripts.Map
                             if (token != null)
                             {
                                 _activeTokens[id] = token;
+                                _activeTokenCoords[id] = gridPos;
                             }
                         }
                     }
@@ -211,6 +222,7 @@ namespace Taiwu_Godot.Scripts.Map
                 for (int i = 0; i < toRemove.Count; i++)
                 {
                     _activeTokens.Remove(toRemove[i]);
+                    _activeTokenCoords.Remove(toRemove[i]);
                 }
             }
         }
@@ -224,9 +236,6 @@ namespace Taiwu_Godot.Scripts.Map
 
             int width = TileManager.GridWidth;
             int height = TileManager.GridHeight;
-
-            int cx = Math.Clamp(width / 2, 0, width - 1);
-            int cy = Math.Clamp(height / 2, 0, height - 1);
 
             for (int x = 0; x < width; x++)
             {
@@ -273,6 +282,7 @@ namespace Taiwu_Godot.Scripts.Map
                 }
             }
             _activeTokens.Clear();
+            _activeTokenCoords.Clear();
 
             while (_tokenPool.Count > 0)
             {
@@ -325,7 +335,7 @@ namespace Taiwu_Godot.Scripts.Map
             };
 
             container.AddChild(sprite);
-            landmarkDataMap[container] = (gridPos, sprite);
+            landmarkDataMap[container] = (gridPos, sprite, tint);
 
             return container;
         }
@@ -386,22 +396,27 @@ namespace Taiwu_Godot.Scripts.Map
                 {
                     TileNode node = TileManager.GetTile(data.pos.X, data.pos.Y);
                     bool explored = node.IsExplored;
-                    bool visible = node.IsVisible;
 
                     landmark.Visible = explored;
                     if (explored)
                     {
-                        // Clean, bright full-color rendering (no shadow overlay over locations)
-                        data.sprite.Modulate = Colors.White;
+                        data.sprite.Modulate = data.baseTint;
                     }
                 }
             }
 
-            foreach (var token in _activeTokens.Values)
+            foreach (var (id, token) in _activeTokens)
             {
                 if (!GodotObject.IsInstanceValid(token)) continue;
-                // Tokens on explored tiles remain visible
-                token.Visible = true;
+                if (_activeTokenCoords.TryGetValue(id, out var coord) && TileManager.IsWithinBounds(coord))
+                {
+                    TileNode tile = TileManager.GetTile(coord.X, coord.Y);
+                    token.Visible = tile.IsExplored && tile.IsVisible;
+                }
+                else
+                {
+                    token.Visible = false;
+                }
             }
         }
 
@@ -442,7 +457,7 @@ namespace Taiwu_Godot.Scripts.Map
         /// </summary>
         public partial class TalismanMedallionToken : Node2D
         {
-            private readonly Texture2D? _tokenTexture;
+            private Texture2D? _tokenTexture;
             private readonly string _sealText;
             private readonly float _targetDiameter;
             private static readonly Color GoldColor = new Color(0.984f, 0.749f, 0.141f, 1f); // Imperial Gold #FBBF24
@@ -454,6 +469,13 @@ namespace Taiwu_Godot.Scripts.Map
                 _sealText = sealText;
                 _targetDiameter = targetDiameter;
                 ZIndex = 1;
+            }
+
+            public void SetTexture(Texture2D? tex)
+            {
+                if (_tokenTexture == tex) return;
+                _tokenTexture = tex;
+                QueueRedraw();
             }
 
             public override void _Draw()

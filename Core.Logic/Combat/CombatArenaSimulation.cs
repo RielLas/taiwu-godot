@@ -18,6 +18,7 @@ namespace TaiwuGu.Combat
 
         public const float ARENA_HALF_W = 9.5f;
         public const float ARENA_HALF_H = 5.2f;
+        private const float PlayerIFrameDuration = 0.35f;
 
         public readonly CombatEntityData[] EntityBuffer = new CombatEntityData[MAX_ENTITIES];
         public readonly CombatProjectileData[] ProjectileBuffer = new CombatProjectileData[MAX_PROJECTILES];
@@ -27,6 +28,7 @@ namespace TaiwuGu.Combat
         private EntityId _playerEntity;
         private DaoMarksLedger? _playerDaoMarks;
         private WorldStore? _lastWorld;
+        private float _playerIFrameTimer;
 
         public bool IsActive;
         public CombatOutcome Outcome;
@@ -69,6 +71,7 @@ namespace TaiwuGu.Combat
             StoneCrushCooldown = 0f;
             ElapsedTime = 0f;
             HitStopTimer = 0f;
+            _playerIFrameTimer = 0f;
             MoveDirX = 0f;
             MoveDirY = 0f;
             TargetVelX = 0f;
@@ -146,6 +149,28 @@ namespace TaiwuGu.Combat
             // Slot 5 is dedicated Killer Move [R]
             if (slotIndex == 5)
             {
+                // Dead or hibernating Gu cannot power the Resonance Killer Move
+                bool hasActiveGu = false;
+                for (int s = 0; s < 5; s++)
+                {
+                    EntityId guEid = _skillGuEntityIds[s];
+                    if (guEid.IsValid && world.TryGet<GuWormComponent>(guEid, out var eqGu) && eqGu != null)
+                    {
+                        GuStarvationStage eqStage = eqGu.GetStarvationStage();
+                        if (eqStage != GuStarvationStage.Hibernating && eqStage != GuStarvationStage.Dead)
+                        {
+                            hasActiveGu = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!hasActiveGu)
+                {
+                    WorldSignals.EmitSound(HalalSoundType.WoodenKnock);
+                    return false;
+                }
+
                 double density = aperture.GetDensityCoefficient();
                 float realCostPct = (float)(skill.BaseBeuCost / density);
                 if (aperture.CurrentEssenceSea < realCostPct)
@@ -292,6 +317,7 @@ namespace TaiwuGu.Combat
 
             ElapsedTime += dt;
             if (StoneCrushCooldown > 0f) StoneCrushCooldown = MathF.Max(0f, StoneCrushCooldown - dt);
+            if (_playerIFrameTimer > 0f) _playerIFrameTimer = MathF.Max(0f, _playerIFrameTimer - dt);
 
             for (int s = 0; s < MAX_SKILLS; s++)
             {
@@ -413,24 +439,26 @@ namespace TaiwuGu.Combat
                 }
                 else if (enemy.Archetype == CombatEntityArchetype.SovereignElder)
                 {
-                    // Peak Rank 5 Sovereign Boss AI: strafes, keeps mid range, fires 5-way spread
+                    // Peak Rank 5 Sovereign Boss AI: strafes, keeps mid range, escalates below 50% HP
+                    bool phase2 = enemy.MaxHealth > 0f && enemy.Health <= enemy.MaxHealth * 0.50f;
+                    float bossMoveSpeed = enemy.MoveSpeed * (phase2 ? 1.22f : 1.0f);
                     float strafeX = dist > 0.0001f ? -dy / dist : 0f;
                     float strafeY = dist > 0.0001f ? dx / dist : 1f;
 
                     if (dist < 3.5f && dist > 0.0001f)
                     {
-                        enemy.PosX -= (dx / dist * 0.7f + strafeX * 0.7f) * enemy.MoveSpeed * dt;
-                        enemy.PosY -= (dy / dist * 0.7f + strafeY * 0.7f) * enemy.MoveSpeed * dt;
+                        enemy.PosX -= (dx / dist * 0.7f + strafeX * 0.7f) * bossMoveSpeed * dt;
+                        enemy.PosY -= (dy / dist * 0.7f + strafeY * 0.7f) * bossMoveSpeed * dt;
                     }
                     else if (dist > 6.0f && dist > 0.0001f)
                     {
-                        enemy.PosX += (dx / dist * 0.7f + strafeX * 0.7f) * enemy.MoveSpeed * dt;
-                        enemy.PosY += (dy / dist * 0.7f + strafeY * 0.7f) * enemy.MoveSpeed * dt;
+                        enemy.PosX += (dx / dist * 0.7f + strafeX * 0.7f) * bossMoveSpeed * dt;
+                        enemy.PosY += (dy / dist * 0.7f + strafeY * 0.7f) * bossMoveSpeed * dt;
                     }
                     else
                     {
-                        enemy.PosX += strafeX * enemy.MoveSpeed * dt;
-                        enemy.PosY += strafeY * enemy.MoveSpeed * dt;
+                        enemy.PosX += strafeX * bossMoveSpeed * dt;
+                        enemy.PosY += strafeY * bossMoveSpeed * dt;
                     }
                     ClampToArena(ref enemy);
 
@@ -441,18 +469,37 @@ namespace TaiwuGu.Combat
                         float baseAngle = MathF.Atan2(baseAimY, baseAimX);
                         float damage = 22f + enemy.Rank * 4f;
 
-                        for (int spread = -2; spread <= 2; spread++)
+                        if (phase2)
                         {
-                            float angle = baseAngle + spread * 0.16f;
-                            float vx = MathF.Cos(angle) * 10.5f;
-                            float vy = MathF.Sin(angle) * 10.5f;
-                            SpawnProjectile(
-                                CombatEntityTeam.Hostile,
-                                enemy.PosX + MathF.Cos(angle) * enemy.Radius,
-                                enemy.PosY + MathF.Sin(angle) * enemy.Radius,
-                                vx, vy, damage, 14f, 3);
+                            // Phase 2: tighter 7-way imperial burst with faster projectile speed and fire cadence
+                            for (int spread = -3; spread <= 3; spread++)
+                            {
+                                float angle = baseAngle + spread * 0.12f;
+                                float vx = MathF.Cos(angle) * 11.8f;
+                                float vy = MathF.Sin(angle) * 11.8f;
+                                SpawnProjectile(
+                                    CombatEntityTeam.Hostile,
+                                    enemy.PosX + MathF.Cos(angle) * enemy.Radius,
+                                    enemy.PosY + MathF.Sin(angle) * enemy.Radius,
+                                    vx, vy, damage, 14f, 3);
+                            }
+                            enemy.AttackCooldown = 0.65f;
                         }
-                        enemy.AttackCooldown = 0.95f;
+                        else
+                        {
+                            for (int spread = -2; spread <= 2; spread++)
+                            {
+                                float angle = baseAngle + spread * 0.16f;
+                                float vx = MathF.Cos(angle) * 10.5f;
+                                float vy = MathF.Sin(angle) * 10.5f;
+                                SpawnProjectile(
+                                    CombatEntityTeam.Hostile,
+                                    enemy.PosX + MathF.Cos(angle) * enemy.Radius,
+                                    enemy.PosY + MathF.Sin(angle) * enemy.Radius,
+                                    vx, vy, damage, 14f, 3);
+                            }
+                            enemy.AttackCooldown = 0.95f;
+                        }
                     }
                 }
                 else
@@ -676,24 +723,38 @@ namespace TaiwuGu.Combat
                 _skillGuEntityIds[equipSlot] = guEntity;
             }
 
-            // Synthesize dedicated Killer Move in Slot 5
-            bool hasAnyEquipped = false;
+            // Synthesize dedicated Killer Move in Slot 5 from active (non-dead, non-hibernating) equipped Gu
+            bool hasAnyActiveEquipped = false;
+            bool hasPrimaryPath = false;
             int totalRank = 0;
             float maxDamage = 25f;
             DaoPathType primaryPath = DaoPathType.HumanPath;
 
             for (int s = 0; s < 5; s++)
             {
-                if (PlayerSkills[s].IsPopulated)
+                if (!PlayerSkills[s].IsPopulated) continue;
+
+                EntityId guEid = _skillGuEntityIds[s];
+                if (guEid.IsValid && world.TryGet<GuWormComponent>(guEid, out var eqGu) && eqGu != null)
                 {
-                    hasAnyEquipped = true;
-                    totalRank += PlayerSkills[s].Rank;
-                    if (PlayerSkills[s].BaseDamage > maxDamage) maxDamage = PlayerSkills[s].BaseDamage;
-                    if (s == 0) primaryPath = PlayerSkills[s].PathType;
+                    GuStarvationStage stage = eqGu.GetStarvationStage();
+                    if (stage == GuStarvationStage.Hibernating || stage == GuStarvationStage.Dead)
+                    {
+                        continue;
+                    }
+                }
+
+                hasAnyActiveEquipped = true;
+                totalRank += PlayerSkills[s].Rank;
+                if (PlayerSkills[s].BaseDamage > maxDamage) maxDamage = PlayerSkills[s].BaseDamage;
+                if (!hasPrimaryPath)
+                {
+                    primaryPath = PlayerSkills[s].PathType;
+                    hasPrimaryPath = true;
                 }
             }
 
-            if (hasAnyEquipped)
+            if (hasAnyActiveEquipped)
             {
                 PlayerSkills[5] = new CombatSkillSlot
                 {
@@ -849,16 +910,17 @@ namespace TaiwuGu.Combat
 
         public void DamagePlayer(WorldStore world, ref CombatEntityData player, float damage)
         {
-            if (!player.Active || damage <= 0f || player.DashTimer > 0f) return;
+            if (!player.Active || damage <= 0f || player.DashTimer > 0f || _playerIFrameTimer > 0f) return;
 
-            // Killer Move channel interrupt + resonance backlash
+            bool hadBacklash = false;
+
+            // Killer Move channel interrupt + resonance backlash (routed through mitigation & shields)
             if (player.ChannelTimer > 0f)
             {
+                hadBacklash = true;
                 player.ChannelTimer = 0f;
-                float backlashDamage = 25f;
-                player.Health -= backlashDamage;
+                damage += 25f;
                 player.StunTimer = 1.5f;
-                player.HitFlashTimer = 0.25f;
 
                 // Deduct satiety on participating Gu
                 for (int s = 0; s < 5; s++)
@@ -878,12 +940,14 @@ namespace TaiwuGu.Combat
             float mitigation = _playerDaoMarks != null ? _playerDaoMarks.GetDamageMitigationMultiplier() : 1.0f;
             float effectiveDamage = damage * mitigation;
 
+            _playerIFrameTimer = PlayerIFrameDuration;
+
             if (player.ShieldHP > 0f)
             {
                 player.ShieldHP -= effectiveDamage;
                 if (player.ShieldHP > 0f)
                 {
-                    player.HitFlashTimer = 0.12f;
+                    player.HitFlashTimer = hadBacklash ? 0.25f : 0.12f;
                     return;
                 }
 
@@ -892,7 +956,7 @@ namespace TaiwuGu.Combat
             }
 
             player.Health -= effectiveDamage;
-            player.HitFlashTimer = 0.15f;
+            player.HitFlashTimer = hadBacklash ? 0.25f : 0.15f;
         }
 
         public void DamagePlayer(ref CombatEntityData player, float damage)
@@ -903,22 +967,28 @@ namespace TaiwuGu.Combat
             }
             else
             {
+                if (!player.Active || damage <= 0f || player.DashTimer > 0f || _playerIFrameTimer > 0f) return;
+
+                bool hadBacklash = false;
                 if (player.ChannelTimer > 0f)
                 {
+                    hadBacklash = true;
                     player.ChannelTimer = 0f;
-                    player.Health -= 25f;
+                    damage += 25f;
                     player.StunTimer = 1.5f;
                 }
 
                 float mitigation = _playerDaoMarks != null ? _playerDaoMarks.GetDamageMitigationMultiplier() : 1.0f;
                 float effectiveDamage = damage * mitigation;
 
+                _playerIFrameTimer = PlayerIFrameDuration;
+
                 if (player.ShieldHP > 0f)
                 {
                     player.ShieldHP -= effectiveDamage;
                     if (player.ShieldHP > 0f)
                     {
-                        player.HitFlashTimer = 0.12f;
+                        player.HitFlashTimer = hadBacklash ? 0.25f : 0.12f;
                         return;
                     }
                     effectiveDamage = -player.ShieldHP;
@@ -926,7 +996,7 @@ namespace TaiwuGu.Combat
                 }
 
                 player.Health -= effectiveDamage;
-                player.HitFlashTimer = 0.15f;
+                player.HitFlashTimer = hadBacklash ? 0.25f : 0.15f;
             }
         }
 

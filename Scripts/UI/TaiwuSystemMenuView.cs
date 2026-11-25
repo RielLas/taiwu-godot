@@ -105,9 +105,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             if (_isOpen) return;
 
-            if (_modalStack?.IsModalOpen<TaiwuLedgerView>() == true) return;
-            if (_modalStack?.IsModalOpen<RefinementCauldronView>() == true) return;
-            if (_modalStack?.IsModalOpen<TilePOIModalView>() == true) return;
+            if (_modalStack?.HasActiveModal == true) return;
             if (_playerController?.HasTargetSelection == true) return;
 
             OpenMenu();
@@ -482,8 +480,10 @@ namespace Taiwu_Godot.Scripts.UI
             var lblGuide = new Label
             {
                 Text = "• [Esc] - System Menu / Close Active Modal View (LIFO Priority)\n" +
-                       "• [Tab] / [C] - Character Cultivation Ledger & Aperture Inspection\n" +
-                       "• [R] - Mortal Gu Refinement Alchemical Cauldron\n" +
+                       "• [Tab / L] - Character Cultivation Ledger & Aperture Inspection\n" +
+                       "• [M] - Five Regions World Map (Atlas)\n" +
+                       "• [C] - Mortal Gu Refinement Alchemical Cauldron\n" +
+                       "• [R] - Killer Move (Combat)\n" +
                        "• [WASD] / [Right-Mouse Drag] - Pan Overworld Camera\n" +
                        "• [Scroll Wheel] - Zoom Map In & Out\n" +
                        "• [Left Click] - Select Tile Route Preview / Confirm Movement Step\n" +

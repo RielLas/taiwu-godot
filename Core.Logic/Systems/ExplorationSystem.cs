@@ -33,7 +33,7 @@ namespace TaiwuGu.Systems
         public static void MovePlayer(WorldStore world, GridCoord targetPos, int sensoryRadius = DEFAULT_SENSORY_RADIUS, IRandomSource? rng = null, bool evaluateWilderness = true, bool openInteractivePOI = true)
         {
             var sector = world.GetCurrentSector();
-            if (sector == null || !sector.IsWithinBounds(targetPos)) return;
+            if (sector == null || !sector.IsWithinBounds(targetPos) || !sector.IsWalkable(targetPos)) return;
 
             world.SetPosition(world.PlayerEntity, targetPos, sector.SectorKey);
             TimeSystem.DeductActionPoints(world, 1);

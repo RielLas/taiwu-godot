@@ -93,7 +93,7 @@ namespace Taiwu_Godot.Scripts.UI
             if (ChkSealAperture != null)
             {
                 ChkSealAperture.FocusMode = FocusModeEnum.None;
-                ChkSealAperture.Toggled += _ => UpdateTransitRequirements();
+                ChkSealAperture.Toggled += HandleSealApertureToggled;
             }
 
             PopulateSectorGraph();
@@ -106,6 +106,16 @@ namespace Taiwu_Godot.Scripts.UI
         {
             WorldSignals.OnTopicsChanged -= HandleTopicsChanged;
             WorldSignals.OnBattleStageChanged -= HandleBattleStageChanged;
+
+            if (BtnTravel != null)
+            {
+                BtnTravel.Pressed -= OnTravelPressed;
+            }
+
+            if (ChkSealAperture != null)
+            {
+                ChkSealAperture.Toggled -= HandleSealApertureToggled;
+            }
 
             if (Instance == this)
             {
@@ -452,6 +462,8 @@ namespace Taiwu_Godot.Scripts.UI
             }
         }
 
+        private void HandleSealApertureToggled(bool _) => UpdateTransitRequirements();
+
         private void OnTravelPressed()
         {
             var world = _stateProvider?.Current;
@@ -459,37 +471,16 @@ namespace Taiwu_Godot.Scripts.UI
 
             if (!WorldAtlasRegistry.TryGet(_selectedSectorKey, out var bp) || bp == null) return;
 
-            var cult = world.Get<CultivatorComponent>(world.PlayerEntity);
-            var clock = world.GetSingleton<WorldClockComponent>();
-
-            WorldRegionID currentRegion = world.GetCurrentSector()?.Region ?? WorldRegionID.SouthernBorder;
-            bool isRegionalCross = bp.Region != currentRegion;
-
-            int reqStones = isRegionalCross ? TransitSystem.REGIONAL_TRANSIT_STONE_COST : TransitSystem.TRAVEL_STONE_COST;
-            int reqAP = isRegionalCross ? TransitSystem.REGIONAL_TRANSIT_AP_COST : TransitSystem.TRAVEL_AP_COST;
-
-            if (cult == null || cult.PrimevalStones < reqStones) return;
-            if (clock == null || clock.ActionPointsRemaining < reqAP) return;
-
-            // Deduct costs
-            cult.PrimevalStones -= reqStones;
-            TimeSystem.DeductActionPoints(world, reqAP);
-
-            // Apply wall backlash if cross-regional
-            if (isRegionalCross)
-            {
-                var wall = RegionalWallLaw.GetBoundaryWall(currentRegion, bp.Region);
-                bool sealedAperture = ChkSealAperture?.ButtonPressed == true;
-                TransitSystem.ApplyRegionalWallBacklash(world, wall, sealedAperture);
-            }
-
-            world.GetCurrentSector()?.CommitTilesToSnapshot();
-
+            bool sealAperture = ChkSealAperture?.ButtonPressed == true;
             string targetKey = _selectedSectorKey;
             CloseAtlas();
 
             var overlay = UniversalLoadingOverlay.EnsureInstance(GetTree());
-            _ = overlay.WrapSectorTransitAsync(world, targetKey);
+            _ = overlay.WrapActionAsync(
+                () => TransitSystem.TravelToSector(world, targetKey, sealAperture),
+                "Traversing Boundary Wall (跨越五域界壁)...",
+                $"Entering sector [{targetKey}]..."
+            );
         }
     }
 }

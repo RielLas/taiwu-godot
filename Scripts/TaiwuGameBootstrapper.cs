@@ -96,12 +96,14 @@ namespace Taiwu_Godot.Scripts
                 StateProvider = new WorldStateProvider(WorldFactory.CreateDefault(runSeed: 1, playerStart: startPos));
             }
 
+            bool loadedFromSave = false;
             if (!string.IsNullOrEmpty(TaiwuTitleScreenView.PendingLoadSlot))
             {
                 string slot = TaiwuTitleScreenView.PendingLoadSlot;
                 TaiwuTitleScreenView.PendingLoadSlot = null;
                 if (SaveSystem.LoadAndSwap(slot, StateProvider))
                 {
+                    loadedFromSave = true;
                     GD.Print($"[Bootstrapper] Loaded save slot: {slot}.");
                 }
             }
@@ -115,7 +117,14 @@ namespace Taiwu_Godot.Scripts
             {
                 TileManager.Initialize(StateProvider);
                 LandmarkManager?.Initialize(TileManager, StateProvider);
-                PlayerController?.Initialize(TileManager, StartingGridPosition, StateProvider);
+
+                Vector2I initialGridPos = StartingGridPosition;
+                if (loadedFromSave && World.TryGet<PositionComponent>(World.PlayerEntity, out var loadedPos))
+                {
+                    initialGridPos = loadedPos.Coord.ToGodot();
+                }
+
+                PlayerController?.Initialize(TileManager, initialGridPos, StateProvider);
                 if (PlayerController != null)
                 {
                     CameraController?.Initialize(PlayerController);
@@ -134,26 +143,58 @@ namespace Taiwu_Godot.Scripts
 
             if (BreakthroughModalView == null)
             {
-                BreakthroughModalView = new ApertureBreakthroughModalView { Name = "BreakthroughModalView" };
+                BreakthroughModalView = new ApertureBreakthroughModalView
+                {
+                    Name = "BreakthroughModalView",
+                    ProcessMode = ProcessModeEnum.Always
+                };
                 AddChild(BreakthroughModalView);
+            }
+            else
+            {
+                BreakthroughModalView.ProcessMode = ProcessModeEnum.Always;
             }
 
             if (NPCDialogueView == null)
             {
-                NPCDialogueView = new NPCDialoguePavilionView { Name = "NPCDialoguePavilionView" };
+                NPCDialogueView = new NPCDialoguePavilionView
+                {
+                    Name = "NPCDialoguePavilionView",
+                    ProcessMode = ProcessModeEnum.Always
+                };
                 AddChild(NPCDialogueView);
+            }
+            else
+            {
+                NPCDialogueView.ProcessMode = ProcessModeEnum.Always;
             }
 
             if (WildGuModalView == null)
             {
-                WildGuModalView = new WildGuEncounterModalView { Name = "WildGuEncounterModalView" };
+                WildGuModalView = new WildGuEncounterModalView
+                {
+                    Name = "WildGuEncounterModalView",
+                    ProcessMode = ProcessModeEnum.Always
+                };
                 AddChild(WildGuModalView);
+            }
+            else
+            {
+                WildGuModalView.ProcessMode = ProcessModeEnum.Always;
             }
 
             if (TransitModalView == null)
             {
-                TransitModalView = new InterMountainTransitModalView { Name = "InterMountainTransitModalView" };
+                TransitModalView = new InterMountainTransitModalView
+                {
+                    Name = "InterMountainTransitModalView",
+                    ProcessMode = ProcessModeEnum.Always
+                };
                 AddChild(TransitModalView);
+            }
+            else
+            {
+                TransitModalView.ProcessMode = ProcessModeEnum.Always;
             }
 
             if (WorldAtlasView == null)

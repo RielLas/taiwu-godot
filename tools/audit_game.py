@@ -50,7 +50,7 @@ def audit_resource_paths(cs_files, tscn_files):
                 content = f.read()
                 matches = pattern.findall(content)
                 for m in matches:
-                    clean = m.strip().rstrip('",;)\'').lstrip('/')
+                    clean = m.strip().rstrip('",;)\'.').lstrip('/')
                     referenced_paths.add(clean)
         except Exception:
             pass
@@ -74,13 +74,13 @@ def audit_resource_paths(cs_files, tscn_files):
 # ======================================================================
 def audit_gu_database(cs_files):
     if not os.path.exists(GU_DATABASE_FILE):
-        return [], ["Missing gu_worms_database.json file!"]
+        return [], ["Missing gu_worms_database.json file!"], []
 
     try:
         with open(GU_DATABASE_FILE, "r", encoding="utf-8") as f:
             catalog = json.load(f)
     except Exception as e:
-        return [], [f"Failed to parse gu_worms_database.json: {e}"]
+        return [], [f"Failed to parse gu_worms_database.json: {e}"], []
 
     catalog_gu_ids = set()
     errors = []
@@ -367,6 +367,10 @@ def main():
             print(f"       - DirtyTopic.{u}")
     else:
         print(f"    ✅ All emitted DirtyTopics are listened to by active UI or Map observers.")
+    if unemitted:
+        print(f"    ℹ️  UNEMITTED TOPICS (Defined in DirtyTopic, never emitted directly):")
+        for u in unemitted:
+            print(f"       - DirtyTopic.{u}")
 
     # 6. Halal Compliance
     halal_violations = audit_halal_compliance()

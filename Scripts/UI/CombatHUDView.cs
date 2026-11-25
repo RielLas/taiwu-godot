@@ -14,6 +14,9 @@ namespace Taiwu_Godot.Scripts.UI
     /// </summary>
     public partial class CombatHUDView : Control
     {
+        private static readonly string[] SlotKeyLabels = { "1", "2", "3", "4", "5", "[R]" };
+        private static readonly string[] SlotEmptyLabels = { "1 —", "2 —", "3 —", "4 —", "5 —", "[R] —" };
+
         private IWorldStateProvider? _provider;
 
         private ProgressBar? _barHealth;
@@ -25,6 +28,17 @@ namespace Taiwu_Godot.Scripts.UI
         private Button? _btnRetreat;
         private readonly Button?[] _skillButtons = new Button?[CombatArenaSimulation.MAX_SKILLS];
 
+        // Cached primitives to avoid per-frame string allocations when values haven't changed
+        private int _lastHp = int.MinValue;
+        private int _lastMaxHp = int.MinValue;
+        private int _lastEssence = int.MinValue;
+        private int _lastAptitude = int.MinValue;
+        private string? _lastEnemyName;
+        private int _lastStones = int.MinValue;
+        private readonly bool[] _lastSkillPopulated = new bool[CombatArenaSimulation.MAX_SKILLS];
+        private readonly int[] _lastSkillCooldownTenths = new int[CombatArenaSimulation.MAX_SKILLS];
+        private readonly string?[] _lastSkillNames = new string?[CombatArenaSimulation.MAX_SKILLS];
+
         public void Initialize(IWorldStateProvider provider) => _provider = provider;
 
         public override void _Ready()
@@ -33,6 +47,7 @@ namespace Taiwu_Godot.Scripts.UI
             MouseFilter = MouseFilterEnum.Ignore;
             Visible = false;
 
+            ResetRenderCache();
             BuildUIHierarchy();
 
             WorldSignals.OnBattleStageChanged += HandleBattleStageChanged;
@@ -60,6 +75,22 @@ namespace Taiwu_Godot.Scripts.UI
                 return;
             }
             RefreshFromStore();
+        }
+
+        private void ResetRenderCache()
+        {
+            _lastHp = int.MinValue;
+            _lastMaxHp = int.MinValue;
+            _lastEssence = int.MinValue;
+            _lastAptitude = int.MinValue;
+            _lastEnemyName = null;
+            _lastStones = int.MinValue;
+            for (int i = 0; i < CombatArenaSimulation.MAX_SKILLS; i++)
+            {
+                _lastSkillPopulated[i] = false;
+                _lastSkillCooldownTenths[i] = int.MinValue;
+                _lastSkillNames[i] = null;
+            }
         }
 
         private void BuildUIHierarchy()
@@ -155,7 +186,7 @@ namespace Taiwu_Godot.Scripts.UI
             var hint = new Label
             {
                 Name = "ControlHint",
-                Text = "[WASD] Move   [Mouse] Aim   [1-5] Cast Gu   [Space] Dash   [Q] Crush Stone",
+                Text = "[WASD] Move   [Mouse] Aim   [1-5] Cast Gu   [R] Killer Move   [Space] Dash   [Q] Crush Stone",
                 HorizontalAlignment = HorizontalAlignment.Center,
                 MouseFilter = MouseFilterEnum.Ignore,
                 Modulate = new Color(0.58f, 0.64f, 0.72f, 0.9f)
@@ -186,7 +217,7 @@ namespace Taiwu_Godot.Scripts.UI
                 int slot = i;
                 var button = new Button
                 {
-                    Text = $"{i + 1} —",
+                    Text = SlotEmptyLabels[i],
                     CustomMinimumSize = new Vector2(0f, 60f),
                     SizeFlagsHorizontal = SizeFlags.ExpandFill,
                     MouseFilter = MouseFilterEnum.Stop,
@@ -251,7 +282,11 @@ namespace Taiwu_Godot.Scripts.UI
         private void HandleBattleStageChanged(bool inBattle)
         {
             Visible = inBattle;
-            if (inBattle) RefreshFromStore();
+            if (inBattle)
+            {
+                ResetRenderCache();
+                RefreshFromStore();
+            }
         }
 
         private void HandleTopicsChanged(DirtyTopic topics)
@@ -301,9 +336,14 @@ namespace Taiwu_Godot.Scripts.UI
                     _barHealth.MaxValue = Mathf.Max(1f, aperture.MaxHealth);
                     _barHealth.Value = aperture.CurrentHealth;
                 }
-                if (_lblHealth != null)
+
+                int hp = Mathf.RoundToInt(aperture.CurrentHealth);
+                int maxHp = Mathf.RoundToInt(aperture.MaxHealth);
+                if (_lblHealth != null && (hp != _lastHp || maxHp != _lastMaxHp))
                 {
-                    _lblHealth.Text = $"HP {aperture.CurrentHealth:F0}/{aperture.MaxHealth:F0}";
+                    _lastHp = hp;
+                    _lastMaxHp = maxHp;
+                    _lblHealth.Text = $"HP {hp}/{maxHp}";
                 }
             }
 
@@ -317,11 +357,21 @@ namespace Taiwu_Godot.Scripts.UI
             }
             if (_lblSea != null)
             {
-                _lblSea.Text = $"Sea {aperture?.CurrentEssenceSea ?? 0f:F1}% / {cult?.AptitudePercent ?? 0f:F1}%";
+                float essenceVal = aperture?.CurrentEssenceSea ?? 0f;
+                float aptitudeVal = cult?.AptitudePercent ?? 0f;
+                int essenceTenths = Mathf.RoundToInt(essenceVal * 10f);
+                int aptitudeTenths = Mathf.RoundToInt(aptitudeVal * 10f);
+                if (essenceTenths != _lastEssence || aptitudeTenths != _lastAptitude)
+                {
+                    _lastEssence = essenceTenths;
+                    _lastAptitude = aptitudeTenths;
+                    _lblSea.Text = $"Sea {essenceTenths / 10f:F1}% / {aptitudeTenths / 10f:F1}%";
+                }
             }
 
-            if (_lblEnemy != null)
+            if (_lblEnemy != null && !string.Equals(simulation.EnemyDisplayName, _lastEnemyName, StringComparison.Ordinal))
             {
+                _lastEnemyName = simulation.EnemyDisplayName;
                 _lblEnemy.Text = $"【战】 {simulation.EnemyDisplayName}";
             }
 
@@ -330,20 +380,41 @@ namespace Taiwu_Godot.Scripts.UI
                 var button = _skillButtons[i];
                 if (button == null) continue;
 
-                CombatSkillSlot skill = simulation.PlayerSkills[i];
+                ref readonly CombatSkillSlot skill = ref simulation.PlayerSkills[i];
                 if (!skill.IsPopulated)
                 {
-                    button.Text = $"{i + 1} —";
+                    if (_lastSkillPopulated[i] || _lastSkillCooldownTenths[i] == int.MinValue)
+                    {
+                        _lastSkillPopulated[i] = false;
+                        _lastSkillCooldownTenths[i] = -1;
+                        _lastSkillNames[i] = null;
+                        button.Text = SlotEmptyLabels[i];
+                    }
                     continue;
                 }
 
-                string cooldown = skill.CooldownRemaining > 0f ? $"{skill.CooldownRemaining:F1}s" : "Ready";
-                button.Text = $"{i + 1} {skill.DisplayName}\n{cooldown}";
+                int cdTenths = skill.CooldownRemaining > 0f ? Mathf.CeilToInt(skill.CooldownRemaining * 10f) : 0;
+                if (!_lastSkillPopulated[i] ||
+                    cdTenths != _lastSkillCooldownTenths[i] ||
+                    !string.Equals(skill.DisplayName, _lastSkillNames[i], StringComparison.Ordinal))
+                {
+                    _lastSkillPopulated[i] = true;
+                    _lastSkillCooldownTenths[i] = cdTenths;
+                    _lastSkillNames[i] = skill.DisplayName;
+
+                    string cooldown = cdTenths > 0 ? $"{cdTenths / 10f:F1}s" : "Ready";
+                    button.Text = $"{SlotKeyLabels[i]} {skill.DisplayName}\n{cooldown}";
+                }
             }
 
             if (_btnStone != null)
             {
-                _btnStone.Text = $"Q Crush Stone ({cult?.PrimevalStones ?? 0})";
+                int stones = cult?.PrimevalStones ?? 0;
+                if (stones != _lastStones)
+                {
+                    _lastStones = stones;
+                    _btnStone.Text = $"Q Crush Stone ({stones})";
+                }
             }
         }
     }

@@ -108,6 +108,19 @@ namespace TaiwuGu.Map
 
         public static IReadOnlyCollection<LandmarkDefinition> GetAll() => s_DefinitionsById.Values;
 
+        private static bool TrySpendActionAP(WorldStore world, int apCost)
+        {
+            if (apCost <= 0) return true;
+            var clock = world.GetSingleton<WorldClockComponent>();
+            if (clock == null || clock.ActionPointsRemaining < apCost)
+            {
+                Debug.LogWarning($"[LandmarkRegistry] Insufficient Action Points (requires {apCost} AP).");
+                return false;
+            }
+            TimeSystem.DeductActionPoints(world, apCost);
+            return true;
+        }
+
         private static void InitializeDefaultRegistry()
         {
             s_DefinitionsById.Clear();
@@ -136,8 +149,9 @@ namespace TaiwuGu.Map
                         world.TryGet<CultivatorComponent>(world.PlayerEntity, out var cult) &&
                         world.TryGet<ApertureComponent>(world.PlayerEntity, out var ap))
                     {
+                        if (!TrySpendActionAP(world, 1)) return;
                         ap.CurrentEssenceSea = MathF.Min(cult.AptitudePercent, ap.CurrentEssenceSea + 15.0f);
-                        WorldSignals.EmitTopics(DirtyTopic.Aperture);
+                        WorldSignals.EmitTopics(DirtyTopic.Aperture | DirtyTopic.Calendar);
                     }
                 },
                 DirectInteraction = (world, pos) => WorldSignals.EmitOpenTilePOI(pos)
@@ -160,7 +174,7 @@ namespace TaiwuGu.Map
                 {
                     new LandmarkActionDefinition("waystation_buy_orchid", "Buy Moon Orchid Petals (10 Stones)", "Purchase fresh moon orchid petals for Moonlight Gu sustenance.", 0, 10),
                     new LandmarkActionDefinition("waystation_buy_boar", "Buy Fresh Boar Meat (10 Stones)", "Purchase raw wild boar meat for Boar Gu sustenance.", 0, 10),
-                    new LandmarkActionDefinition("waystation_regional_transit", "Caravan Regional Wall Crossing (商队界壁跨域)", "Hire the caravan to traverse regional boundary walls.", 0, 50)
+                    new LandmarkActionDefinition("waystation_regional_transit", "Caravan Regional Wall Crossing (商队界壁跨域)", "Hire the caravan to traverse regional boundary walls.", 0, TransitSystem.REGIONAL_TRANSIT_STONE_COST)
                 },
                 ExecuteAction = (world, actionId, pos) =>
                 {
@@ -210,7 +224,7 @@ namespace TaiwuGu.Map
                 BadgeColorHex = "#34D399",
                 AvailableActions = new[]
                 {
-                    new LandmarkActionDefinition("clan_post_rest", "Rest at Clan Pavilion (+5 AP, +35 HP Restored)", "Rest peacefully within the clan boundaries to recuperate action stamina and heal physical injuries.", 0, 0)
+                    new LandmarkActionDefinition("clan_post_rest", "Rest at Clan Pavilion (+5 AP, +35 HP Restored, 1/Term)", "Rest peacefully within the clan boundaries once per Solar Term to recuperate action stamina and heal physical injuries.", 0, 0)
                 },
                 ExecuteAction = (world, actionId, pos) =>
                 {
@@ -219,6 +233,15 @@ namespace TaiwuGu.Map
                         var clock = world.GetSingleton<WorldClockComponent>();
                         if (clock != null)
                         {
+                            if (clock.LastClanRestYear == clock.CurrentYear &&
+                                clock.LastClanRestTerm == clock.CurrentSolarTermIndex)
+                            {
+                                Debug.LogWarning("[LandmarkRegistry] Already rested at Clan Pavilion this Solar Term.");
+                                return;
+                            }
+
+                            clock.LastClanRestYear = clock.CurrentYear;
+                            clock.LastClanRestTerm = clock.CurrentSolarTermIndex;
                             clock.ActionPointsRemaining = Math.Min(clock.MonthlyAPBudget, clock.ActionPointsRemaining + 5);
                         }
 
@@ -256,6 +279,7 @@ namespace TaiwuGu.Map
                 {
                     if (actionId == "beast_den_subjugate")
                     {
+                        if (!TrySpendActionAP(world, 2)) return;
                         WorldSignals.EmitCloseTilePOI();
                         int denSeed = unchecked(world.RunSeed ^ (pos.X * 73856093) ^ (pos.Y * 19349663) ^ ((world.GetSingleton<WorldClockComponent>()?.CurrentSolarTermIndex ?? 1) * 83492791));
                         var denRng = new SeededRandom(denSeed);
@@ -267,6 +291,7 @@ namespace TaiwuGu.Map
                     }
                     else if (actionId == "beast_den_combat")
                     {
+                        if (!TrySpendActionAP(world, 1)) return;
                         WorldSignals.EmitCloseTilePOI();
                         CombatSystem.StartCombat(
                             world,
@@ -301,6 +326,7 @@ namespace TaiwuGu.Map
                 {
                     if (actionId == "cave_subjugate")
                     {
+                        if (!TrySpendActionAP(world, 2)) return;
                         WorldSignals.EmitCloseTilePOI();
                         int caveSeed = unchecked(world.RunSeed ^ (pos.X * 39712847) ^ (pos.Y * 61849201) ^ ((world.GetSingleton<WorldClockComponent>()?.CurrentSolarTermIndex ?? 1) * 48618773));
                         var caveRng = new SeededRandom(caveSeed);
@@ -311,6 +337,7 @@ namespace TaiwuGu.Map
                     }
                     else if (actionId == "cave_combat")
                     {
+                        if (!TrySpendActionAP(world, 1)) return;
                         WorldSignals.EmitCloseTilePOI();
                         CombatSystem.StartCombat(
                             world,
@@ -344,6 +371,7 @@ namespace TaiwuGu.Map
                 {
                     if (actionId == "mountain_sector_transit")
                     {
+                        if (!TrySpendActionAP(world, 1)) return;
                         WorldSignals.EmitCloseTilePOI();
                         TransitSystem.OpenTransitModal(world, regionalMode: false);
                     }

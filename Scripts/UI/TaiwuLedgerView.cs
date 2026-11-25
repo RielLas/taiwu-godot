@@ -84,6 +84,10 @@ namespace Taiwu_Godot.Scripts.UI
                 _guWormsTab.FeedGuRequested -= HandleFeedGuRequested;
                 _guWormsTab.ConsumeLifespanGuRequested -= HandleConsumeLifespanGuRequested;
             }
+            if (_inventoryTab != null)
+            {
+                _inventoryTab.FeedGuRequested -= HandleFeedGuRequested;
+            }
             if (_tabs != null)
             {
                 _tabs.TabSelected -= HandleStripTabSelected;
@@ -190,8 +194,24 @@ namespace Taiwu_Godot.Scripts.UI
 
         private void HandleFeedGuRequested(string guId, GuDietType diet, int quantity)
         {
-            if (_stateProvider?.Current is WorldStore world)
-                GuEcologySystem.FeedGuByCatalogId(world, guId, diet, quantity);
+            if (_stateProvider?.Current is not WorldStore world) return;
+
+            string resolvedGuId = guId;
+            if (string.IsNullOrEmpty(resolvedGuId))
+            {
+                GuWormComponent? hungriest = null;
+                foreach (var (_, gu) in world.GetOwned<GuWormComponent>(world.PlayerEntity))
+                {
+                    if (gu.Diet == diet && (hungriest == null || gu.Satiety < hungriest.Satiety))
+                    {
+                        hungriest = gu;
+                    }
+                }
+                if (hungriest == null) return;
+                resolvedGuId = hungriest.GuID;
+            }
+
+            GuEcologySystem.FeedGuByCatalogId(world, resolvedGuId, diet, quantity);
         }
 
         private void HandleConsumeLifespanGuRequested(string guId)
@@ -365,7 +385,7 @@ namespace Taiwu_Godot.Scripts.UI
 
             string substageName = ap.GetSubstageName();
             if (_lblSubtitle != null)
-                _lblSubtitle.Text = $"Gu Yue Clan Heir: {cult.Name} | Rank {ap.Rank} {substageName}";
+                _lblSubtitle.Text = $"{cult.Clan} Heir: {cult.Name} | Rank {ap.Rank} {substageName}";
 
             int humanMarks = marks?.Ledger.HumanPathMarks ?? ApertureComponent.DeriveInnateHumanPathMarks(cult.AptitudePercent);
             int termIdx = clock?.CurrentSolarTermIndex ?? 4;

@@ -59,24 +59,32 @@ namespace TaiwuGu.Audio
         }
 
         /// <summary>
-        /// Creates a seamless 4-second looping mountain wind ambience.
-        /// Low-pass filtered brownian noise with gentle atmospheric wind gusts.
+        /// Creates a seamless looping mountain wind ambience.
+        /// Low-pass filtered brownian noise with integer-cycle atmospheric wind gusts
+        /// and overlap-crossfaded tail trimming for click-free looping.
         /// </summary>
         public static float[] CreateMountainWindLoop(float duration = 4.0f)
         {
-            int totalSamples = (int)MathF.Round(SampleRate * duration);
-            float[] samples = new float[totalSamples];
+            int loopSamples = Math.Max(2, (int)MathF.Round(SampleRate * duration));
+            int fadeSamples = Math.Min((int)MathF.Round(SampleRate * 0.35f), loopSamples / 2);
+            int totalSamples = loopSamples + fadeSamples;
+
+            float[] raw = new float[totalSamples];
             var rng = new FastNoise(1001);
 
             float lastValue = 0f;
             float twoPi = MathF.PI * 2f;
+            float loopDuration = (float)loopSamples / SampleRate;
+
+            // Integer LFO cycles over the trimmed loop duration prevent phase jumps at the seam
+            float gustFreq1 = MathF.Max(1f, MathF.Round(0.25f * loopDuration)) / loopDuration;
+            float gustFreq2 = MathF.Max(2f, MathF.Round(0.41f * loopDuration)) / loopDuration;
 
             for (int i = 0; i < totalSamples; i++)
             {
                 float t = (float)i / SampleRate;
 
-                // Slow atmospheric gust modulation (0.25 Hz & 0.41 Hz)
-                float gust = 0.55f + 0.35f * MathF.Sin(twoPi * 0.25f * t) + 0.10f * MathF.Sin(twoPi * 0.41f * t);
+                float gust = 0.55f + 0.35f * MathF.Sin(twoPi * gustFreq1 * t) + 0.10f * MathF.Sin(twoPi * gustFreq2 * t);
 
                 // Brownian noise integration (soft low-pass noise)
                 float white = rng.NextSigned();
@@ -85,55 +93,68 @@ namespace TaiwuGu.Audio
                 // Subtle high-altitude air whisper
                 float whisper = rng.NextRange(-0.02f, 0.02f);
 
-                samples[i] = Math.Clamp((lastValue * 3.2f + whisper) * gust * 0.45f, -0.95f, 0.95f);
+                raw[i] = Math.Clamp((lastValue * 3.2f + whisper) * gust * 0.45f, -0.95f, 0.95f);
             }
 
-            // Crossfade ends for 100% seamless loop
-            int fadeSamples = (int)MathF.Round(SampleRate * 0.35f);
+            // Crossfade the extra tail into the head and trim to totalSamples - fadeSamples (= loopSamples)
+            float[] samples = new float[totalSamples - fadeSamples];
+            Array.Copy(raw, 0, samples, 0, samples.Length);
             for (int i = 0; i < fadeSamples; i++)
             {
                 float blend = (float)i / fadeSamples;
-                int tailIdx = totalSamples - fadeSamples + i;
-                samples[i] = (1f - blend) * samples[tailIdx] + blend * samples[i];
+                int tailIdx = samples.Length + i;
+                samples[i] = (1f - blend) * raw[tailIdx] + blend * raw[i];
             }
 
             return samples;
         }
 
         /// <summary>
-        /// Creates a 3-second turbulent combat wind loop with deeper low-end atmospheric pressure.
+        /// Creates a turbulent combat wind loop with deeper low-end atmospheric pressure
+        /// and overlap-crossfaded tail trimming for click-free looping.
         /// </summary>
         public static float[] CreateTurbulentCombatWind(float duration = 3.0f)
         {
-            int totalSamples = (int)MathF.Round(SampleRate * duration);
-            float[] samples = new float[totalSamples];
+            int loopSamples = Math.Max(2, (int)MathF.Round(SampleRate * duration));
+            int fadeSamples = Math.Min((int)MathF.Round(SampleRate * 0.30f), loopSamples / 2);
+            int totalSamples = loopSamples + fadeSamples;
+
+            float[] raw = new float[totalSamples];
             var rng = new FastNoise(2002);
 
             float lastValue = 0f;
             float twoPi = MathF.PI * 2f;
+            float loopDuration = (float)loopSamples / SampleRate;
+
+            // Integer LFO & sub-pressure cycles over the trimmed loop duration
+            float gustFreq1 = MathF.Max(1f, MathF.Round(0.6f * loopDuration)) / loopDuration;
+            float gustFreq2 = MathF.Max(2f, MathF.Round(1.1f * loopDuration)) / loopDuration;
+            float subFreq = MathF.Max(1f, MathF.Round(42f * loopDuration)) / loopDuration;
 
             for (int i = 0; i < totalSamples; i++)
             {
                 float t = (float)i / SampleRate;
 
                 // Restless, agitated wind speed oscillation
-                float gust = 0.65f + 0.25f * MathF.Sin(twoPi * 0.6f * t) + 0.10f * MathF.Cos(twoPi * 1.1f * t);
+                float gust = 0.65f + 0.25f * MathF.Sin(twoPi * gustFreq1 * t) + 0.10f * MathF.Cos(twoPi * gustFreq2 * t);
 
-                // Sub-bass atmospheric pressure rumble (42 Hz)
-                float subPressure = MathF.Sin(twoPi * 42f * t) * 0.12f;
+                // Sub-bass atmospheric pressure rumble (~42 Hz, integer cycles)
+                float subPressure = MathF.Sin(twoPi * subFreq * t) * 0.12f;
 
                 float white = rng.NextSigned();
                 lastValue = (lastValue + (0.06f * white)) / 1.06f;
 
-                samples[i] = Math.Clamp((lastValue * 2.8f + subPressure) * gust * 0.55f, -0.95f, 0.95f);
+                raw[i] = Math.Clamp((lastValue * 2.8f + subPressure) * gust * 0.55f, -0.95f, 0.95f);
             }
 
-            int fadeSamples = (int)MathF.Round(SampleRate * 0.3f);
+            // Crossfade the extra tail into the head and trim to totalSamples - fadeSamples (= loopSamples)
+            float[] samples = new float[totalSamples - fadeSamples];
+            Array.Copy(raw, 0, samples, 0, samples.Length);
             for (int i = 0; i < fadeSamples; i++)
             {
                 float blend = (float)i / fadeSamples;
-                int tailIdx = totalSamples - fadeSamples + i;
-                samples[i] = (1f - blend) * samples[tailIdx] + blend * samples[i];
+                int tailIdx = samples.Length + i;
+                samples[i] = (1f - blend) * raw[tailIdx] + blend * raw[i];
             }
 
             return samples;
@@ -209,6 +230,8 @@ namespace TaiwuGu.Audio
             float[] samples = new float[totalSamples];
             var rng = new FastNoise(5005);
 
+            float phase = 0f;
+            float twoPiOverRate = 2f * MathF.PI / SampleRate;
             for (int i = 0; i < totalSamples; i++)
             {
                 float t = (float)i / SampleRate;
@@ -217,9 +240,10 @@ namespace TaiwuGu.Audio
                 // Sharp whip-crack envelope
                 float env = MathF.Pow(MathF.Sin(progress * MathF.PI), 1.8f);
 
-                // Sweeping center frequency for air shear (3200 Hz down to 600 Hz)
+                // Sweeping center frequency for air shear (3200 Hz down to 600 Hz) via integrated phase
                 float sweepFreq = 3200f + (600f - 3200f) * progress;
-                float carrier = MathF.Sin(2f * MathF.PI * sweepFreq * t);
+                phase += twoPiOverRate * sweepFreq;
+                float carrier = MathF.Sin(phase);
                 float hiss = rng.NextRange(-0.4f, 0.4f);
 
                 samples[i] = (carrier * 0.35f + hiss * 0.65f) * env * 0.85f;
@@ -238,6 +262,8 @@ namespace TaiwuGu.Audio
             float[] samples = new float[totalSamples];
             var rng = new FastNoise(6006);
 
+            float phase = 0f;
+            float twoPiOverRate = 2f * MathF.PI / SampleRate;
             for (int i = 0; i < totalSamples; i++)
             {
                 float t = (float)i / SampleRate;
@@ -245,9 +271,10 @@ namespace TaiwuGu.Audio
 
                 float env = MathF.Exp(-progress * 14f);
 
-                // Pitch-diving bass body (130 Hz down to 38 Hz)
+                // Pitch-diving bass body (130 Hz down to 38 Hz) via integrated phase
                 float freq = 130f + (38f - 130f) * MathF.Pow(progress, 0.5f);
-                float subBass = MathF.Sin(2f * MathF.PI * freq * t);
+                phase += twoPiOverRate * freq;
+                float subBass = MathF.Sin(phase);
 
                 // Initial impact crack transient (first 15ms)
                 float crack = (progress < 0.1f) ? rng.NextRange(-0.8f, 0.8f) * (1f - progress * 10f) : 0f;
@@ -268,6 +295,8 @@ namespace TaiwuGu.Audio
             float[] samples = new float[totalSamples];
             var rng = new FastNoise(7007);
 
+            float phase = 0f;
+            float twoPiOverRate = 2f * MathF.PI / SampleRate;
             for (int i = 0; i < totalSamples; i++)
             {
                 float t = (float)i / SampleRate;
@@ -276,9 +305,10 @@ namespace TaiwuGu.Audio
                 // Smooth bell envelope
                 float env = MathF.Sin(progress * MathF.PI);
 
-                // Low-mid rushing air (420 Hz swept down to 140 Hz)
+                // Low-mid rushing air (420 Hz swept down to 140 Hz) via integrated phase
                 float freq = 420f + (140f - 420f) * progress;
-                float airTone = MathF.Sin(2f * MathF.PI * freq * t) * 0.3f;
+                phase += twoPiOverRate * freq;
+                float airTone = MathF.Sin(phase) * 0.3f;
                 float noise = rng.NextRange(-0.5f, 0.5f);
 
                 samples[i] = (airTone + noise * 0.7f) * env * 0.75f;
@@ -399,7 +429,7 @@ namespace TaiwuGu.Audio
                 float woodOvertone = MathF.Sin(2f * MathF.PI * 1560f * t) * 0.25f;
                 float tapTransient = (progress < 0.05f) ? rng.NextRange(-0.3f, 0.3f) : 0f;
 
-                samples[i] = (woodFundamental + woodOvertone + tapTransient) * env * 0.9f;
+                samples[i] = Math.Clamp((woodFundamental + woodOvertone + tapTransient) * env * 0.78f, -0.95f, 0.95f);
             }
 
             return samples;

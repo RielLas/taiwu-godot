@@ -1,7 +1,8 @@
 import os
 import re
+import sys
 
-PROJECT_DIR = r"D:\Wonderland Discord\Projects\Taiwu Path of the Gu\Taiwu_Godot"
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CORE_LOGIC_DIR = os.path.join(PROJECT_DIR, "Core.Logic")
 PROJECT_GODOT = os.path.join(PROJECT_DIR, "project.godot")
 WORLD_SIGNALS_FILE = os.path.join(CORE_LOGIC_DIR, "ECS", "WorldSignals.cs")
@@ -18,7 +19,8 @@ def get_runtime_cs_files():
 
 def audit_world_signals(cs_files):
     if not os.path.exists(WORLD_SIGNALS_FILE):
-        return []
+        print(f"ERROR: WorldSignals.cs not found at {WORLD_SIGNALS_FILE}", file=sys.stderr)
+        sys.exit(1)
 
     with open(WORLD_SIGNALS_FILE, "r", encoding="utf-8", errors="ignore") as f:
         ws_content = f.read()
@@ -140,6 +142,10 @@ def audit_gui_focus_traps(cs_files):
     return traps
 
 def run_audit():
+    if not os.path.exists(WORLD_SIGNALS_FILE):
+        print(f"ERROR: WorldSignals.cs not found at {WORLD_SIGNALS_FILE}", file=sys.stderr)
+        sys.exit(1)
+
     cs_files = get_runtime_cs_files()
     event_results = audit_world_signals(cs_files)
 

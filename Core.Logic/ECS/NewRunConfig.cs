@@ -17,7 +17,7 @@ namespace TaiwuGu.Entities
         public string StartingSectorKey { get; set; } = WorldFactory.DefaultSectorKey;
         public float AptitudePercent { get; set; } = 44.0f;
         public TaiwuDisposition Disposition { get; set; } = TaiwuDisposition.Egoist;
-        public string VitalGuId { get; set; } = "gu_moonlight_01";
+        public string VitalGuId { get; set; } = "gu_moonlight_r1";
 
         public NewRunConfig() { }
 

@@ -64,6 +64,12 @@ namespace Taiwu_Godot.Scripts.UI
             WorldSignals.OnTopicsChanged           -= HandleTopicsChanged;
             WorldSignals.OnEscapeRequested         -= HandleEscapeRequested;
             WorldSignals.OnBattleStageChanged       -= HandleBattleStageChanged;
+
+            if (_isOpen)
+            {
+                _isOpen = false;
+                WorldSignals.EmitModalClosed(this);
+            }
         }
 
         private void HandleBattleStageChanged(bool inBattle)

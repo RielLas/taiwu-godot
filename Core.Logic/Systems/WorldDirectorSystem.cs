@@ -37,15 +37,8 @@ namespace TaiwuGu.Systems
         {
             var eventComp = world.GetOrCreateSingleton<WorldEventComponent>();
 
-            // Countdown to next scheduled world calamity
-            eventComp.NextEventCountdownTerms--;
-            if (eventComp.NextEventCountdownTerms <= 0)
-            {
-                eventComp.NextEventCountdownTerms = DEFAULT_CALAMITY_INTERVAL_TERMS;
-                SpawnScheduledCalamity(world, eventComp, rng);
-            }
-
-            // Advance active calamities
+            // Advance existing active calamities BEFORE spawning any new calamity on this tick
+            // so a newly spawned calamity does not lose a term on its spawn tick.
             var toRemove = new List<WorldEventEntry>();
             foreach (var ev in eventComp.ActiveEvents)
             {
@@ -59,7 +52,7 @@ namespace TaiwuGu.Systems
                         ev.RemainingTerms = DEFAULT_ACTIVE_CALAMITY_DURATION_TERMS;
 
                         // Temporary POI AncientGuCave placement on sector tile
-                        ApplyCalamityPOI(world, ev);
+                        ApplyCalamityPOI(world, eventComp, ev);
 
                         WorldSignals.EmitWorldCalamityUpdated(ev);
                         WorldSignals.EmitTopics(DirtyTopic.Director | DirtyTopic.Map);
@@ -71,7 +64,7 @@ namespace TaiwuGu.Systems
                         ev.RemainingTerms = 0;
 
                         // Clean restoration of previous POI on Active -> Expired
-                        RestorePreviousPOI(world, ev);
+                        RestorePreviousPOI(world, eventComp, ev);
 
                         WorldSignals.EmitWorldCalamityUpdated(ev);
                         WorldSignals.EmitTopics(DirtyTopic.Director | DirtyTopic.Map);
@@ -79,7 +72,7 @@ namespace TaiwuGu.Systems
                     }
                     else if (ev.Phase == WorldCalamityPhase.Resolved)
                     {
-                        RestorePreviousPOI(world, ev);
+                        RestorePreviousPOI(world, eventComp, ev);
                         toRemove.Add(ev);
                     }
                 }
@@ -88,6 +81,14 @@ namespace TaiwuGu.Systems
             foreach (var deadEvent in toRemove)
             {
                 eventComp.ActiveEvents.Remove(deadEvent);
+            }
+
+            // Countdown to next scheduled world calamity
+            eventComp.NextEventCountdownTerms--;
+            if (eventComp.NextEventCountdownTerms <= 0)
+            {
+                eventComp.NextEventCountdownTerms = DEFAULT_CALAMITY_INTERVAL_TERMS;
+                SpawnScheduledCalamity(world, eventComp, rng);
             }
         }
 
@@ -101,9 +102,16 @@ namespace TaiwuGu.Systems
             WorldCalamityKind[] kinds = (WorldCalamityKind[])Enum.GetValues(typeof(WorldCalamityKind));
             WorldCalamityKind kind = kinds[rng.Next(0, kinds.Length)];
 
-            int targetX = rng.Next(2, Math.Max(3, width - 2));
-            int targetY = rng.Next(2, Math.Max(3, height - 2));
-            GridCoord targetCoord = new GridCoord(targetX, targetY);
+            GridCoord targetCoord = new GridCoord(
+                rng.Next(2, Math.Max(3, width - 2)),
+                rng.Next(2, Math.Max(3, height - 2)));
+
+            for (int attempt = 0; attempt < 8 && IsTileOccupiedByCalamity(eventComp, sectorKey, targetCoord, exclude: null); attempt++)
+            {
+                targetCoord = new GridCoord(
+                    rng.Next(2, Math.Max(3, width - 2)),
+                    rng.Next(2, Math.Max(3, height - 2)));
+            }
 
             string title = kind switch
             {
@@ -114,6 +122,9 @@ namespace TaiwuGu.Systems
                 _ => "World Calamity"
             };
 
+            var clock = world.GetSingleton<WorldClockComponent>();
+            int seq = eventComp.NextEventSequence++;
+            string eventId = $"calamity_{clock?.CurrentYear ?? 1}_{clock?.CurrentSolarTermIndex ?? 1}_{seq}";
             string desc = $"Heavenly omens reveal a {title} taking shape near {targetCoord}!";
             var entry = new WorldEventEntry(
                 kind,
@@ -122,15 +133,35 @@ namespace TaiwuGu.Systems
                 targetCoord,
                 remainingTerms: DEFAULT_FORESHADOW_DURATION_TERMS,
                 title,
-                desc);
+                desc,
+                eventId);
 
             eventComp.ActiveEvents.Add(entry);
             WorldSignals.EmitWorldCalamityUpdated(entry);
             WorldSignals.EmitTopics(DirtyTopic.Director);
         }
 
-        private static void ApplyCalamityPOI(WorldStore world, WorldEventEntry ev)
+        private static bool IsTileOccupiedByCalamity(WorldEventComponent eventComp, string sectorKey, GridCoord coord, WorldEventEntry? exclude, bool activeOnly = false)
         {
+            foreach (var other in eventComp.ActiveEvents)
+            {
+                if (ReferenceEquals(other, exclude)) continue;
+                if (activeOnly && other.Phase != WorldCalamityPhase.Active) continue;
+                if (string.Equals(other.SectorKey, sectorKey, StringComparison.Ordinal) && other.TargetCoord == coord)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static void ApplyCalamityPOI(WorldStore world, WorldEventComponent eventComp, WorldEventEntry ev)
+        {
+            if (IsTileOccupiedByCalamity(eventComp, ev.SectorKey, ev.TargetCoord, exclude: ev, activeOnly: true))
+            {
+                return;
+            }
+
             var sector = world.GetSector(ev.SectorKey) ?? world.GetCurrentSector();
             if (sector == null || !sector.IsWithinBounds(ev.TargetCoord)) return;
 
@@ -143,8 +174,13 @@ namespace TaiwuGu.Systems
             sector.CommitTilesToSnapshot();
         }
 
-        private static void RestorePreviousPOI(WorldStore world, WorldEventEntry ev)
+        private static void RestorePreviousPOI(WorldStore world, WorldEventComponent eventComp, WorldEventEntry ev)
         {
+            if (IsTileOccupiedByCalamity(eventComp, ev.SectorKey, ev.TargetCoord, exclude: ev, activeOnly: true))
+            {
+                return;
+            }
+
             var sector = world.GetSector(ev.SectorKey) ?? world.GetCurrentSector();
             if (sector == null || !sector.IsWithinBounds(ev.TargetCoord)) return;
 
@@ -197,8 +233,11 @@ namespace TaiwuGu.Systems
                 }
             }
 
-            bool hasActivePursuer = tracker.Hunters.Exists(h => h.State == BountyHunterState.Pursuing);
-            if ((hostileFaction.HasValue || bloodBountyExists) && !hasActivePursuer)
+            bool hasActiveHunter = tracker.Hunters.Exists(h =>
+                h.State == BountyHunterState.Pursuing ||
+                h.State == BountyHunterState.Engaged ||
+                h.State == BountyHunterState.Bribed);
+            if ((hostileFaction.HasValue || bloodBountyExists) && !hasActiveHunter)
             {
                 SpawnBountyHunter(world, tracker, hostileFaction ?? FactionID.TieClan, rng);
             }
@@ -394,6 +433,24 @@ namespace TaiwuGu.Systems
             return true;
         }
 
+        public static void ResolveHunterDisengaged(WorldStore world, int hunterEntityId)
+        {
+            if (hunterEntityId < 0) return;
+            ResolveHunterDisengaged(world, (ulong)hunterEntityId);
+        }
+
+        public static void ResolveHunterDisengaged(WorldStore world, ulong hunterEntityId)
+        {
+            var tracker = world.GetSingleton<BountyTrackerComponent>();
+            if (tracker == null) return;
+
+            var hunter = tracker.Hunters.Find(h => h.HunterEntityId == hunterEntityId);
+            if (hunter == null || hunter.State != BountyHunterState.Engaged) return;
+
+            hunter.State = BountyHunterState.Pursuing;
+            WorldSignals.EmitTopics(DirtyTopic.Bounty);
+        }
+
         private static GridCoord FindWalkableSpawnCoord(
             SectorGridComponent? sector,
             GridCoord pCoord,
@@ -484,6 +541,10 @@ namespace TaiwuGu.Systems
             string title = $"Inter-Clan Skirmish: {framedFaction}";
             string desc = $"Framed evidence ignited active skirmishes involving {framedFaction}!";
 
+            var clock = world.GetSingleton<WorldClockComponent>();
+            int seq = eventComp.NextEventSequence++;
+            string eventId = $"skirmish_{clock?.CurrentYear ?? 1}_{clock?.CurrentSolarTermIndex ?? 1}_{seq}";
+
             var entry = new WorldEventEntry(
                 WorldCalamityKind.InterClanSkirmish,
                 WorldCalamityPhase.Active,
@@ -491,18 +552,10 @@ namespace TaiwuGu.Systems
                 skirmishCoord,
                 remainingTerms: 3,
                 title,
-                desc);
+                desc,
+                eventId);
 
-            if (sector != null && sector.IsWithinBounds(skirmishCoord))
-            {
-                var tile = sector.GetTile(skirmishCoord.X, skirmishCoord.Y);
-                entry.PreviousPOI = tile.POI;
-                entry.PreviousCustomLandmarkId = tile.CustomLandmarkId;
-                tile.POI = TilePOIType.AncientGuCave;
-                sector.SetTile(skirmishCoord.X, skirmishCoord.Y, tile);
-                sector.CommitTilesToSnapshot();
-            }
-
+            ApplyCalamityPOI(world, eventComp, entry);
             eventComp.ActiveEvents.Add(entry);
 
             foreach (var (_, f) in world.GetAll<FactionComponent>())

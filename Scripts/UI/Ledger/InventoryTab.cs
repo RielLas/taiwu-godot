@@ -339,7 +339,8 @@ namespace Taiwu_Godot.Scripts.UI
             {
                 Text = "Feed 1x",
                 CustomMinimumSize = new Vector2(80f, 30f),
-                MouseFilter = MouseFilterEnum.Stop
+                MouseFilter = MouseFilterEnum.Stop,
+                Disabled = item.Quantity <= 0
             };
             btnFeed.Pressed += () => FeedGuRequested?.Invoke(string.Empty, item.DietType, 1);
             hBox.AddChild(btnFeed);
