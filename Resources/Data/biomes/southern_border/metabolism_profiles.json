@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "profileId": "hibernating_cicada",
+      "monthlyDecay": 0.18,
+      "combatCastBurn": 0.04,
+      "penaltyThreshold": 0.7,
+      "unfedPolicy": "Hibernate",
+      "preferredFeedTag": "Wood"
+    },
+    {
+      "profileId": "blood_cannibal",
+      "monthlyDecay": 0.25,
+      "combatCastBurn": 0.08,
+      "penaltyThreshold": 0.65,
+      "unfedPolicy": "CannibalizeAperture",
+      "preferredFeedTag": "Blood"
+    },
+    {
+      "profileId": "venom_burner",
+      "monthlyDecay": 0.2,
+      "combatCastBurn": 0.12,
+      "penaltyThreshold": 0.6,
+      "unfedPolicy": "DrainHp",
+      "preferredFeedTag": "Poison"
+    },
+    {
+      "profileId": "stone_drinker",
+      "monthlyDecay": 0.22,
+      "combatCastBurn": 0.05,
+      "penaltyThreshold": 0.65,
+      "unfedPolicy": "DrainSea",
+      "preferredFeedTag": "Metal"
+    }
+  ]
+}

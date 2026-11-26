@@ -17,7 +17,7 @@ namespace Taiwu_Godot.Scripts.Map
     public partial class TaiwuGridRenderer : Node2D
     {
         [Export] public Color GridBorderColor { get; set; } = new Color(0.168f, 0.149f, 0.121f, 0.18f); // #2B261F at 18% alpha
-        [Export] public bool ShowGrid { get; set; } = true;
+        [Export] public bool ShowGrid { get; set; } = false;
 
         private IsometricTileManager? _tileManager;
         private MeshInstance2D? _gridMeshInstance;

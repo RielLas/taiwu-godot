@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "biomeId": "southern_border",
+  "profiles": [
+    {
+      "terrainTag": "Meadow",
+      "spriteLookupKey": "Meadow",
+      "blocksVision": false,
+      "passabilityRule": {
+        "allOf": [],
+        "anyOf": []
+      },
+      "blockedReasonKey": ""
+    },
+    {
+      "terrainTag": "Bamboo_Crag",
+      "spriteLookupKey": "Bamboo_Crag",
+      "blocksVision": false,
+      "passabilityRule": {
+        "allOf": [],
+        "anyOf": []
+      },
+      "blockedReasonKey": ""
+    },
+    {
+      "terrainTag": "Stone_Path",
+      "spriteLookupKey": "Stone_Path",
+      "blocksVision": false,
+      "passabilityRule": {
+        "allOf": [],
+        "anyOf": []
+      },
+      "blockedReasonKey": ""
+    },
+    {
+      "terrainTag": "Karst_Peak",
+      "spriteLookupKey": "Karst_Peak",
+      "blocksVision": true,
+      "passabilityRule": {
+        "allOf": [
+          {
+            "op": "AlwaysBlock",
+            "key": "",
+            "threshold": 0
+          }
+        ],
+        "anyOf": []
+      },
+      "blockedReasonKey": "barrier_karst_peak"
+    },
+    {
+      "terrainTag": "River_Gorge",
+      "spriteLookupKey": "River_Gorge",
+      "blocksVision": false,
+      "passabilityRule": {
+        "allOf": [
+          {
+            "op": "AlwaysBlock",
+            "key": "",
+            "threshold": 0
+          }
+        ],
+        "anyOf": []
+      },
+      "blockedReasonKey": "barrier_river_gorge"
+    },
+    {
+      "terrainTag": "Miasma_Dense",
+      "spriteLookupKey": "Miasma_Dense",
+      "blocksVision": true,
+      "passabilityRule": {
+        "allOf": [
+          {
+            "op": "AnyFedGuHasTag",
+            "key": "Detox",
+            "threshold": 1
+          },
+          {
+            "op": "HungerBelow",
+            "key": "Detox",
+            "threshold": 60
+          }
+        ],
+        "anyOf": []
+      },
+      "blockedReasonKey": "gate_requires_fed_detox_gu"
+    },
+    {
+      "terrainTag": "Sealed_Formation",
+      "spriteLookupKey": "POI_AncientGuCave",
+      "blocksVision": true,
+      "passabilityRule": {
+        "allOf": [
+          {
+            "op": "DaoMarksGte",
+            "key": "Formation",
+            "threshold": 15
+          }
+        ],
+        "anyOf": []
+      },
+      "blockedReasonKey": "gate_requires_formation_dao_15"
+    }
+  ]
+}

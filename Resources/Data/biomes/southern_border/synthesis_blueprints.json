@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "blueprints": [
+    {
+      "blueprintId": "bp_jade_detox_gu",
+      "outputGuId": "gu_jade_detox_r2",
+      "requiredTags": [
+        {
+          "tag": "Wood",
+          "weight": 3
+        },
+        {
+          "tag": "Detox",
+          "weight": 2
+        }
+      ],
+      "minTotalRank": 2,
+      "baseSuccessRate": 0.8
+    },
+    {
+      "blueprintId": "bp_corrosive_mist_gu",
+      "outputGuId": "gu_corrosive_mist_r2",
+      "requiredTags": [
+        {
+          "tag": "Poison",
+          "weight": 3
+        },
+        {
+          "tag": "Corrosive",
+          "weight": 2
+        }
+      ],
+      "minTotalRank": 2,
+      "baseSuccessRate": 0.72
+    },
+    {
+      "blueprintId": "bp_crimson_leech_gu",
+      "outputGuId": "gu_crimson_leech_r2",
+      "requiredTags": [
+        {
+          "tag": "Blood",
+          "weight": 3
+        },
+        {
+          "tag": "Wood",
+          "weight": 1
+        }
+      ],
+      "minTotalRank": 2,
+      "baseSuccessRate": 0.75
+    },
+    {
+      "blueprintId": "bp_iron_shell_gu",
+      "outputGuId": "gu_iron_shell_r2",
+      "requiredTags": [
+        {
+          "tag": "Metal",
+          "weight": 3
+        },
+        {
+          "tag": "Earth",
+          "weight": 2
+        }
+      ],
+      "minTotalRank": 2,
+      "baseSuccessRate": 0.78
+    },
+    {
+      "blueprintId": "bp_blazing_lance_gu",
+      "outputGuId": "gu_blazing_lance_r3",
+      "requiredTags": [
+        {
+          "tag": "Fire",
+          "weight": 4
+        },
+        {
+          "tag": "Metal",
+          "weight": 2
+        }
+      ],
+      "minTotalRank": 3,
+      "baseSuccessRate": 0.65
+    },
+    {
+      "blueprintId": "bp_bagua_breaker_gu",
+      "outputGuId": "gu_bagua_breaker_r3",
+      "requiredTags": [
+        {
+          "tag": "Formation",
+          "weight": 4
+        },
+        {
+          "tag": "Water",
+          "weight": 2
+        }
+      ],
+      "minTotalRank": 3,
+      "baseSuccessRate": 0.68
+    }
+  ]
+}

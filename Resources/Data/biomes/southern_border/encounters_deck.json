@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "deckId": "southern_border",
+  "events": [
+    {
+      "eventId": "sb_starving_parasite",
+      "deckId": "southern_border",
+      "title": "Aperture Stirring",
+      "vignette": "Your hungriest Gu scratches against your primeval sea walls as mist thickens along the ridge.",
+      "minPressure": 5,
+      "tensionCost": 10,
+      "eligibility": {
+        "allOf": [],
+        "anyOf": []
+      },
+      "choices": [
+        {
+          "label": "Spend 25 Stones on emergency feed",
+          "gate": {
+            "allOf": [
+              {
+                "op": "StatGte",
+                "keyId": 1,
+                "threshold": 25
+              }
+            ],
+            "anyOf": []
+          },
+          "successProb": 1.0,
+          "stoneDelta": -25,
+          "hpDelta": 0,
+          "seaDelta": 10,
+          "bountyDelta": 0,
+          "grantGuId": "",
+          "daoTagGain": 0,
+          "daoMarkDelta": 0
+        },
+        {
+          "label": "Force-suppress with Primeval Sea",
+          "gate": {
+            "allOf": [],
+            "anyOf": []
+          },
+          "successProb": 0.7,
+          "stoneDelta": 0,
+          "hpDelta": -10,
+          "seaDelta": -15,
+          "bountyDelta": 0,
+          "grantGuId": "",
+          "daoTagGain": 1,
+          "daoMarkDelta": 2
+        }
+      ]
+    },
+    {
+      "eventId": "sb_caravan_shortage",
+      "deckId": "southern_border",
+      "title": "Jia Caravan Feed Spike",
+      "vignette": "A mountain landslide choked the valley pass; the Jia merchant demands double Primeval Stones for beast-blood jars.",
+      "minPressure": 10,
+      "tensionCost": 12,
+      "eligibility": {
+        "allOf": [],
+        "anyOf": []
+      },
+      "choices": [
+        {
+          "label": "Buy out the rare catalyst stock",
+          "gate": {
+            "allOf": [
+              {
+                "op": "StatGte",
+                "keyId": 1,
+                "threshold": 40
+              }
+            ],
+            "anyOf": []
+          },
+          "successProb": 1.0,
+          "stoneDelta": -40,
+          "hpDelta": 0,
+          "seaDelta": 0,
+          "bountyDelta": 0,
+          "grantGuId": "gu_jade_detox_r1",
+          "daoTagGain": 3,
+          "daoMarkDelta": 2
+        },
+        {
+          "label": "Extort a discount with demonic threat",
+          "gate": {
+            "allOf": [],
+            "anyOf": []
+          },
+          "successProb": 0.65,
+          "stoneDelta": 35,
+          "hpDelta": 0,
+          "seaDelta": 0,
+          "bountyDelta": 12,
+          "grantGuId": "",
+          "daoTagGain": 4,
+          "daoMarkDelta": 3
+        }
+      ]
+    },
+    {
+      "eventId": "sb_miasma_carcass",
+      "deckId": "southern_border",
+      "title": "Miasma-Steeped Carcass",
+      "vignette": "A Rank 2 venomous boar lies half-dissolved in pale-jade mist, a wild Gu pulsing beneath its ribs.",
+      "minPressure": 18,
+      "tensionCost": 16,
+      "eligibility": {
+        "allOf": [],
+        "anyOf": []
+      },
+      "choices": [
+        {
+          "label": "Harvest safely with a fed Detox Gu",
+          "gate": {
+            "allOf": [
+              {
+                "op": "AnyFedGuHasTag",
+                "keyId": 3,
+                "threshold": 1
+              }
+            ],
+            "anyOf": []
+          },
+          "successProb": 0.95,
+          "stoneDelta": 20,
+          "hpDelta": 0,
+          "seaDelta": -5,
+          "bountyDelta": 0,
+          "grantGuId": "gu_corrosive_mist_r2",
+          "daoTagGain": 2,
+          "daoMarkDelta": 4
+        },
+        {
+          "label": "Hold your breath and snatch it raw",
+          "gate": {
+            "allOf": [],
+            "anyOf": []
+          },
+          "successProb": 0.55,
+          "stoneDelta": 15,
+          "hpDelta": -22,
+          "seaDelta": -10,
+          "bountyDelta": 0,
+          "grantGuId": "gu_corrosive_mist_r2",
+          "daoTagGain": 2,
+          "daoMarkDelta": 2
+        }
+      ]
+    },
+    {
+      "eventId": "sb_bounty_tracker",
+      "deckId": "southern_border",
+      "title": "Clan Investigative Gu Master",
+      "vignette": "A jade tracking lantern hovers above the bamboo crags\u2014your Bounty Heat has drawn a clan investigator.",
+      "minPressure": 35,
+      "tensionCost": 22,
+      "eligibility": {
+        "allOf": [
+          {
+            "op": "StatGte",
+            "keyId": 3,
+            "threshold": 15
+          }
+        ],
+        "anyOf": []
+      },
+      "choices": [
+        {
+          "label": "Bribe with 80 Primeval Stones",
+          "gate": {
+            "allOf": [
+              {
+                "op": "StatGte",
+                "keyId": 1,
+                "threshold": 80
+              }
+            ],
+            "anyOf": []
+          },
+          "successProb": 1.0,
+          "stoneDelta": -80,
+          "hpDelta": 0,
+          "seaDelta": 0,
+          "bountyDelta": -15,
+          "grantGuId": "",
+          "daoTagGain": 0,
+          "daoMarkDelta": 0
+        },
+        {
+          "label": "Ambush before the signal flare fires",
+          "gate": {
+            "allOf": [],
+            "anyOf": []
+          },
+          "successProb": 0.6,
+          "stoneDelta": 55,
+          "hpDelta": -18,
+          "seaDelta": -20,
+          "bountyDelta": 10,
+          "grantGuId": "",
+          "daoTagGain": 4,
+          "daoMarkDelta": 5
+        }
+      ]
+    }
+  ]
+}

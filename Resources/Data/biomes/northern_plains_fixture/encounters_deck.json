@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "deckId": "northern_plains_fixture",
+  "events": [
+    {
+      "eventId": "np_blizzard_wolf_pack",
+      "deckId": "northern_plains_fixture",
+      "title": "Blizzard Wolf Migration",
+      "vignette": "Howling wind-path wolves sweep across the ochre steppe, carrying wild Wind Gu in their fur.",
+      "minPressure": 0,
+      "tensionCost": 5,
+      "eligibility": {
+        "allOf": [],
+        "anyOf": []
+      },
+      "choices": [
+        {
+          "label": "Track the alpha for Wind Dao Marks",
+          "gate": {
+            "allOf": [],
+            "anyOf": []
+          },
+          "successProb": 0.85,
+          "stoneDelta": 25,
+          "hpDelta": -8,
+          "seaDelta": -10,
+          "bountyDelta": 0,
+          "grantGuId": "gu_steppe_gale_r1",
+          "daoTagGain": 1,
+          "daoMarkDelta": 3
+        }
+      ]
+    },
+    {
+      "eventId": "np_royal_court_tribute",
+      "deckId": "northern_plains_fixture",
+      "title": "Imperial Court Tribute Wagon",
+      "vignette": "Bannermen escorting refinement catalysts pause before a frozen ford.",
+      "minPressure": 10,
+      "tensionCost": 10,
+      "eligibility": {
+        "allOf": [],
+        "anyOf": []
+      },
+      "choices": [
+        {
+          "label": "Trade stones for northern catalysts",
+          "gate": {
+            "allOf": [
+              {
+                "op": "StatGte",
+                "keyId": 1,
+                "threshold": 30
+              }
+            ],
+            "anyOf": []
+          },
+          "successProb": 1.0,
+          "stoneDelta": -30,
+          "hpDelta": 0,
+          "seaDelta": 0,
+          "bountyDelta": 0,
+          "grantGuId": "gu_frost_blade_r2",
+          "daoTagGain": 5,
+          "daoMarkDelta": 4
+        }
+      ]
+    }
+  ]
+}
