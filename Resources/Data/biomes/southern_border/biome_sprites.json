@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "biomeId": "southern_border",
   "assetRoot": "res://Resources/Landmarks/southern_border/",
   "tileSpec": {
@@ -19,38 +19,6 @@
       "variants": [
         {
           "file": "tile_meadow_01.png",
-          "weight": 0.65,
-          "allowFlipH": true
-        },
-        {
-          "file": "tile_meadow_02.png",
-          "weight": 0.35,
-          "allowFlipH": true
-        }
-      ]
-    },
-    "Bamboo_Crag": {
-      "variants": [
-        {
-          "file": "tile_bamboo_crag.png",
-          "weight": 1.0,
-          "allowFlipH": true
-        }
-      ]
-    },
-    "Stone_Path": {
-      "variants": [
-        {
-          "file": "tile_stone_path.png",
-          "weight": 1.0,
-          "allowFlipH": true
-        }
-      ]
-    },
-    "Miasma_Dense": {
-      "variants": [
-        {
-          "file": "tile_miasma_marsh.png",
           "weight": 1.0,
           "allowFlipH": true
         }
@@ -74,33 +42,6 @@
         }
       ]
     },
-    "POI_ClanStronghold": {
-      "variants": [
-        {
-          "file": "poi_clan_stronghold.png",
-          "weight": 1.0,
-          "allowFlipH": false
-        }
-      ]
-    },
-    "POI_AncientGuCave": {
-      "variants": [
-        {
-          "file": "poi_ancient_gu_cave.png",
-          "weight": 1.0,
-          "allowFlipH": false
-        }
-      ]
-    },
-    "POI_SpiritSpring": {
-      "variants": [
-        {
-          "file": "poi_spirit_spring.png",
-          "weight": 1.0,
-          "allowFlipH": false
-        }
-      ]
-    },
     "POI_CaravanPost": {
       "variants": [
         {
@@ -108,6 +49,32 @@
           "weight": 1.0,
           "allowFlipH": false
         }
+      ]
+    }
+  },
+  "multiTileLandmarks": {
+    "guyue_stronghold": {
+      "footprint": [
+        3,
+        3
+      ],
+      "slicePrefix": "res://Resources/Landmarks/southern_border/hero_guyue_",
+      "subTileTags": [
+        [
+          "Courtyard",
+          "SpiritSpring",
+          "Courtyard"
+        ],
+        [
+          "RefinementPavilion",
+          "ClanHall",
+          "CaravanPlaza"
+        ],
+        [
+          "Courtyard",
+          "MountainGate",
+          "Courtyard"
+        ]
       ]
     }
   }
